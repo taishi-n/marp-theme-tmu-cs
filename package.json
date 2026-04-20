@@ -1,0 +1,56 @@
+{
+  "name": "marp-theme-tmu-cs",
+  "version": "0.2.0",
+  "description": "TMU-CS Marp theme with citeproc, code annotations, math annotations, and step expansion.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "files": [
+    "README.md",
+    "engine.mjs",
+    "index.mjs",
+    "src/",
+    "theme/",
+    "vendor/csl/ieee.csl"
+  ],
+  "exports": {
+    ".": "./index.mjs",
+    "./engine": "./engine.mjs",
+    "./engine.mjs": "./engine.mjs",
+    "./theme": "./theme/tmu-cs.css",
+    "./theme.css": "./theme/tmu-cs.css",
+    "./theme/tmu-cs.css": "./theme/tmu-cs.css",
+    "./csl/ieee.csl": "./vendor/csl/ieee.csl",
+    "./markdown/expand-step-slides": "./src/markdown/expand-step-slides.mjs",
+    "./markdown/process-citations": "./src/markdown/process-citations.mjs",
+    "./markdown/resolve-external-code": "./src/markdown/resolve-external-code.mjs",
+    "./math/annotate-math-block": "./src/math/annotate-math-block.mjs",
+    "./pandoc/citation-placeholder.lua": "./src/pandoc/citation-placeholder.lua",
+    "./shiki/annotate-transformer": "./src/shiki/annotate-transformer.mjs",
+    "./shiki/parse-annotate-directive": "./src/shiki/parse-annotate-directive.mjs",
+    "./shiki/parse-step-directive": "./src/shiki/parse-step-directive.mjs"
+  },
+  "keywords": [
+    "marp",
+    "marpit",
+    "theme",
+    "slides",
+    "shiki",
+    "pandoc"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build:html": "cd examples && marp --engine ../engine.mjs slides.md -o dist/slides.html",
+    "build:pdf": "cd examples && marp --engine ../engine.mjs slides.md -o dist/slides.pdf",
+    "build:pptx": "cd examples && marp --engine ../engine.mjs --pptx --pptx-editable slides.md -o dist/slides.pptx",
+    "watch": "cd examples && marp --engine ../engine.mjs --watch slides.md -o dist/slides.html"
+  },
+  "dependencies": {
+    "@marp-team/marp-cli": "4.3.1",
+    "@shikijs/transformers": "4.0.2",
+    "@xmldom/xmldom": "0.9.9",
+    "js-yaml": "4.1.1",
+    "shiki": "4.0.2"
+  }
+}
