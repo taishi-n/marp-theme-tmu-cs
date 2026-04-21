@@ -290,7 +290,7 @@ mark {
 code,
 pre,
 .marp-code {
-  font-family: "PlemolJP Console NF", "PlemolJP Console", monospace;
+  font-family: "Noto Sans Mono ExtraCondensed", "Noto Sans JP", "Noto Sans CJK JP", "Hiragino Sans", "Yu Gothic", monospace;
 }
 
 :not(pre) > code {

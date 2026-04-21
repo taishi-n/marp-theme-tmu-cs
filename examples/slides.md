@@ -15,13 +15,6 @@ codeLinkLanguages:
   - cpp
 ---
 
-<!--
-style: |
-  section {
-    font-family: "ヒラギノ角ゴシック W2", "Hiragino Sans", sans-serif;
-  }
--->
-
 # テーマカラー
 
 - テーマカラー: `#006543`
@@ -336,11 +329,14 @@ int main() {
 # 外部コード読み込み
 
 ```cpp path="cpp/sample.cpp" fit-height="true"
+
 ```
 
-```md fit-height="true"
+````md fit-height="true"
 ```cpp path="cpp/sample.cpp" fit-height="true"
+
 ```
+````
 
 <!--
 このページでは外部ファイル読み込みを説明します。
@@ -353,11 +349,14 @@ int main() {
 # 注釈付きコード
 
 ```cpp path="cpp/sample-highlight.cpp" fit-height="true"
+
 ```
 
-```md fit-height="true"
+````md fit-height="true"
 ```cpp path="cpp/sample-highlight.cpp" fit-height="true"
+
 ```
+````
 
 <!--
 このページではコードハイライト拡張を説明します。
