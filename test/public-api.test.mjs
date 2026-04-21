@@ -18,3 +18,9 @@ test('package exports expose only top-level package entrypoints', async () => {
     ['.', './csl/ieee.csl', './engine', './engine.mjs', './theme', './theme.css', './theme/tmu-cs.css'],
   );
 });
+
+test('package exposes the standalone wrapper binary', async () => {
+  const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+
+  assert.equal(packageJson.bin['marp-tmu-cs'], 'scripts/marp-tmu-cs.mjs');
+});

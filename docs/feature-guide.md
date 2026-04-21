@@ -127,6 +127,20 @@ This applies to standard Markdown image syntax when the image source ends with `
 
 Implementation map: `engine.mjs`, `src/pipeline/animated-images.mjs`, `theme/tmu-cs.css`
 
+## Standalone HTML Asset Bundling
+
+When you build through the packaged `marp-tmu-cs` wrapper with `--standalone`, the engine rewrites local asset references so the output HTML can be shared as a single file.
+
+Behavior:
+
+- local `img`, `audio`, `video`, and `source` assets are converted to `data:` URLs
+- local GIF player sources are converted to `data:` URLs after GIF wrapping
+- local HTML `iframe` sources are converted to `srcdoc`, and their local scripts, stylesheets, and media references are inlined recursively
+- remote URLs such as CDN assets are left unchanged
+- `--standalone` is intended for HTML output only
+
+Implementation map: `scripts/marp-tmu-cs.mjs`, `engine.mjs`, `src/pipeline/standalone-assets.mjs`
+
 ## Math Highlighting And Math Annotations
 
 Display math can be annotated line by line using `% [!annotate ...]` comments at the end of TeX lines.

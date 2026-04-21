@@ -4,6 +4,7 @@ import { createHighlighter } from 'shiki';
 import { installCodeFeature } from './src/features/code/index.mjs';
 import { installMathFeature } from './src/features/math/index.mjs';
 import enhanceAnimatedImages from './src/pipeline/animated-images.mjs';
+import inlineStandaloneAssets from './src/pipeline/standalone-assets.mjs';
 import { getMarkdownPathFromEnv, prepareMarkdownForRender, warnForPreparedMarkdown } from './src/pipeline/markdown-pipeline.mjs';
 
 const themeName = 'tmu-cs';
@@ -27,6 +28,8 @@ export default async ({ marp }) => {
   const originalRenderMarkdown = marp.renderMarkdown.bind(marp);
   const mathFeature = installMathFeature(marp, { logPrefix });
   installCodeFeature(marp, { highlighter, logPrefix });
+  const standaloneEnabled = process.env.TMU_CS_STANDALONE === '1';
+  const standaloneOutputPath = process.env.TMU_CS_STANDALONE_OUTPUT;
 
   marp.renderMarkdown = (markdown, env = {}) => {
     mathFeature.resetRuntimeInjection();
@@ -50,7 +53,17 @@ export default async ({ marp }) => {
       console.warn(`${logPrefix} Failed to estimate code block overflow. ${message}`);
     }
 
-    return enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env));
+    const renderedHtml = enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env));
+
+    if (!standaloneEnabled) return renderedHtml;
+
+    return inlineStandaloneAssets(renderedHtml, {
+      markdownPath,
+      outputPath: standaloneOutputPath,
+      onWarning: (message) => {
+        console.warn(`${logPrefix} ${message}`);
+      },
+    });
   };
 
   return marp;

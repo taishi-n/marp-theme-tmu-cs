@@ -28,12 +28,19 @@ Other useful commands during local verification:
 
 ```bash
 npm test
+npm run build:html:standalone
 npm run build:pdf
 npm run build:pptx
 npm run watch
 ```
 
 The sample source is `examples/slides.md`. It exercises the theme styling and the package-specific authoring features in one deck.
+
+To build a single-file HTML that inlines local images, audio, videos, GIF player sources, and local HTML iframes, use:
+
+```bash
+npm run build:html:standalone
+```
 
 ## Using From Another Project
 
@@ -124,6 +131,19 @@ npx marp \
   slides.md \
   -o slides.html
 ```
+
+For standalone HTML output, use the packaged wrapper CLI so you can pass `--standalone`:
+
+```bash
+npx marp-tmu-cs \
+  --standalone \
+  --theme-set ./node_modules/marp-theme-tmu-cs/theme/tmu-cs.css \
+  --engine ./node_modules/marp-theme-tmu-cs/engine.mjs \
+  slides.md \
+  -o slides.html
+```
+
+`--standalone` is intended for HTML output only.
 
 Minimal front matter:
 

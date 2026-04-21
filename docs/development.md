@@ -84,6 +84,7 @@ Main validation commands:
 ```bash
 npm test
 npm run build:html
+npm run build:html:standalone
 npm run build:pdf
 npm run build:pptx
 ```
@@ -110,6 +111,7 @@ Use these checks based on the change:
 
 - CSS or layout changes: run `npm run build:html` and inspect the sample deck
 - engine or Markdown preprocessor changes: run `npm test` and `npm run build:html`
+- standalone HTML bundling changes: run `npm test`, `npm run build:html`, and `npm run build:html:standalone`
 - citation changes: run `npm run build:html` and confirm the JS citation backend still produces the expected output
 - output-format-sensitive changes: also run `npm run build:pdf` or `npm run build:pptx`
 - package/export changes: run `npm pack --dry-run`
@@ -142,6 +144,7 @@ When visually checking the sample deck, pay particular attention to:
 - Theme styling: `theme/tmu-cs.css`
 - Title slide and default marginals: `src/pipeline/deck-defaults.mjs`
 - Pipeline orchestration: `engine.mjs`, `src/pipeline/markdown-pipeline.mjs`
+- Standalone HTML asset bundling: `scripts/marp-tmu-cs.mjs`, `src/pipeline/standalone-assets.mjs`
 - External code inclusion: `src/features/code/index.mjs`, `src/features/code/resolve-external-code.mjs`
 - Step slide expansion: `src/features/code/index.mjs`, `src/features/code/expand-step-slides.mjs`
 - Citation and bibliography processing: `src/features/citations/index.mjs`, `src/features/citations/core.mjs`

@@ -8,10 +8,14 @@
     "README.md",
     "engine.mjs",
     "index.mjs",
+    "scripts/",
     "src/",
     "theme/",
     "vendor/csl/ieee.csl"
   ],
+  "bin": {
+    "marp-tmu-cs": "scripts/marp-tmu-cs.mjs"
+  },
   "exports": {
     ".": "./index.mjs",
     "./engine": "./engine.mjs",
@@ -35,6 +39,7 @@
   },
   "scripts": {
     "build:html": "cd examples && marp --engine ../engine.mjs slides.md -o dist/slides.html",
+    "build:html:standalone": "cd examples && node ../scripts/marp-tmu-cs.mjs --standalone --engine ../engine.mjs slides.md -o dist/slides.standalone.html",
     "build:pdf": "cd examples && marp --engine ../engine.mjs slides.md -o dist/slides.pdf",
     "build:pptx": "cd examples && marp --engine ../engine.mjs --pptx --pptx-editable slides.md -o dist/slides.pptx",
     "test": "node --test",
