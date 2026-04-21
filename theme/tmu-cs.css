@@ -290,6 +290,13 @@ pre,
   border-left: 0.24rem solid transparent;
 }
 
+.marp-code .line[data-wrap-marker]::after {
+  content: " " attr(data-wrap-marker);
+  color: var(--tmu-cs-muted);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .marp-code .line.is-highlighted {
   background: var(--tmu-cs-highlight);
 }
@@ -373,6 +380,51 @@ pre,
 
 .code-annotation-note {
   color: var(--tmu-cs-ink);
+}
+
+.tmu-cs-gif-player {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+}
+
+.tmu-cs-gif-poster,
+.tmu-cs-gif-active {
+  display: block;
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+.tmu-cs-gif-poster {
+  background:
+    linear-gradient(135deg, rgba(0, 101, 67, 0.08), rgba(0, 101, 67, 0.16));
+  box-shadow: inset 0 0 0 1px rgba(0, 101, 67, 0.12);
+}
+
+.tmu-cs-gif-play-button {
+  position: absolute;
+  padding: 0.38rem 0.72rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 101, 67, 0.92);
+  color: #fff;
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.tmu-cs-gif-play-button:hover,
+.tmu-cs-gif-play-button:focus-visible {
+  background: #005537;
+}
+
+.tmu-cs-gif-play-button:focus-visible {
+  outline: 2px solid rgba(0, 101, 67, 0.28);
+  outline-offset: 2px;
 }
 
 .marp-math-block.has-annotations {

@@ -54,6 +54,7 @@ Rules:
 - `note` is required
 - `:N` may be used to target a range of lines
 - comment-only annotation lines attach to the nearest preceding actual code line
+- long rendered lines are wrapped automatically, and each continued visual segment ends with `\`
 
 Range example:
 
@@ -112,6 +113,18 @@ Notes:
 - the engine also supports fenced blocks with `path=` or `src=` attributes
 
 Implementation map: `src/markdown/resolve-external-code.mjs`, `engine.mjs`
+
+## Animated Images
+
+GIF images are wrapped by the custom engine so they do not autoplay by default in HTML output.
+
+- the slide initially shows a still poster frame
+- playback starts only after the viewer presses the play button
+- once started, the GIF is swapped in as a normal image element
+
+This applies to standard Markdown image syntax when the image source ends with `.gif`.
+
+Implementation map: `engine.mjs`, `theme/tmu-cs.css`
 
 ## Math Highlighting And Math Annotations
 

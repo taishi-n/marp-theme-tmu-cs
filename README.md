@@ -78,6 +78,10 @@ Citations:
 This is a citation [@postel1981ip].
 ```
 
+Animated GIF images are shown as a still poster by default and start playing only after the viewer presses the play button.
+
+Long code lines are wrapped automatically, and wrapped segments end with `\` so the continuation is visible.
+
 ## Further Documentation
 
 - [Theme styling](docs/theme-styling.md)
