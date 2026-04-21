@@ -2,7 +2,7 @@
   "name": "marp-theme-tmu-cs",
   "version": "0.2.0",
   "description": "TMU-CS Marp theme with citeproc, code annotations, math annotations, and step expansion.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "files": [
     "README.md",

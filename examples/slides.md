@@ -259,7 +259,7 @@ X_k % [!annotate note="周波数領域の第 k 成分"]
 =
 \sum_{n=0}^{N-1} % [!annotate note="全サンプルにわたる総和"]
 x_n % [!annotate note="離散時間信号"]
-\exp\!\left( -2\pi i \frac{kn}{N} \right) % [!annotate note="複素指数基底"]
+\exp\!\left( -2\pi i \frac{kn}{N} \right) % [!annotate note="回転因子"]
 $$
 
 ```md
@@ -268,7 +268,7 @@ X_k % [!annotate note="周波数領域の第 k 成分"]
 =
 \sum_{n=0}^{N-1} % [!annotate note="全サンプルにわたる総和"]
 x_n % [!annotate note="離散時間信号"]
-\exp\!\left( -2\pi i \frac{kn}{N} \right) % [!annotate note="複素指数基底"]
+\exp\!\left( -2\pi i \frac{kn}{N} \right) % [!annotate note="回転因子"]
 $$
 ```
 
