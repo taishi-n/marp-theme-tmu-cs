@@ -71,25 +71,34 @@ This is implemented through `blockquote:has(> h4)` in the theme, so the `h4` hea
 
 Two helper patterns are supported for side-by-side layout:
 
-- `.columns` / `.column` for div-based grid layouts
+- `<!-- _class: column-layout -->` with direct child `<div class="column">...</div>` blocks
 - `.columns-table` for a table-based two-column layout
 
 Example:
 
-```html
-<div class="columns">
-  <div class="column">
-    <h3>Left</h3>
-    <ul><li>Point A</li></ul>
-  </div>
-  <div class="column">
-    <h3>Right</h3>
-    <ul><li>Point B</li></ul>
-  </div>
+```md
+<!-- _class: column-layout -->
+
+# Title
+
+<div class="column">
+
+### Left
+
+- Point A
+
+</div>
+
+<div class="column">
+
+### Right
+
+- Point B
+
 </div>
 ```
 
-The sample deck also uses `.columns-table` when a more stable raw-HTML layout is preferred.
+`column-layout` lays out each direct child `.column` block next to its siblings, so two columns and three columns are both supported without an extra wrapper element.
 
 ## Citations And Footnotes
 

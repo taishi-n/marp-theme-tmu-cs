@@ -277,6 +277,45 @@ table td {
   margin-top: 0;
 }
 
+section.column-layout {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  column-gap: 1.2rem;
+  row-gap: 0;
+}
+
+section.column-layout > header,
+section.column-layout > footer,
+section.column-layout > h1,
+section.column-layout > h2,
+section.column-layout > h3,
+section.column-layout > h4,
+section.column-layout > h5,
+section.column-layout > h6,
+section.column-layout > p,
+section.column-layout > ul,
+section.column-layout > ol,
+section.column-layout > blockquote,
+section.column-layout > table,
+section.column-layout > pre,
+section.column-layout > figure {
+  width: 100%;
+}
+
+section.column-layout > div.column {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+section.column-layout > div.column > :first-child {
+  margin-top: 0;
+}
+
+section.column-layout > div.column > :last-child {
+  margin-bottom: 0;
+}
+
 .citation-ref {
   color: var(--tmu-cs-accent);
   font-weight: 600;
@@ -445,6 +484,18 @@ pre,
   color: var(--tmu-cs-muted);
   user-select: none;
   -webkit-user-select: none;
+}
+
+pre code em,
+pre code i,
+pre code strong,
+pre code b,
+.marp-code .hljs-emphasis,
+.marp-code .hljs-strong,
+code .hljs-emphasis,
+code .hljs-strong {
+  font-style: normal;
+  font-weight: inherit;
 }
 
 .has-highlighted .line:not(.is-highlighted) {
