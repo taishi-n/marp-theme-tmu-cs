@@ -46,6 +46,8 @@ The theme styles the standard Marp/Markdown block elements:
 - `strong` reuses the accent color
 - `mark` uses an underline-like highlight instead of a solid block highlight
 - inline code gets a muted chip-style background
+- normal blockquotes use a left accent bar and a muted note background
+- blockquotes whose first direct child is `h4` are rendered as definition cards with a colored heading band
 
 The base body font uses a Japanese sans-serif stack centered on Noto Sans JP.
 
@@ -55,6 +57,15 @@ Inline code and code blocks use the logical `TMU CS Code` family defined in `the
 - Japanese and other full-width code points use `Noto Sans JP` (with local fallbacks such as `Noto Sans CJK JP`, `Hiragino Sans`, and `Yu Gothic`)
 
 In other words, the packaged theme default for code is not a single bundled file but a mixed local-font setup built around `Noto Sans Mono ExtraCondensed` + `Noto Sans JP`.
+
+Definition-card example:
+
+```md
+> #### Vector
+> A collection of numbers
+```
+
+This is implemented through `blockquote:has(> h4)` in the theme, so the `h4` heading must be the first direct child inside the quote block.
 
 ## Columns
 

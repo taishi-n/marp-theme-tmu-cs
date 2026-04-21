@@ -167,6 +167,50 @@ blockquote {
   font-size: 28px;
 }
 
+blockquote {
+  margin: 0.75rem 0 1rem;
+  padding: 0.7rem 1rem;
+  border-left: 0.28rem solid var(--tmu-cs-accent);
+  border-radius: 0 0.4rem 0.4rem 0;
+  background: var(--tmu-cs-note);
+  color: var(--tmu-cs-ink);
+}
+
+blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+blockquote:has(> h4) {
+  width: fit-content;
+  min-width: 16rem;
+  max-width: 100%;
+  padding: 0;
+  border-left: 0;
+  border-radius: 0.55rem;
+  overflow: hidden;
+  background: var(--tmu-cs-surface);
+  box-shadow: inset 0 0 0 1px rgba(0, 101, 67, 0.16);
+}
+
+blockquote:has(> h4) > * {
+  margin: 0;
+  padding: 0.5rem;
+}
+
+blockquote:has(> h4) > h4 {
+  background: var(--tmu-cs-accent);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+blockquote:has(> h4) > p {
+  background: var(--tmu-cs-accent-soft);
+  color: var(--tmu-cs-ink);
+  font-size: 24px;
+}
+
 ul,
 ol {
   padding-left: 1.15em;
