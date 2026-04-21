@@ -9,13 +9,99 @@
 - display-math annotations
 - external code inclusion from Markdown
 
-## Installation
+Bibliography processing is fully implemented in JavaScript with Citation.js and citeproc.
+
+## Getting Started
+
+Build the bundled sample slides with the theme, custom engine, citations, code highlighting, math annotations, and external code inclusion enabled:
 
 ```bash
-npm install marp-theme-tmu-cs
+git clone https://github.com/tmu-cs/marp-theme-tmu-cs.git
+cd marp-theme-tmu-cs
+npm install
+npm run build:html
 ```
 
-Bibliography processing is fully implemented in JavaScript with Citation.js and citeproc.
+This writes the sample deck to `examples/dist/slides.html`.
+
+Other useful commands during local verification:
+
+```bash
+npm run build:pdf
+npm run build:pptx
+npm run watch
+```
+
+The sample source is `examples/slides.md`. It exercises the theme styling and the package-specific authoring features in one deck.
+
+## Using From Another Project
+
+This repository is not only a theme CSS package. The `tmu-cs` theme also depends on the custom Marp engine in this package for citation processing, code highlighting, math annotations, and external code inclusion. For that reason, using only the CSS file is not enough if you want the full feature set.
+
+The recommended setup is to create a separate slide project and install this repository as a dependency there.
+
+Example:
+
+```bash
+git clone https://github.com/tmu-cs/marp-theme-tmu-cs.git ~/src/marp-theme-tmu-cs
+
+mkdir ~/work/my-slides
+cd ~/work/my-slides
+npm init -y
+npm install --save-dev @marp-team/marp-cli
+npm install --save-dev ~/src/marp-theme-tmu-cs
+```
+
+Create `marp.config.mjs` in the slide project:
+
+```js
+export default {
+  themeSet: ["./node_modules/marp-theme-tmu-cs/theme/tmu-cs.css"],
+  engine: "./node_modules/marp-theme-tmu-cs/engine.mjs",
+};
+```
+
+Create `slides.md`:
+
+```yaml
+---
+marp: true
+theme: tmu-cs
+math: mathjax
+title: Demo
+author: Your Name
+bibliography: references.bib
+codeLinkLanguages:
+  - cpp
+---
+# Hello
+
+This is a citation [@postel1981ip].
+```
+
+Build from the slide project:
+
+```bash
+npx marp slides.md -o slides.html
+npx marp --pdf slides.md -o slides.pdf
+npx marp --pptx slides.md -o slides.pptx
+```
+
+If you are actively developing this theme and want another project to follow local changes immediately, you can also use `npm link`:
+
+```bash
+cd ~/src/marp-theme-tmu-cs
+npm link
+
+cd ~/work/my-slides
+npm link marp-theme-tmu-cs
+```
+
+This package can also be consumed from a published package source instead of a local clone. In that case, replace the local path install with:
+
+```bash
+npm install --save-dev marp-theme-tmu-cs
+```
 
 ## Basic Usage
 
@@ -50,18 +136,32 @@ External code inclusion:
 [sample.cpp](cpp/sample.cpp)
 ```
 
-Code annotation:
+External code fences also support height fitting:
+
+````md
+```cpp path="cpp/sample.cpp" fit-height="true"
+```
+````
+
+Annotated code:
 
 ```cpp
-auto p = std::make_unique<int>(42);
-// [!annotate label="unique_ptr" note="Ownership is transferred to std::unique_ptr."]
+auto p = std::make_unique<int>(42); // [!annotate label="unique_ptr" note="Ownership is transferred to std::unique_ptr."]
 ```
 
-Step-based code emphasis:
+Step-emphasized code:
 
 ```cpp
-std::cout << *p << '\n'; // [!step 2 info]
+int a = 0;              // [!step 1 highlight]
+int b = 1;              // [!step 2 highlight]
+int c = a + b;          // [!step 3 focus]
+dangerous_call();       // [!step 4 warning]
+handle_error();         // [!step 5 error]
+log_status();           // [!step 6 info]
+return c;               // [!step 7 highlight:2]
 ```
+
+Available actions are `highlight`, `focus`, `warning`, `error`, and `info`. The syntax is `[!step <number> <action>[:N]]`, where `:N` extends the emphasis to `N` consecutive lines.
 
 Math annotation:
 
@@ -86,13 +186,3 @@ Long code lines are wrapped automatically, and wrapped segments end with `\` so 
 
 - [Theme styling](docs/theme-styling.md)
 - [Feature guide](docs/feature-guide.md)
-
-## Local Development
-
-```bash
-npm install
-npm run build:html
-npm run build:pdf
-npm run build:pptx
-npm run watch
-```

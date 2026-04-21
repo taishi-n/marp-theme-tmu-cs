@@ -23,6 +23,7 @@ const customCodeBorderYPx = 2;
 const codeWarningTolerancePx = 4;
 const monospaceCharWidthPx = defaultCodeFontSizePx * 0.62;
 const htmlBodyWrapScale = 0.59;
+const fitHeightMetaKey = '__tmuCodeFitHeight';
 
 const headingHeightsPx = {
   h1: (baseFontSizePx * 1.36 * 1.18) + (baseFontSizePx * 0.52) + (baseFontSizePx * 0.18) + (baseFontSizePx * 0.08),
@@ -39,6 +40,88 @@ function normalizeFenceLanguage(info = '') {
 
   if (lower === 'cpp' || lower === 'c++') return 'cpp';
   return lower;
+}
+
+function parseFenceInfo(info = '') {
+  let cursor = 0;
+  const input = String(info ?? '');
+
+  while (cursor < input.length && /\s/.test(input[cursor])) cursor += 1;
+
+  const languageStart = cursor;
+  while (cursor < input.length && !/\s/.test(input[cursor])) cursor += 1;
+
+  const language = input.slice(languageStart, cursor);
+  const attributes = {};
+
+  while (cursor < input.length) {
+    while (cursor < input.length && /\s/.test(input[cursor])) cursor += 1;
+    if (cursor >= input.length) break;
+
+    const keyStart = cursor;
+    while (cursor < input.length && /[A-Za-z0-9_-]/.test(input[cursor])) cursor += 1;
+
+    const key = input.slice(keyStart, cursor);
+    if (!key) {
+      while (cursor < input.length && !/\s/.test(input[cursor])) cursor += 1;
+      continue;
+    }
+
+    while (cursor < input.length && /\s/.test(input[cursor])) cursor += 1;
+    if (input[cursor] !== '=') {
+      attributes[key] = 'true';
+      continue;
+    }
+
+    cursor += 1;
+    while (cursor < input.length && /\s/.test(input[cursor])) cursor += 1;
+
+    const quote = input[cursor];
+    let value = '';
+
+    if (quote === '"' || quote === "'") {
+      cursor += 1;
+
+      while (cursor < input.length) {
+        const character = input[cursor];
+
+        if (character === '\\' && cursor + 1 < input.length) {
+          value += input[cursor + 1];
+          cursor += 2;
+          continue;
+        }
+
+        if (character === quote) {
+          cursor += 1;
+          break;
+        }
+
+        value += character;
+        cursor += 1;
+      }
+    } else {
+      const valueStart = cursor;
+      while (cursor < input.length && !/\s/.test(input[cursor])) cursor += 1;
+      value = input.slice(valueStart, cursor);
+    }
+
+    attributes[key] = value;
+  }
+
+  return { language, attributes };
+}
+
+function isTruthyAttribute(value) {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  return ['1', 'true', 'yes', 'on', 'fit', 'fit-height'].includes(normalized);
+}
+
+function shouldFitCodeHeight(token) {
+  const { attributes } = parseFenceInfo(token.info);
+  return isTruthyAttribute(attributes['fit-height'])
+    || isTruthyAttribute(attributes.fitHeight)
+    || isTruthyAttribute(attributes['auto-scale'])
+    || isTruthyAttribute(attributes.autoScale);
 }
 
 function getConfiguredCodeLinkLanguages(frontMatter) {
@@ -161,6 +244,72 @@ function normalizeShikiPreTag(html) {
   });
 }
 
+function wrapFittedCodeBlock(html, fit) {
+  if (!fit || fit.scale >= 1) return html;
+
+  const style = `--tmu-code-scale:${fit.scale.toFixed(4)};--tmu-code-fit-height:${Math.max(1, Math.ceil(fit.fittedHeightPx))}px;`;
+  return `<div class="tmu-code-fit-height" style="${style}"><div class="tmu-code-fit-height__inner">${html}</div></div>`;
+}
+
+function computeFitHeightMetadata(tokens) {
+  let slideLevel = null;
+  let usedHeightPx = 0;
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+
+    if (token.type === 'marpit_slide_open') {
+      slideLevel = token.level;
+      usedHeightPx = 0;
+      continue;
+    }
+
+    if (token.type === 'marpit_slide_close') {
+      slideLevel = null;
+      continue;
+    }
+
+    if (slideLevel === null || token.level !== slideLevel + 1) continue;
+
+    if (token.type === 'heading_open') {
+      usedHeightPx += headingHeightsPx[token.tag] ?? estimateMappedBlockHeight(token, { bottomMarginPx: 0 });
+      index = findMatchingCloseIndex(tokens, index);
+      continue;
+    }
+
+    if (token.type === 'fence') {
+      const blockHeightPx = estimateCodeBlockHeight(token, {
+        hasPreviousContent: usedHeightPx > 0,
+      });
+
+      if (shouldFitCodeHeight(token)) {
+        const availableHeightPx = Math.max(1, slideContentHeightPx - usedHeightPx);
+        const scale = Math.min(1, availableHeightPx / Math.max(1, blockHeightPx));
+        token.meta ??= {};
+        token.meta[fitHeightMetaKey] = {
+          enabled: true,
+          scale,
+          fittedHeightPx: blockHeightPx * scale,
+        };
+        usedHeightPx += blockHeightPx * scale;
+      } else {
+        usedHeightPx += blockHeightPx;
+      }
+      continue;
+    }
+
+    if (token.type === 'paragraph_open' || token.type === 'bullet_list_open' || token.type === 'ordered_list_open' || token.type === 'blockquote_open' || token.type === 'table_open') {
+      usedHeightPx += estimateMappedBlockHeight(token);
+      index = findMatchingCloseIndex(tokens, index);
+      continue;
+    }
+
+    if (token.type === 'html_block' || token.type === 'marp_math_block' || token.type === 'hr') {
+      usedHeightPx += estimateMappedBlockHeight(token);
+    }
+  }
+}
+
 export function preprocessCodeMarkdown(markdown, options = {}) {
   const resolvedMarkdown = resolveExternalCode(markdown, {
     allowedLanguages: getConfiguredCodeLinkLanguages(options.frontMatter ?? {}),
@@ -207,17 +356,20 @@ export function warnForOverflowingCodeBlocks(markdown, marp, env = {}, options =
         hasPreviousContent: usedHeightPx > 0,
       });
       const availableHeightPx = slideContentHeightPx - usedHeightPx;
-      const overflowPx = codeBlockHeightPx - availableHeightPx;
+      const renderedHeightPx = shouldFitCodeHeight(token)
+        ? Math.min(codeBlockHeightPx, Math.max(1, availableHeightPx))
+        : codeBlockHeightPx;
+      const overflowPx = renderedHeightPx - availableHeightPx;
 
       if (overflowPx > codeWarningTolerancePx) {
         const line = Array.isArray(token.map) ? token.map[0] + 1 : undefined;
         const lineSuffix = typeof line === 'number' ? ` line ${line}` : '';
         console.warn(
-          `${options.logPrefix} slide ${slideNumber}${lineSuffix}: code block is estimated to overflow the drawable area by ${formatPixels(overflowPx)} (available ${formatPixels(availableHeightPx)}, needs ${formatPixels(codeBlockHeightPx)}).`,
+          `${options.logPrefix} slide ${slideNumber}${lineSuffix}: code block is estimated to overflow the drawable area by ${formatPixels(overflowPx)} (available ${formatPixels(availableHeightPx)}, needs ${formatPixels(renderedHeightPx)}).`,
         );
       }
 
-      usedHeightPx += codeBlockHeightPx;
+      usedHeightPx += renderedHeightPx;
       continue;
     }
 
@@ -243,13 +395,20 @@ export function installCodeFeature(marp, options = {}) {
     const language = normalizeFenceLanguage(token.info);
     const source = token.content.replace(/\r?\n$/, '');
     const codeWrapOptions = getCodeWrapOptions();
+    if (idx === 0 || tokens[idx - 1]?.meta?.[fitHeightMetaKey] === undefined) {
+      computeFitHeightMetadata(tokens);
+    }
+    const fitHeight = token.meta?.[fitHeightMetaKey];
 
     if (language !== 'cpp') {
       const originalContent = token.content;
 
       try {
         token.content = wrapCodeSource(originalContent, codeWrapOptions);
-        return stripCodeBlockAutoScaling(defaultFence(tokens, idx, renderOptions, env, self));
+        return wrapFittedCodeBlock(
+          stripCodeBlockAutoScaling(defaultFence(tokens, idx, renderOptions, env, self)),
+          fitHeight,
+        );
       } finally {
         token.content = originalContent;
       }
@@ -284,11 +443,14 @@ export function installCodeFeature(marp, options = {}) {
         ],
       });
 
-      return normalizeShikiPreTag(html);
+      return wrapFittedCodeBlock(normalizeShikiPreTag(html), fitHeight);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.warn(`${logPrefix} Failed to render cpp block with Shiki. Falling back to default renderer. ${message}`);
-      return stripCodeBlockAutoScaling(defaultFence(tokens, idx, renderOptions, env, self));
+      return wrapFittedCodeBlock(
+        stripCodeBlockAutoScaling(defaultFence(tokens, idx, renderOptions, env, self)),
+        fitHeight,
+      );
     }
   };
 }

@@ -295,7 +295,15 @@ $$
 #include <iostream>
 
 int main() {
-  std::cout << "Hello, world!\n";
+  const int matrix[2][3] = {{1, 2, 3}, {4, 5, 6}};
+  const int vector[3] = {7, 8, 9};
+
+  for (int row = 0; row < 2; ++row) {
+    const int sum = matrix[row][0] * vector[0]
+      + matrix[row][1] * vector[1]
+      + matrix[row][2] * vector[2];
+    std::cout << sum << '\n';
+  }
 }
 ```
 
@@ -304,7 +312,15 @@ int main() {
 #include <iostream>
 
 int main() {
-  std::cout << "Hello, world!\n";
+  const int matrix[2][3] = {{1, 2, 3}, {4, 5, 6}};
+  const int vector[3] = {7, 8, 9};
+
+  for (int row = 0; row < 2; ++row) {
+    const int sum = matrix[row][0] * vector[0]
+      + matrix[row][1] * vector[1]
+      + matrix[row][2] * vector[2];
+    std::cout << sum << '\n';
+  }
 }
 ```
 ````
@@ -312,68 +328,66 @@ int main() {
 <!--
 このページでは inline code と通常の fenced code block を説明します。
 インラインはバッククォート 1 個、複数行ブロックは triple backticks と言語名です。
-この deck では C++ ブロックが Shiki で描画される点も補足できます。
+この deck では C++ ブロックが Shiki で描画され、例として行列とベクトルの積を計算するコードを載せています。
 -->
 
 ---
 
 # 外部コード読み込み
 
-[sample.cpp](cpp/sample.cpp)
+```cpp path="cpp/sample.cpp" fit-height="true"
+```
 
-```md
-[sample.cpp](cpp/sample.cpp)
+```md fit-height="true"
+```cpp path="cpp/sample.cpp" fit-height="true"
 ```
 
 <!--
 このページでは外部ファイル読み込みを説明します。
-`.cpp` へのリンクを単独で置くと、この custom engine がファイル内容を読み込んでコードブロックとして展開します。
-この例では単純な for 文で 1 から 9 を表示するコードを読み込んでいます。
+`path=` または `src=` 属性付きの fenced code block を使うと、この custom engine が外部ファイルを読み込んでコードブロックとして展開します。
+この例では行列とベクトルの積を計算する C++ コードを外部ファイルから読み込んでいます。
 -->
 
 ---
 
-# ハイライト付きコード
+# 注釈付きコード
 
-[sample-highlight.cpp](cpp/sample-highlight.cpp)
+```cpp path="cpp/sample-highlight.cpp" fit-height="true"
+```
 
-```md
-[sample-highlight.cpp](cpp/sample-highlight.cpp)
+```md fit-height="true"
+```cpp path="cpp/sample-highlight.cpp" fit-height="true"
 ```
 
 <!--
 このページではコードハイライト拡張を説明します。
 外部ファイル内の `// [!code ...]` や `// [!annotate ...]` が、強調表示や補足説明に変換されます。
-この例では二重 for ループで九九を表示し、外側ループと内側ループの役割を強調表示しています。
+この例では行列とベクトルの積を計算する処理に対して、`highlight`、`focus`、`warning`、`error`、`info` をすべて使っています。
 -->
 
 ---
 
-# ハイライト付きコード2
+# ステップ強調コード
 
-```cpp
+```cpp fit-height="true"
 #include <iostream>
+
 int main() {
-  for (int i = 0; i < 10; i++) {  // [!step 1 warning]
-    std::cout << i << std::endl;  // [!step 2 info]
+  const int matrix[2][3] = {{1, 2, 3}, {4, 5, 6}};  // [!step 1 highlight]
+  const int vector[3] = {7, 8, 9};                  // [!step 2 highlight]
+
+  for (int row = 0; row < 2; ++row) {                // [!step 3 focus:4]
+    const int sum = matrix[row][0] * vector[0]
+      + matrix[row][1] * vector[1]                   // [!step 4 warning]
+      + matrix[row][2] * vector[2];                  // [!step 5 error]
+    std::cout << sum << '\n';                        // [!step 6 info]
   }
-  std::cout << i << std::endl;    // [!step 3 error]
-  return 0;                       // [!step 4 focus]
 }
 ```
 
-````md
-```cpp
-#include <iostream>
-int main() {
-  for (int i = 0; i < 10; i++) {  // [!step 1 warning]
-    std::cout << i << std::endl;  // [!step 2 info]
-  }
-  std::cout << i << std::endl;    // [!step 3 error]
-  return 0;                       // [!step 4 focus]
-}
-```
-````
+`// [!step <number> <action>[:N]]` を行末に書くと，その行を各ステップで順番に強調できます。
+
+使える `action` は `highlight`, `focus`, `warning`, `error`, `info` です。
 
 ---
 

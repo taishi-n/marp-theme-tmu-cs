@@ -307,6 +307,19 @@ pre,
   display: block;
 }
 
+.tmu-code-fit-height {
+  width: 100%;
+  height: var(--tmu-code-fit-height, auto);
+  margin: 0 0 var(--base-size-16);
+  overflow: hidden;
+}
+
+.tmu-code-fit-height__inner {
+  transform: scale(var(--tmu-code-scale, 1));
+  transform-origin: top left;
+  width: calc(100% / var(--tmu-code-scale, 1));
+}
+
 :is(pre, marp-pre) {
   margin: 0 0 var(--base-size-16);
   padding: var(--base-size-16);
@@ -341,8 +354,15 @@ pre,
   -webkit-user-select: none;
 }
 
+.has-highlighted .line:not(.is-highlighted) {
+  opacity: 0.38;
+}
+
 .marp-code .line.is-highlighted {
-  background: var(--tmu-cs-highlight);
+  background: color-mix(in srgb, var(--tmu-cs-accent-soft) 72%, white 28%);
+  border-left-color: var(--tmu-cs-accent);
+  box-shadow: inset 0 0 0 1px rgba(0, 101, 67, 0.1);
+  opacity: 1;
 }
 
 .marp-code .line.is-focused {

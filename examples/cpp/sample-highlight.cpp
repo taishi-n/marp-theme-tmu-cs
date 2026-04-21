@@ -1,13 +1,15 @@
-#include <iomanip>
 #include <iostream>
 
 int main() {
-  for (int row = 1; row <= 9; ++row) {       // [!code focus:6]
-    // [!annotate:6 label="outer loop" note="外側の for ループが 1 段ずつ九九の行を進める"]
-    for (int col = 1; col <= 9; ++col) {     // [!code highlight]
-      // [!annotate:2 label="inner loop" note="内側の for ループで各列の積を計算し、整形して出力する"]
-      std::cout << std::setw(3) << row * col; // [!code info]
-    }
-    std::cout << '\n';
+  const int matrix[2][3] = {{1, 2, 3}, {4, 5, 6}}; // [!code highlight]
+  const int vector[3] = {7, 8, 9};                 // [!code info]
+  // [!annotate:2 label="inputs" note="int 型の 2x3 行列 A と 3 次元ベクトル x を静的配列で表現する"]
+
+  for (int row = 0; row < 2; ++row) {                            // [!code focus:4]
+    const int sum = matrix[row][0] * vector[0]                   // [!code warning]
+      + matrix[row][1] * vector[1]
+      + matrix[row][2] * vector[2];                              // [!code error]
+    // [!annotate:3 label="dot product" note="matrix[row] の各要素と vector の対応成分を掛けて足し合わせる"]
+    std::cout << sum << '\n';
   }
 }

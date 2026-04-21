@@ -35,11 +35,11 @@ If `header` is not set, the engine builds one from `title / subtitle`. If `foote
 
 Implementation map: `engine.mjs`, `src/pipeline/deck-defaults.mjs`
 
-## Code Highlighting And Code Annotations
+## Annotated And Step-Emphasized Code
 
-The theme uses Shiki for fenced code block highlighting. The annotation flow is designed primarily for `cpp` and `c++` fenced blocks.
+The theme uses Shiki for fenced code block highlighting, but the package-specific authoring features described here are the magic-comment based annotation and step-emphasis flows for `cpp` and `c++` fenced blocks.
 
-### `annotate`
+### Annotated Code With `annotate`
 
 Use `// [!annotate ...]` comments to attach explanatory notes to the previous line of actual code.
 
@@ -64,7 +64,7 @@ int b = 2;
 // [!annotate:2 label="Inputs" note="These lines initialize the operands."]
 ```
 
-### `step`
+### Step-Emphasized Code With `step`
 
 Use `// [!step ...]` comments to create slide-by-slide emphasis variants.
 
@@ -111,6 +111,7 @@ Notes:
 - only enabled languages are expanded
 - language can be inferred from the file extension
 - the engine also supports fenced blocks with `path=` or `src=` attributes
+- add `fit-height="true"` to a fenced block when the rendered code should be scaled to the remaining slide height
 
 Implementation map: `src/features/code/index.mjs`, `src/markdown/resolve-external-code.mjs`
 
