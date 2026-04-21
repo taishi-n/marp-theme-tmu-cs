@@ -122,6 +122,33 @@ function animatedImageRuntimeScript() {
   })();</script>`;
 }
 
+function restoreEscapedSpectrogramIframes(html) {
+  return String(html ?? '').replace(
+    /&lt;iframe\b([^&]|&(?!gt;))*class="wavesurfer-spectrogram-frame"([^&]|&(?!gt;))*&gt;&lt;\/iframe&gt;/g,
+    (escapedIframe) => {
+      const iframe = escapedIframe
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&amp;', '&');
+
+      const attributes = parseHtmlAttributes(iframe.replace(/^<iframe\b/i, '').replace(/><\/iframe>$/i, ''));
+      const src = attributes.src ?? '';
+
+      if (!src) return escapedIframe;
+
+      const allowedAttributes = {
+        class: attributes.class ?? 'wavesurfer-spectrogram-frame',
+        src,
+        title: attributes.title ?? 'wavesurfer.js spectrogram demo',
+      };
+
+      return `<iframe class="${escapeHtmlAttribute(allowedAttributes.class)}" src="${escapeHtmlAttribute(allowedAttributes.src)}" title="${escapeHtmlAttribute(allowedAttributes.title)}"></iframe>`;
+    },
+  );
+}
+
 export default function enhanceAnimatedImages(html) {
   let replaced = false;
 
@@ -136,5 +163,6 @@ export default function enhanceAnimatedImages(html) {
     return createAnimatedImagePlayerHtml(attributes);
   });
 
-  return replaced ? `${output}${animatedImageRuntimeScript()}` : output;
+  const restoredOutput = restoreEscapedSpectrogramIframes(output);
+  return replaced ? `${restoredOutput}${animatedImageRuntimeScript()}` : restoredOutput;
 }

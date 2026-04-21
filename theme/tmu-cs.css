@@ -540,7 +540,8 @@ pre,
 }
 
 img,
-video {
+video,
+audio {
   display: block;
   width: auto;
   height: auto;
@@ -701,6 +702,66 @@ figure {
 
 .eqann-debug[hidden] {
   display: none;
+}
+
+.wavesurfer-spectrogram-demo {
+  width: 100%;
+  margin: 0.6rem 0 1rem;
+  padding: 0.8rem 1rem 1rem;
+  border: 1px solid rgba(0, 101, 67, 0.18);
+  border-radius: 0.55rem;
+  background: linear-gradient(180deg, #f8fcfa 0%, #eef6f2 100%);
+}
+
+.wavesurfer-spectrogram-demo__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.7rem;
+}
+
+.wavesurfer-spectrogram-demo__button {
+  padding: 0.28rem 0.8rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tmu-cs-accent);
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wavesurfer-spectrogram-demo__button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.wavesurfer-spectrogram-demo__status {
+  color: var(--tmu-cs-muted);
+  font-size: 20px;
+}
+
+.wavesurfer-spectrogram-demo__waveform,
+.wavesurfer-spectrogram-demo__spectrogram {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 0.35rem;
+  background: #ffffff;
+}
+
+.wavesurfer-spectrogram-demo__spectrogram {
+  margin-top: 0.6rem;
+  padding-top: 0.2rem;
+}
+
+.wavesurfer-spectrogram-frame {
+  display: block;
+  width: 100%;
+  height: 320px;
+  margin: 0.6rem 0 1rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: #f8fcfa;
 }
 
 section.title-slide {
