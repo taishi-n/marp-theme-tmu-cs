@@ -6,6 +6,26 @@
 
 @import-theme "default";
 
+@font-face {
+  font-family: "TMU CS Code";
+  src: local("Noto Sans Mono ExtraCondensed");
+  unicode-range:
+    U+0000-00FF,
+    U+0100-024F,
+    U+2000-206F,
+    U+20A0-20CF;
+}
+
+@font-face {
+  font-family: "TMU CS Code";
+  src: local("Noto Sans JP"), local("Noto Sans CJK JP"), local("Hiragino Sans"), local("Yu Gothic");
+  unicode-range:
+    U+3000-30FF,
+    U+31F0-31FF,
+    U+4E00-9FFF,
+    U+FF00-FFEF;
+}
+
 :root {
   --tmu-cs-bg: #ffffff;
   --tmu-cs-surface: #ffffff;
@@ -33,6 +53,7 @@ section {
   background: var(--tmu-cs-bg);
   color: var(--tmu-cs-ink);
   font-family: "Noto Sans JP", "Noto Sans CJK JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+  font-weight: 400;
   font-size: 28px;
   line-height: 1.35;
   text-align: left;
@@ -271,6 +292,7 @@ table td {
 
 strong {
   color: var(--tmu-cs-accent);
+  font-weight: 600;
 }
 
 mark {
@@ -290,7 +312,7 @@ mark {
 code,
 pre,
 .marp-code {
-  font-family: "Noto Sans Mono ExtraCondensed", "Noto Sans JP", "Noto Sans CJK JP", "Hiragino Sans", "Yu Gothic", monospace;
+  font-family: "TMU CS Code", "Noto Sans Mono ExtraCondensed", monospace;
 }
 
 :not(pre) > code {
