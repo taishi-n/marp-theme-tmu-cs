@@ -176,9 +176,18 @@ Behavior:
 - `csl:` is optional; otherwise the bundled IEEE CSL is used
 - cited items are rendered into a footnote-style area on each slide
 - Markdown footnotes are merged into the same visual region
-- a `## References` slide is populated automatically when requested
+- a References slide is populated in place when the slide contains a `::: {#refs}` placeholder
 - if no references slide is present, the engine appends one when needed
 - DOI and URL metadata are turned into links in bibliography entries
+
+To control the insertion point explicitly, write a references slide like this:
+
+```md
+# References
+
+::: {#refs}
+:::
+```
 
 Dependency note:
 

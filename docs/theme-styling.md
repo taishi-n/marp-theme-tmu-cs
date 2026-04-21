@@ -105,7 +105,8 @@ Example:
 Citation references and Markdown footnotes are rendered into a shared footnote-style area near the bottom of the slide.
 
 - citation keys in body text are styled with `.citation-ref`
-- bibliography and footnote blocks use marker elements followed by unstyled lists
+- slide-local citation footnotes and Markdown footnotes use marker elements followed by unstyled lists
+- the references slide uses an ordered list with `.citation-bibliography-list` and `.citation-bibliography-item`
 - labels use tabular numerals and accent coloring
 - DOI/URL links inherit accent styling
 
