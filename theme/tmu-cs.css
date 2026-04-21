@@ -780,8 +780,11 @@ figure {
   display: none;
 }
 
-.wavesurfer-spectrogram-demo {
+.tmu-cs-spectrogram-player {
+  box-sizing: border-box;
+  display: block;
   width: 100%;
+  max-width: 100%;
   margin: 0.6rem 0 1rem;
   padding: 0.8rem 1rem 1rem;
   border: 1px solid rgba(0, 101, 67, 0.18);
@@ -789,55 +792,79 @@ figure {
   background: linear-gradient(180deg, #f8fcfa 0%, #eef6f2 100%);
 }
 
-.wavesurfer-spectrogram-demo__toolbar {
+.tmu-cs-spectrogram-player__toolbar {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.6rem;
   margin-bottom: 0.7rem;
+  flex-wrap: wrap;
 }
 
-.wavesurfer-spectrogram-demo__button {
-  padding: 0.28rem 0.8rem;
+.tmu-cs-spectrogram-player__button {
+  padding: 0.25rem 0.8rem;
   border: 0;
   border-radius: 999px;
   background: var(--tmu-cs-accent);
   color: #ffffff;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.wavesurfer-spectrogram-demo__button:disabled {
+.tmu-cs-spectrogram-player__button--secondary {
+  background: rgba(0, 101, 67, 0.78);
+}
+
+.tmu-cs-spectrogram-player__button:disabled {
   opacity: 0.55;
   cursor: default;
 }
 
-.wavesurfer-spectrogram-demo__status {
-  color: var(--tmu-cs-muted);
-  font-size: 20px;
+.tmu-cs-spectrogram-player audio {
+  width: 100%;
+  margin-bottom: 0.7rem;
 }
 
-.wavesurfer-spectrogram-demo__waveform,
-.wavesurfer-spectrogram-demo__spectrogram {
+.tmu-cs-spectrogram-player__time {
+  min-width: 8ch;
+  color: var(--tmu-cs-accent);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.tmu-cs-spectrogram-player__status {
+  color: var(--tmu-cs-muted);
+  font-size: 18px;
+}
+
+.tmu-cs-spectrogram-player__waveform,
+.tmu-cs-spectrogram-player__spectrogram {
+  box-sizing: border-box;
+  display: block;
   width: 100%;
   overflow: hidden;
   border-radius: 0.35rem;
   background: #ffffff;
 }
 
-.wavesurfer-spectrogram-demo__spectrogram {
-  margin-top: 0.6rem;
-  padding-top: 0.2rem;
+.tmu-cs-spectrogram-player__waveform > *,
+.tmu-cs-spectrogram-player__spectrogram > *,
+.tmu-cs-spectrogram-player__waveform canvas,
+.tmu-cs-spectrogram-player__spectrogram canvas {
+  box-sizing: border-box;
+  display: block;
+  max-width: 100%;
 }
 
-.wavesurfer-spectrogram-frame {
-  display: block;
-  width: 100%;
-  height: 320px;
-  margin: 0.6rem 0 1rem;
-  border: 0;
-  border-radius: 0.55rem;
-  background: #f8fcfa;
+.tmu-cs-spectrogram-player__waveform {
+  box-shadow: inset 0 0 0 1px rgba(0, 101, 67, 0.08);
+}
+
+.tmu-cs-spectrogram-player__spectrogram {
+  margin-top: 0.6rem;
+  padding-top: 0.2rem;
+  box-shadow: inset 0 0 0 1px rgba(0, 101, 67, 0.08);
 }
 
 section.title-slide {

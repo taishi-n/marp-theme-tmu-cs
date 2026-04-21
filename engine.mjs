@@ -53,7 +53,9 @@ export default async ({ marp }) => {
       console.warn(`${logPrefix} Failed to estimate code block overflow. ${message}`);
     }
 
-    const renderedHtml = enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env));
+    const renderedHtml = enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env), {
+      markdownPath,
+    });
 
     if (!standaloneEnabled) return renderedHtml;
 

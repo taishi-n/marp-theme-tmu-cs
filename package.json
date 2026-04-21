@@ -5,7 +5,9 @@
   "license": "MIT",
   "type": "module",
   "files": [
+    "LICENSE",
     "README.md",
+    "THIRD_PARTY_NOTICES.md",
     "engine.mjs",
     "index.mjs",
     "scripts/",

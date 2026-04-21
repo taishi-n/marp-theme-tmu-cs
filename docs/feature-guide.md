@@ -115,7 +115,7 @@ Notes:
 
 Implementation map: `src/features/code/index.mjs`, `src/features/code/resolve-external-code.mjs`
 
-## Animated Images
+## Media Enhancements
 
 GIF images are wrapped by the custom engine so they do not autoplay by default in HTML output.
 
@@ -124,6 +124,30 @@ GIF images are wrapped by the custom engine so they do not autoplay by default i
 - once started, the GIF is swapped in as a normal image element
 
 This applies to standard Markdown image syntax when the image source ends with `.gif`.
+
+Audio elements can also opt into a wavesurfer.js spectrogram view by adding the `wavesurfer-spectrogram` class.
+
+```html
+<audio
+  class="wavesurfer-spectrogram"
+  controls
+  src="../assets/sine-440hz.wav"
+  data-spectrogram-height="120"
+  data-spectrogram-fft-samples="2048"
+></audio>
+```
+
+Behavior:
+
+- the original `audio` source remains in the slide, but native browser controls are hidden in favor of the theme toolbar
+- the engine wraps it with a toolbar, current-time display, waveform area, and spectrogram area after HTML rendering
+- wavesurfer.js and the Spectrogram plugin are loaded from CDN only when this class is present
+- defaults match the theme integration: `labels: true`, `height: 100`, `splitChannels: true`, `scale: 'linear'`, `fftSamples: 1024`, `useWebWorker: true`, `colorMap: 'roseus'`, `gainDB: 20`, `rangeDB: 80`, `windowFunc: 'hann'`
+- `data-spectrogram-height` and `data-spectrogram-fft-samples` override the default spectrogram height and FFT size
+- the plugin uses the theme accent color for `labelsBackground`, `#ffffff` for label text, `0` for `frequencyMin`, and the decoded audio sample rate / 2 for `frequencyMax`
+- `maxCanvasWidth` is derived from the rendered slide content width
+- local spectrogram audio sources are converted to `data:` URLs during HTML rendering so they still work when the deck is opened directly from disk
+- remote audio sources need CORS headers that allow the browser-side analysis fetch
 
 Implementation map: `engine.mjs`, `src/pipeline/animated-images.mjs`, `theme/tmu-cs.css`
 

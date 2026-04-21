@@ -148,6 +148,15 @@ Annotated display-math blocks use additional wrapper elements and overlay layers
 
 The CSS defines the visual structure, while placement and connector drawing are handled by the runtime emitted from `src/features/math/annotate-math-block.mjs`.
 
+## Media Wrappers
+
+Media elements use the base `img`, `video`, and `audio` rules for centering. Two HTML postprocess wrappers add extra presentation behavior:
+
+- `.tmu-cs-gif-player` renders GIFs with a still poster and play button
+- `.tmu-cs-spectrogram-player` wraps `audio.wavesurfer-spectrogram` with a toolbar, time readout, status line, waveform area, and spectrogram area
+
+The spectrogram wrapper hides the native `audio` controls, adds explicit play/stop controls, and styles the generated waveform and spectrogram canvases as full-width cards.
+
 ## Implementation Map
 
 - Theme variables and layout: `theme/tmu-cs.css`
@@ -156,3 +165,4 @@ The CSS defines the visual structure, while placement and connector drawing are 
 - Primary citation backend: `src/features/citations/backends/js.mjs`
 - Code annotation rendering: `src/shiki/annotate-transformer.mjs`
 - Math annotation wrapper and runtime injection: `src/features/math/annotate-math-block.mjs`
+- GIF and spectrogram media wrappers: `src/pipeline/animated-images.mjs`

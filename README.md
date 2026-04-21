@@ -212,6 +212,11 @@ This is a citation [@postel1981ip].
 
 Animated GIF images are shown as a still poster by default and start playing only after the viewer presses the play button.
 
+Audio elements with `class="wavesurfer-spectrogram"` hide the native browser controller and instead render a wavesurfer.js-based waveform/spectrogram panel with theme play/stop buttons and a current-time display in HTML output. Use `data-spectrogram-height` and `data-spectrogram-fft-samples` to override the default height (`100`) and FFT size (`1024`). The runtime loads wavesurfer.js from CDN only when such an audio element exists. Local spectrogram audio sources are embedded as `data:` URLs during HTML rendering so they still work from `file://`, while remote audio sources must allow CORS for analysis.
+
+The spectrogram feature relies on `wavesurfer.js` (BSD-3-Clause). Third-party
+license notices are collected in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
+
 Long code lines are wrapped automatically, and wrapped segments end with `\` so the continuation is visible.
 
 ## Further Documentation
