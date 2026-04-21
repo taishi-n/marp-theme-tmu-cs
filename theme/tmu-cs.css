@@ -106,6 +106,31 @@ section > footer {
   border-top: 0.04rem solid rgba(0, 101, 67, 0.18);
 }
 
+/* Inspired by the alignment utility classes in classmethod-marp-theme:
+ * https://github.com/classmethod/classmethod-marp-theme
+ * The original theme exposes `all-text-center` and `align-center` as
+ * slide-level classes. */
+section.all-text-center,
+section.all-text-center :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, figcaption) {
+  text-align: center;
+}
+
+section.all-text-center::after,
+section.all-text-center > header,
+section.all-text-center > footer {
+  display: none;
+}
+
+section.all-text-center :is(ul, ol) {
+  padding-left: 0;
+  list-style-position: inside;
+  text-align: center;
+}
+
+section.align-center {
+  justify-content: center;
+}
+
 h1,
 h2,
 h3,
@@ -819,6 +844,30 @@ section.title-slide {
   justify-content: flex-start;
   padding-top: 132px;
   background: var(--tmu-cs-bg);
+}
+
+section:has(> h1[data-auto-scaling]):not(:has(> :not(header):not(footer):not(h1))) {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+section:has(> h1[data-auto-scaling]):not(:has(> :not(header):not(footer):not(h1)))::after,
+section:has(> h1[data-auto-scaling]):not(:has(> :not(header):not(footer):not(h1))) > header,
+section:has(> h1[data-auto-scaling]):not(:has(> :not(header):not(footer):not(h1))) > footer {
+  display: none;
+}
+
+section:has(> h1[data-auto-scaling]):not(:has(> :not(header):not(footer):not(h1))) > h1 {
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
+  border-bottom: 0;
+  text-align: center;
+  font-size: 64px;
+  line-height: 1.08;
 }
 
 section.title-slide > header,
