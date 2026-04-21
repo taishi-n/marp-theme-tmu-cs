@@ -15,6 +15,13 @@ codeLinkLanguages:
   - cpp
 ---
 
+<!--
+style: |
+  section {
+    font-family: "ヒラギノ角ゴシック W2", "Hiragino Sans", sans-serif;
+  }
+-->
+
 # テーマカラー
 
 - テーマカラー: `#006543`

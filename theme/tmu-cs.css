@@ -1,6 +1,7 @@
 /*
  * @theme tmu-cs
  * @auto-scaling fittingHeader
+ * @size 1280px 720px
  */
 
 @import-theme "default";
@@ -31,7 +32,8 @@ section {
   align-items: stretch;
   background: var(--tmu-cs-bg);
   color: var(--tmu-cs-ink);
-  font-family: "ヒラギノ角ゴシック W2", "Hiragino Sans", sans-serif;
+  font-family: "Noto Sans JP", "Noto Sans CJK JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+  font-size: 28px;
   line-height: 1.35;
   text-align: left;
   padding:
@@ -46,7 +48,7 @@ section::after {
   bottom: 24px;
   padding: 0;
   color: var(--tmu-cs-accent);
-  font-size: 1.08rem;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -63,7 +65,7 @@ section > footer {
   left: var(--tmu-cs-side-padding);
   right: var(--tmu-cs-side-padding);
   color: var(--tmu-cs-muted);
-  font-size: 0.46rem;
+  font-size: 16px;
   line-height: 1.2;
 }
 
@@ -82,7 +84,10 @@ section > footer {
 
 h1,
 h2,
-h3 {
+h3,
+h4,
+h5,
+h6 {
   width: 100%;
   align-self: flex-start;
   text-align: left;
@@ -91,20 +96,35 @@ h3 {
 }
 
 h1 {
-  margin: 0 0 0.52rem;
-  padding-bottom: 0.18rem;
-  border-bottom: 0.08rem solid rgba(0, 101, 67, 0.2);
-  font-size: 1.36rem;
+  margin: 0 0 18px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid rgba(0, 101, 67, 0.2);
+  font-size: 40px;
 }
 
 h2 {
-  margin: 0 0 0.42rem;
-  font-size: 0.98rem;
+  margin: 0 0 16px;
+  font-size: 36px;
 }
 
 h3 {
-  margin: 0 0 0.34rem;
-  font-size: 0.72rem;
+  margin: 0 0 14px;
+  font-size: 32px;
+}
+
+h4 {
+  margin: 0 0 12px;
+  font-size: 26px;
+}
+
+h5 {
+  margin: 0 0 10px;
+  font-size: 22px;
+}
+
+h6 {
+  margin: 0 0 8px;
+  font-size: 20px;
 }
 
 p,
@@ -116,6 +136,13 @@ table {
   line-height: inherit;
 }
 
+p,
+ul,
+ol,
+blockquote {
+  font-size: 28px;
+}
+
 ul,
 ol {
   padding-left: 1.15em;
@@ -123,6 +150,23 @@ ol {
 
 li {
   margin: 0.12rem 0;
+}
+
+small,
+.small-text {
+  font-size: 24px;
+}
+
+figcaption,
+.caption {
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+table,
+table th,
+table td {
+  font-size: 18px;
 }
 
 .footnote-ref {
@@ -192,12 +236,12 @@ li {
 }
 
 .citation-footnotes-marker + ul {
-  font-size: 0.48rem;
+  font-size: 16px;
   line-height: 1.22;
 }
 
 .citation-bibliography-marker + ul {
-  font-size: 0.52rem;
+  font-size: 16px;
   line-height: 1.28;
 }
 
@@ -333,7 +377,7 @@ pre,
   border-top: 1px solid var(--borderColor-muted);
   border-radius: 0 0 6px 6px;
   background: var(--bgColor-muted);
-  font-size: 0.72rem;
+  font-size: 16px;
 }
 
 .marp-code.has-annotations {
@@ -410,7 +454,7 @@ pre,
   border-radius: 999px;
   background: rgba(0, 101, 67, 0.92);
   color: #fff;
-  font-size: 0.52rem;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.01em;
   cursor: pointer;
@@ -474,7 +518,7 @@ pre,
   border: 1px solid #ccc;
   border-radius: 0.22rem;
   background: #fff;
-  font-size: 1rem;
+  font-size: 16px;
   line-height: 1.3;
   white-space: nowrap;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -487,7 +531,7 @@ pre,
   border-radius: 0.22rem;
   background: #fff8e1;
   color: #7a4f01;
-  font-size: 0.34rem;
+  font-size: 16px;
   line-height: 1.35;
 }
 
@@ -500,7 +544,7 @@ pre,
   border-radius: 0.22rem;
   background: rgba(255, 255, 255, 0.96);
   color: var(--tmu-cs-muted);
-  font-size: 0.26rem;
+  font-size: 16px;
   line-height: 1.45;
   white-space: pre-wrap;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -522,34 +566,34 @@ section.title-slide > footer {
 }
 
 section.title-slide h1 {
-  margin-bottom: 0.26rem;
+  margin-bottom: 12px;
   padding-bottom: 0;
   border-bottom: 0;
-  font-size: 2.08rem;
+  font-size: 40pt;
   line-height: 1.08;
 }
 
 section.title-slide h2 {
   margin-bottom: 0;
   color: var(--tmu-cs-muted);
-  font-size: 0.84rem;
+  font-size: 32pt;
   font-weight: 400;
 }
 
 section.title-slide h3 {
-  margin-top: 1rem;
-  margin-bottom: 0.32rem;
+  margin-top: 28px;
+  margin-bottom: 10px;
   border-bottom: 0;
   color: var(--tmu-cs-ink);
-  font-size: 0.68rem;
+  font-size: 32px;
 }
 
 section.title-slide h4 {
-  margin-top: 0.18rem;
+  margin-top: 8px;
   margin-bottom: 0;
   border-bottom: 0;
   color: var(--tmu-cs-muted);
-  font-size: 0.56rem;
+  font-size: 26px;
   font-weight: 400;
 }
 

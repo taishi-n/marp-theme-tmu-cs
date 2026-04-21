@@ -47,7 +47,7 @@ The theme styles the standard Marp/Markdown block elements:
 - `mark` uses an underline-like highlight instead of a solid block highlight
 - inline code gets a muted chip-style background
 
-The base body font is a Japanese sans-serif stack, while code uses a monospace stack centered on PlemolJP Console.
+The base body font uses a Japanese sans-serif stack centered on Noto Sans JP, while code uses a monospace stack centered on PlemolJP Console. The sample deck may override this locally for presentation purposes, but the packaged theme default is Noto Sans JP.
 
 ## Columns
 
