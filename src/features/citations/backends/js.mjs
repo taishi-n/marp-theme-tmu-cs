@@ -245,16 +245,27 @@ function parseCitationCluster(rawText) {
   return items;
 }
 
-function formatCitationCluster(cite, template, items) {
+function createCitationStateItem(items) {
+  return {
+    citationItems: items.map((item) => {
+      const citeItem = { id: item.id };
+      if (item.prefix) citeItem.prefix = item.prefix;
+      if (item.suffix) citeItem.suffix = item.suffix;
+      if (item.suppressAuthor) citeItem['suppress-author'] = true;
+      return citeItem;
+    }),
+    properties: {
+      noteIndex: 0,
+    },
+  };
+}
+
+function formatCitationCluster(cite, template, items, citationHistory) {
   try {
+    const citationStateItem = createCitationStateItem(items);
     return cite.format('citation', {
-      entry: items.map((item) => {
-        const citeItem = { id: item.id };
-        if (item.prefix) citeItem.prefix = item.prefix;
-        if (item.suffix) citeItem.suffix = item.suffix;
-        if (item.suppressAuthor) citeItem['suppress-author'] = true;
-        return citeItem;
-      }),
+      entry: citationStateItem.citationItems,
+      citationsPre: citationHistory,
       format: 'text',
       lang: DEFAULT_LOCALE,
       template,
@@ -265,7 +276,7 @@ function formatCitationCluster(cite, template, items) {
   }
 }
 
-function replaceInlineCitations(slideContent, cite, template) {
+function replaceInlineCitations(slideContent, cite, template, citationHistory) {
   const citedKeys = [];
   const seenKeys = new Set();
   let fence = null;
@@ -334,7 +345,8 @@ function replaceInlineCitations(slideContent, cite, template) {
             citedKeys.push(item.id);
           }
 
-          const citationText = formatCitationCluster(cite, template, items);
+          const citationText = formatCitationCluster(cite, template, items, citationHistory);
+          citationHistory.push(createCitationStateItem(items));
           return escapeCitationText(citationText);
         });
       }
@@ -361,6 +373,7 @@ export function createJsCitationBackend() {
       const cite = loadBibliographyEntries(bibliographyPaths);
       const template = resolveTemplate(context);
       const { allEntries, entriesByKey } = createEntriesByKey(cite, template);
+      const citationHistory = [];
 
       return {
         allEntries,
@@ -369,7 +382,7 @@ export function createJsCitationBackend() {
           backend: 'js',
           template,
         },
-        slides: slides.map((slide) => replaceInlineCitations(slide, cite, template)),
+        slides: slides.map((slide) => replaceInlineCitations(slide, cite, template, citationHistory)),
       };
     },
   };
