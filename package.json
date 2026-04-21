@@ -1,7 +1,7 @@
 {
   "name": "marp-theme-tmu-cs",
   "version": "0.2.0",
-  "description": "TMU-CS Marp theme with citeproc, code annotations, math annotations, and step expansion.",
+  "description": "TMU-CS Marp theme with JS citation processing, code annotations, math annotations, and step expansion.",
   "license": "MIT",
   "type": "module",
   "files": [
@@ -35,7 +35,9 @@
     "theme",
     "slides",
     "shiki",
-    "pandoc"
+    "pandoc",
+    "citation-js",
+    "citeproc"
   ],
   "engines": {
     "node": ">=18"
@@ -47,9 +49,13 @@
     "watch": "cd examples && marp --engine ../engine.mjs --watch slides.md -o dist/slides.html"
   },
   "dependencies": {
+    "@citation-js/core": "^0.7.21",
+    "@citation-js/plugin-bibtex": "^0.7.21",
+    "@citation-js/plugin-csl": "^0.7.22",
     "@marp-team/marp-cli": "4.3.1",
     "@shikijs/transformers": "4.0.2",
     "@xmldom/xmldom": "0.9.9",
+    "citeproc": "^2.4.63",
     "js-yaml": "4.1.1",
     "shiki": "4.0.2"
   }

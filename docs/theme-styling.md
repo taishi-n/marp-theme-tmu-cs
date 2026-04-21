@@ -82,7 +82,7 @@ Citation references and Markdown footnotes are rendered into a shared footnote-s
 - labels use tabular numerals and accent coloring
 - DOI/URL links inherit accent styling
 
-This styling is paired with the citation pipeline in `src/markdown/process-citations.mjs`.
+This styling is paired with the citation core/backend pipeline in `src/features/citations/*`.
 
 ## Code Blocks And Code Annotation Panels
 
@@ -124,6 +124,7 @@ The CSS defines the visual structure, while placement and connector drawing are 
 
 - Theme variables and layout: `theme/tmu-cs.css`
 - Header/footer/title-slide defaults: `src/pipeline/deck-defaults.mjs`
-- Citation block generation: `src/markdown/process-citations.mjs`
+- Citation block generation: `src/features/citations/core.mjs`
+- Primary citation backend: `src/features/citations/backends/js.mjs`
 - Code annotation rendering: `src/shiki/annotate-transformer.mjs`
 - Math annotation wrapper and runtime injection: `src/math/annotate-math-block.mjs`

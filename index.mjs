@@ -9,6 +9,12 @@ export const pandocCitationFilterPath = fileURLToPath(new URL('./src/pandoc/cita
 export { default as marpEngine } from './engine.mjs';
 
 export { default as processCitations } from './src/markdown/process-citations.mjs';
+export {
+  createJsCitationBackend,
+  createPandocCitationBackend,
+  preprocessCitationMarkdown,
+  preprocessCitationsWithBackend,
+} from './src/features/citations/index.mjs';
 export { expandStepSlides } from './src/markdown/expand-step-slides.mjs';
 export { resolveExternalCode } from './src/markdown/resolve-external-code.mjs';
 
