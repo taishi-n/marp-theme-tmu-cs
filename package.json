@@ -24,7 +24,6 @@
     "./markdown/process-citations": "./src/markdown/process-citations.mjs",
     "./markdown/resolve-external-code": "./src/markdown/resolve-external-code.mjs",
     "./math/annotate-math-block": "./src/math/annotate-math-block.mjs",
-    "./pandoc/citation-placeholder.lua": "./src/pandoc/citation-placeholder.lua",
     "./shiki/annotate-transformer": "./src/shiki/annotate-transformer.mjs",
     "./shiki/parse-annotate-directive": "./src/shiki/parse-annotate-directive.mjs",
     "./shiki/parse-step-directive": "./src/shiki/parse-step-directive.mjs"
@@ -35,7 +34,6 @@
     "theme",
     "slides",
     "shiki",
-    "pandoc",
     "citation-js",
     "citeproc"
   ],

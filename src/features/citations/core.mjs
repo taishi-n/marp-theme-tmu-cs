@@ -2,20 +2,13 @@ import { joinSlides, splitSlides } from './markdown-slides.mjs';
 import {
   appendBlock,
   containsCitationSyntax,
-  escapeHtml,
   extractMarkdownFootnotes,
   hasBibliography,
   normalizeBibliographyReferences,
-  normalizeDisplayMathBlocks,
   renderCitationListBlock,
-  replaceCitationPlaceholders,
   replaceMarkdownFootnoteReferences,
-  restorePandocFencedDivs,
-  restorePandocRawHtml,
-  restoreProtectedMarkdownFootnotes,
   slideHasReferenceHeading,
-  stripPandocHeadingAttributes,
-  stripPandocRefsBlock,
+  stripReferenceListPlaceholder,
 } from './markdown-utils.mjs';
 
 function isEffectivelyEmpty(markdown) {
@@ -36,18 +29,11 @@ export function normalizeCitationOptions(options = {}) {
     frontMatter,
     markdownPath: options.markdownPath,
     onWarning: options.onWarning,
-    pandocCiteFilterPath: options.pandocCiteFilterPath,
   };
 }
 
-export function applyCitationRenderResult(markdown, renderResult, options = {}) {
+export function applyCitationRenderResult(renderResult, options = {}) {
   const onWarning = createWarningRelay(options.onWarning);
-  const normalizedMarkdown = restorePandocFencedDivs(
-    restoreProtectedMarkdownFootnotes(
-      restorePandocRawHtml(normalizeDisplayMathBlocks(renderResult.renderedMarkdown)),
-    ),
-  );
-  const { frontMatter: rawFrontMatter, slides, hasTrailingNewline } = splitSlides(normalizedMarkdown);
   const transformedSlides = [];
   const bibliographyBlock = renderCitationListBlock(
     renderResult.allEntries ?? [],
@@ -57,25 +43,19 @@ export function applyCitationRenderResult(markdown, renderResult, options = {}) 
   let referencesInserted = false;
   let referencesWereRequested = false;
 
-  for (const slide of slides) {
-    const strippedHeadingAttributes = stripPandocHeadingAttributes(slide);
-    const { content: slideWithoutRefs, hadRefsBlock } = stripPandocRefsBlock(strippedHeadingAttributes);
+  for (const slide of renderResult.slides ?? []) {
+    const { content: slideWithoutRefs, hadRefsBlock } = stripReferenceListPlaceholder(slide.content);
     const { content: slideWithoutMarkdownFootnoteDefs, definitions: markdownFootnoteDefinitions } = extractMarkdownFootnotes(slideWithoutRefs);
     const { content: slideWithMarkdownFootnotes, footnotes: markdownFootnotes } = replaceMarkdownFootnoteReferences(
       slideWithoutMarkdownFootnoteDefs,
       markdownFootnoteDefinitions,
       onWarning,
     );
-    const { content: slideWithInlineCitations, citedKeys } = replaceCitationPlaceholders(
-      slideWithMarkdownFootnotes,
-      renderResult.entriesByKey ?? new Map(),
-      onWarning,
-    );
-    const slideFootnotes = citedKeys
+    const slideFootnotes = (slide.citedKeys ?? [])
       .map((key) => renderResult.entriesByKey.get(key))
       .filter(Boolean);
 
-    let content = slideWithInlineCitations;
+    let content = slideWithMarkdownFootnotes;
 
     if (slideFootnotes.length > 0) {
       content = appendBlock(
@@ -111,9 +91,9 @@ export function applyCitationRenderResult(markdown, renderResult, options = {}) 
   }
 
   return joinSlides({
-    frontMatter: rawFrontMatter,
+    frontMatter: renderResult.frontMatter ?? '',
     slides: transformedSlides,
-    hasTrailingNewline,
+    hasTrailingNewline: renderResult.hasTrailingNewline ?? false,
   });
 }
 
@@ -129,16 +109,21 @@ export function preprocessCitationsWithBackend(markdown, backend, options = {}) 
     return markdown;
   }
 
-  const renderResult = backend.render(markdown, {
+  const splitMarkdown = splitSlides(markdown);
+  const renderResult = backend.render(splitMarkdown.slides, {
     bibliographyReferences: normalizeBibliographyReferences(frontMatter),
     cslPath: frontMatter.csl,
     defaultCslPath: normalizedOptions.defaultCslPath,
+    frontMatter,
     markdownPath: normalizedOptions.markdownPath,
     onWarning: normalizedOptions.onWarning,
-    pandocCiteFilterPath: normalizedOptions.pandocCiteFilterPath,
   });
 
-  return applyCitationRenderResult(markdown, renderResult, normalizedOptions);
+  return applyCitationRenderResult({
+    ...renderResult,
+    frontMatter: splitMarkdown.frontMatter,
+    hasTrailingNewline: splitMarkdown.hasTrailingNewline,
+  }, normalizedOptions);
 }
 
-export { escapeHtml, hasBibliography, normalizeBibliographyReferences };
+export { hasBibliography, normalizeBibliographyReferences };

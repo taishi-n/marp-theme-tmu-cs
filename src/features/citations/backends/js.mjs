@@ -4,6 +4,7 @@ import { Cite, plugins } from '@citation-js/core';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import '@citation-js/plugin-bibtex';
 import '@citation-js/plugin-csl';
+import { escapeHtml } from '../markdown-utils.mjs';
 
 const DEFAULT_LOCALE = 'en-US';
 const xhtmlNamespacePattern = /\s+xmlns="http:\/\/www\.w3\.org\/1999\/xhtml"/gu;
@@ -23,21 +24,12 @@ function createBackendError(code, message, cause) {
   return error;
 }
 
-function escapeMarkdownAttribute(value) {
+function escapeHtmlAttribute(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('"', '&quot;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;');
-}
-
-function escapeCitationPlaceholderText(value) {
-  return String(value ?? '')
-    .replaceAll('\\', '\\\\')
-    .replaceAll('[', '\\[')
-    .replaceAll(']', '\\]')
-    .replaceAll('{', '\\{')
-    .replaceAll('}', '\\}');
 }
 
 function normalizeDoi(value) {
@@ -71,7 +63,7 @@ function appendSupplementalBibliographyLinks(bodyHtml, entry) {
   if (links.length === 0) return bodyHtml;
 
   const linksHtml = links
-    .map((link) => `[<a href="${escapeMarkdownAttribute(link.href)}">${link.label}</a>]`)
+    .map((link) => `[<a href="${escapeHtmlAttribute(link.href)}">${link.label}</a>]`)
     .join(' ');
 
   return `${bodyHtml} <span class="citation-links">${linksHtml}</span>`;
@@ -201,50 +193,81 @@ function createEntriesByKey(cite, template) {
   };
 }
 
-function isCitationDelimiter(character) {
-  return character === ';';
+function escapeCitationText(value) {
+  return `<span class="citation-ref">${escapeHtml(value)}</span>`;
 }
 
 function parseCitationItem(rawItem) {
-  const trimmed = rawItem.trim();
-  if (trimmed === '') return null;
-
-  const match = trimmed.match(/^(-?)@([A-Za-z0-9_:.#$%&+?/<>\-]+)$/u);
+  const source = String(rawItem ?? '');
+  const match = source.match(/^(.*?)(-?)@([A-Za-z0-9_:.#$%&+?/<>\-]+)([\s\S]*)$/u);
   if (!match) return null;
 
+  const prefix = match[1];
+  const suppressAuthor = match[2] === '-';
+  const id = match[3];
+  const suffix = match[4];
+
   return {
-    suppressAuthor: match[1] === '-',
-    id: match[2],
+    id,
+    prefix: prefix.trim() === '' ? undefined : prefix.trim(),
+    suppressAuthor,
+    suffix: suffix.trim() === '' ? undefined : suffix.trim(),
   };
 }
 
+function splitCitationCluster(rawText) {
+  const items = [];
+  let current = '';
+  let braceDepth = 0;
+
+  for (const character of String(rawText ?? '')) {
+    if (character === '{') braceDepth += 1;
+    if (character === '}') braceDepth = Math.max(0, braceDepth - 1);
+
+    if (character === ';' && braceDepth === 0) {
+      items.push(current);
+      current = '';
+      continue;
+    }
+
+    current += character;
+  }
+
+  items.push(current);
+  return items;
+}
+
 function parseCitationCluster(rawText) {
-  const items = rawText.split(';').map(parseCitationItem);
-  if (items.some((item) => item === null) || items.length === 0) return null;
+  const items = splitCitationCluster(rawText).map(parseCitationItem);
+  if (items.length === 0 || items.some((item) => item === null)) {
+    throw createBackendError('JS_CITATION_UNSUPPORTED', 'encountered citation syntax that is not supported by the JS backend.');
+  }
   return items;
 }
 
 function formatCitationCluster(cite, template, items) {
   try {
     return cite.format('citation', {
-      entry: items.map((item) => (
-        item.suppressAuthor
-          ? { id: item.id, 'suppress-author': true }
-          : { id: item.id }
-      )),
+      entry: items.map((item) => {
+        const citeItem = { id: item.id };
+        if (item.prefix) citeItem.prefix = item.prefix;
+        if (item.suffix) citeItem.suffix = item.suffix;
+        if (item.suppressAuthor) citeItem['suppress-author'] = true;
+        return citeItem;
+      }),
       format: 'text',
       lang: DEFAULT_LOCALE,
       template,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw createBackendError('JS_CITATION_FORMAT_FAILED', `failed to format citation with citeproc-js. ${message}`, error);
+    throw createBackendError('JS_CITATION_FORMAT_FAILED', `failed to format citation with citeproc. ${message}`, error);
   }
 }
 
-function replaceBracketCitations(markdown, cite, template) {
-  let changed = false;
-  let fallbackNeeded = false;
+function replaceInlineCitations(slideContent, cite, template) {
+  const citedKeys = [];
+  const seenKeys = new Set();
   let fence = null;
   let inHtmlComment = false;
 
@@ -282,7 +305,7 @@ function replaceBracketCitations(markdown, cite, template) {
     return Boolean(match && match[1][0] === currentFence.marker && match[1].length >= currentFence.length);
   };
 
-  const output = String(markdown ?? '')
+  const content = String(slideContent ?? '')
     .replace(/\r\n/g, '\n')
     .split('\n')
     .map((line) => {
@@ -301,18 +324,18 @@ function replaceBracketCitations(markdown, cite, template) {
         updateHtmlCommentState(line);
         if (inHtmlComment) return line;
 
-        return line.replace(/\[((?:\\.|[^\]\\])*)\]/gu, (match, content) => {
-          if (!String(content).includes('@')) return match;
+        return line.replace(/\[((?:\\.|[^\]\\])*)\]/gu, (match, contentText) => {
+          if (!String(contentText).includes('@')) return match;
 
-          const items = parseCitationCluster(content);
-          if (!items) {
-            fallbackNeeded = true;
-            return match;
+          const items = parseCitationCluster(contentText);
+          for (const item of items) {
+            if (seenKeys.has(item.id)) continue;
+            seenKeys.add(item.id);
+            citedKeys.push(item.id);
           }
 
           const citationText = formatCitationCluster(cite, template, items);
-          changed = true;
-          return `[${escapeCitationPlaceholderText(citationText)}]{.citation-placeholder data-cite-keys="${escapeMarkdownAttribute(items.map((item) => item.id).join(';'))}"}`;
+          return escapeCitationText(citationText);
         });
       }
 
@@ -321,16 +344,9 @@ function replaceBracketCitations(markdown, cite, template) {
     })
     .join('\n');
 
-  if (fallbackNeeded) {
-    throw createBackendError(
-      'JS_CITATION_UNSUPPORTED',
-      'encountered citation syntax that is not yet supported by the JS citation backend.',
-    );
-  }
-
   return {
-    changed,
-    markdown: output,
+    citedKeys,
+    content,
   };
 }
 
@@ -338,13 +354,12 @@ export function createJsCitationBackend() {
   return {
     name: 'js',
 
-    render(markdown, context = {}) {
+    render(slides, context = {}) {
       const markdownPath = asNonEmptyString(context.markdownPath);
       const markdownDir = markdownPath ? resolve(markdownPath, '..') : process.cwd();
       const bibliographyPaths = (context.bibliographyReferences ?? []).map((reference) => resolve(markdownDir, reference));
       const cite = loadBibliographyEntries(bibliographyPaths);
       const template = resolveTemplate(context);
-      const rendered = replaceBracketCitations(markdown, cite, template);
       const { allEntries, entriesByKey } = createEntriesByKey(cite, template);
 
       return {
@@ -354,7 +369,7 @@ export function createJsCitationBackend() {
           backend: 'js',
           template,
         },
-        renderedMarkdown: rendered.markdown,
+        slides: slides.map((slide) => replaceInlineCitations(slide, cite, template)),
       };
     },
   };

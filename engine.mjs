@@ -10,7 +10,6 @@ const themeName = 'tmu-cs';
 const logPrefix = `[${themeName}]`;
 const themeCssUrl = new URL(`./theme/${themeName}.css`, import.meta.url);
 const defaultCitationStylePath = fileURLToPath(new URL('./vendor/csl/ieee.csl', import.meta.url));
-const pandocCiteFilterPath = fileURLToPath(new URL('./src/pandoc/citation-placeholder.lua', import.meta.url));
 
 const highlighterPromise = createHighlighter({
   themes: ['github-light'],
@@ -38,7 +37,6 @@ export default async ({ marp }) => {
       onWarning: (message) => {
         console.warn(`${logPrefix} ${message}`);
       },
-      pandocCiteFilterPath,
     });
 
     try {

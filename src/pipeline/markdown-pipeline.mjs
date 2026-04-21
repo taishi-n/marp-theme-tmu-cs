@@ -94,7 +94,6 @@ export function prepareMarkdownForRender(markdown, context) {
     onWarning: ({ message }) => {
       context.onWarning?.(`${message}`);
     },
-    pandocCiteFilterPath: context.pandocCiteFilterPath,
   });
   const preparedDeck = applyDeckDefaults(citedMarkdown);
   const resolvedMarkdown = preprocessCodeMarkdown(preparedDeck.markdown, {

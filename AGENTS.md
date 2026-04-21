@@ -15,12 +15,10 @@
 - Shared parsing utilities: `src/core/*`
 - Pipeline stages and deck defaults: `src/pipeline/*`
 - Citation feature core and backend boundary: `src/features/citations/*`
-  Primary JS backend: `src/features/citations/backends/js.mjs`
-  Pandoc fallback backend: `src/features/citations/backends/pandoc.mjs`
+  JS backend: `src/features/citations/backends/js.mjs`
 - Code highlighting, wrapping, and step/external-code integration: `src/features/code/*`
 - Math annotation integration: `src/features/math/*`
 - Step expansion and external code inclusion internals: `src/markdown/*`
 - Code annotation parsing and Shiki transformer internals: `src/shiki/*`
 - Math annotation parsing and overlay runtime internals: `src/math/*`
 - Legacy citation façade and compatibility export: `src/markdown/process-citations.mjs`
-- Pandoc citation placeholder filter: `src/pandoc/*`

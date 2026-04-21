@@ -4,14 +4,12 @@ export const themeName = 'tmu-cs';
 export const enginePath = fileURLToPath(new URL('./engine.mjs', import.meta.url));
 export const themePath = fileURLToPath(new URL('./theme/tmu-cs.css', import.meta.url));
 export const defaultCslPath = fileURLToPath(new URL('./vendor/csl/ieee.csl', import.meta.url));
-export const pandocCitationFilterPath = fileURLToPath(new URL('./src/pandoc/citation-placeholder.lua', import.meta.url));
 
 export { default as marpEngine } from './engine.mjs';
 
 export { default as processCitations } from './src/markdown/process-citations.mjs';
 export {
   createJsCitationBackend,
-  createPandocCitationBackend,
   preprocessCitationMarkdown,
   preprocessCitationsWithBackend,
 } from './src/features/citations/index.mjs';

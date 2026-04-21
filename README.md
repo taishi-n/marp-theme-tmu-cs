@@ -4,7 +4,7 @@
 
 - the `tmu-cs` theme CSS
 - a custom Marp engine
-- JS-based bibliography processing with Pandoc fallback
+- JS-based bibliography processing
 - Shiki-based C++ code highlighting and annotations
 - display-math annotations
 - external code inclusion from Markdown
@@ -15,7 +15,7 @@
 npm install marp-theme-tmu-cs
 ```
 
-Bibliography processing uses a JS backend by default. Install `pandoc` only if you want the fallback backend for unsupported citation patterns.
+Bibliography processing is fully implemented in JavaScript with Citation.js and citeproc.
 
 ## Basic Usage
 

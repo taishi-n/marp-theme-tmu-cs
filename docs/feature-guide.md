@@ -152,7 +152,7 @@ Implementation map: `src/features/math/index.mjs`, `src/math/annotate-math-block
 
 ## Bibliography And Citation Management
 
-The bibliography pipeline is built around Pandoc-compatible citation syntax plus a BibTeX bibliography file. It is processed by a JS backend based on Citation.js and citeproc by default, with Pandoc kept as a fallback backend.
+The bibliography pipeline is built around the theme's citation syntax plus a BibTeX bibliography file. It is processed entirely in JavaScript using Citation.js and citeproc.
 
 Citation example:
 
@@ -181,7 +181,6 @@ Behavior:
 
 Dependency note:
 
-- no external citation tool is required for the common `[@key]` / `[@a; @b]` path
-- `pandoc` is only needed as a fallback for citation patterns the JS backend does not support yet
+- no external citation tool is required
 
-Implementation map: `src/features/citations/index.mjs`, `src/features/citations/core.mjs`, `src/features/citations/backends/js.mjs`, `src/features/citations/backends/pandoc.mjs`, `src/markdown/process-citations.mjs`, `src/pandoc/citation-placeholder.lua`, `vendor/csl/ieee.csl`
+Implementation map: `src/features/citations/index.mjs`, `src/features/citations/core.mjs`, `src/features/citations/backends/js.mjs`, `src/markdown/process-citations.mjs`, `vendor/csl/ieee.csl`

@@ -1,8 +1,6 @@
 import { joinLines, splitLinesPreservingEOF } from '../../core/text-lines.mjs';
 
-const citationPlaceholderPattern = /\[((?:\\.|[^\]\\])*)\]\{([^}]*)\}/g;
-const pandocRefsStartPattern = /^(:{3,})\s+\{#refs\b/;
-const pandocHeadingAttributePattern = /^(#{1,6}\s+.*?)(?:\s+\{[.#][^}]+\})\s*$/;
+const referencePlaceholderPattern = /^(:{3,})\s+\{#refs\b/;
 const referenceHeadingPattern = /^(#{1,6})\s+(references?|bibliography|works cited|参考文献)\s*$/iu;
 
 function parseFenceStart(line) {
@@ -45,25 +43,6 @@ function updateHtmlCommentState(line, inHtmlComment) {
   return state;
 }
 
-function encodeFootnoteId(id) {
-  return encodeURIComponent(String(id ?? ''));
-}
-
-function decodeFootnoteId(id) {
-  return decodeURIComponent(String(id ?? ''));
-}
-
-function normalizeProtectedFootnoteId(id) {
-  return String(id ?? '').replace(/\\_/gu, '_');
-}
-
-function normalizeCitationText(text) {
-  return String(text ?? '')
-    .replace(/\\([[\]{}()])/gu, '$1')
-    .replace(/\s+/gu, ' ')
-    .trim();
-}
-
 export function containsCitationSyntax(markdown) {
   return /\[@[^\]]+\]/u.test(String(markdown ?? ''));
 }
@@ -95,87 +74,29 @@ export function escapeHtml(text) {
     .replaceAll("'", '&#39;');
 }
 
-export function stripPandocHeadingAttributes(markdown) {
-  const { lines } = splitLinesPreservingEOF(markdown);
-  const normalizedLines = [];
-  let fence = null;
-
-  for (const line of lines) {
-    if (!fence) {
-      const fenceStart = parseFenceStart(line);
-      if (fenceStart) {
-        fence = fenceStart;
-        normalizedLines.push(line);
-        continue;
-      }
-
-      normalizedLines.push(line.replace(pandocHeadingAttributePattern, '$1'));
-      continue;
-    }
-
-    normalizedLines.push(line);
-    if (isFenceClose(line, fence)) fence = null;
-  }
-
-  return normalizedLines.join('\n');
-}
-
-export function normalizeDisplayMathBlocks(markdown) {
-  const { lines } = splitLinesPreservingEOF(markdown);
-  const normalizedLines = [];
-  let fence = null;
-
-  for (const line of lines) {
-    if (!fence) {
-      const fenceStart = parseFenceStart(line);
-      if (fenceStart) {
-        fence = fenceStart;
-        normalizedLines.push(line);
-        continue;
-      }
-
-      const singleLineDisplayMath = line.match(/^(\s*)\$\$(.+)\$\$(\s*)$/u);
-      if (singleLineDisplayMath) {
-        normalizedLines.push(`${singleLineDisplayMath[1]}$$`);
-        normalizedLines.push(`${singleLineDisplayMath[1]}${singleLineDisplayMath[2].trim()}`);
-        normalizedLines.push(`${singleLineDisplayMath[1]}$$${singleLineDisplayMath[3]}`);
-        continue;
-      }
-
-      const openingDisplayMath = line.match(/^(\s*)\$\$(.+)$/u);
-      if (openingDisplayMath) {
-        normalizedLines.push(`${openingDisplayMath[1]}$$`);
-        normalizedLines.push(`${openingDisplayMath[1]}${openingDisplayMath[2]}`);
-        continue;
-      }
-
-      const closingDisplayMath = line.match(/^(.*\S)\$\$(\s*)$/u);
-      if (closingDisplayMath) {
-        normalizedLines.push(closingDisplayMath[1]);
-        normalizedLines.push(`$$${closingDisplayMath[2]}`);
-        continue;
-      }
-
-      normalizedLines.push(line);
-      continue;
-    }
-
-    normalizedLines.push(line);
-    if (isFenceClose(line, fence)) fence = null;
-  }
-
-  return normalizedLines.join('\n');
-}
-
-export function stripPandocRefsBlock(markdown) {
+export function stripReferenceListPlaceholder(markdown) {
   const { lines } = splitLinesPreservingEOF(markdown);
   const output = [];
   let refsFenceLength = null;
   let hadRefsBlock = false;
+  let fence = null;
 
   for (const line of lines) {
+    if (!fence) {
+      const fenceStart = parseFenceStart(line);
+      if (fenceStart) {
+        fence = fenceStart;
+        output.push(line);
+        continue;
+      }
+    } else {
+      output.push(line);
+      if (isFenceClose(line, fence)) fence = null;
+      continue;
+    }
+
     if (refsFenceLength === null) {
-      const match = line.match(pandocRefsStartPattern);
+      const match = line.match(referencePlaceholderPattern);
 
       if (match) {
         refsFenceLength = match[1].length;
@@ -216,41 +137,6 @@ export function renderCitationListBlock(entries, markerClass, labelClass) {
   return `<div class="${markerClass}" aria-hidden="true"></div>\n\n${items}`;
 }
 
-export function replaceCitationPlaceholders(markdown, bibliographyEntries, onWarning) {
-  const citedKeys = [];
-  const seenKeys = new Set();
-
-  const content = markdown.replace(citationPlaceholderPattern, (match, text, rawAttributes) => {
-    if (!/\.citation-placeholder\b/u.test(rawAttributes)) return match;
-
-    const keyMatch = rawAttributes.match(/\bdata-cite-keys="([^"]+)"/u);
-    if (!keyMatch) return match;
-
-    const keys = keyMatch[1]
-      .split(/\s*;\s*/u)
-      .map((key) => key.trim())
-      .filter(Boolean);
-
-    for (const key of keys) {
-      if (seenKeys.has(key)) continue;
-      seenKeys.add(key);
-      citedKeys.push(key);
-
-      if (!bibliographyEntries.has(key)) {
-        onWarning?.(`citation "${key}" was rendered, but no bibliography entry was found for the slide footnotes.`);
-      }
-    }
-
-    const citationText = normalizeCitationText(text);
-    return `<span class="citation-ref" data-cite-keys="${escapeHtml(keyMatch[1])}">${escapeHtml(citationText)}</span>`;
-  });
-
-  return {
-    content,
-    citedKeys,
-  };
-}
-
 export function extractMarkdownFootnotes(markdown) {
   const { lines } = splitLinesPreservingEOF(markdown);
   const remainingLines = [];
@@ -282,12 +168,9 @@ export function extractMarkdownFootnotes(markdown) {
         continue;
       }
 
-      const definitionMatch = line.match(/^\[\^([^\]]+)\]:\s*(.*)$/u)
-        ?? line.match(/^TMUCS_FOOTNOTE_LABEL(?:\\_\\_|__)(.+?)(?:\\_\\_|__):(\s*.*)$/u);
+      const definitionMatch = line.match(/^\[\^([^\]]+)\]:\s*(.*)$/u);
       if (definitionMatch) {
-        const id = definitionMatch[0].startsWith('TMUCS_FOOTNOTE_LABEL')
-          ? decodeFootnoteId(normalizeProtectedFootnoteId(definitionMatch[1].trim()))
-          : definitionMatch[1].trim();
+        const id = definitionMatch[1].trim();
         const bodyLines = [definitionMatch[2]];
 
         while (index + 1 < lines.length) {
@@ -348,10 +231,8 @@ export function replaceMarkdownFootnoteReferences(markdown, definitions, onWarni
         return line;
       }
 
-      return line.replace(/\[\^([^\]]+)\]|TMUCS_FOOTNOTE_REF(?:\\_\\_|__)(.+?)(?:\\_\\_|__)/gu, (match, bracketId, placeholderId) => {
-        const id = typeof bracketId === 'string' && bracketId !== ''
-          ? bracketId.trim()
-          : decodeFootnoteId(normalizeProtectedFootnoteId(String(placeholderId).trim()));
+      return line.replace(/\[\^([^\]]+)\]/gu, (_match, rawId) => {
+        const id = String(rawId).trim();
         if (!seenIds.has(id)) {
           seenIds.add(id);
           citedIds.push(id);
@@ -382,101 +263,8 @@ export function replaceMarkdownFootnoteReferences(markdown, definitions, onWarni
   };
 }
 
-export function protectMarkdownFootnotes(markdown) {
-  const { lines, hasTrailingNewline } = splitLinesPreservingEOF(markdown);
-  let fence = null;
-  let inHtmlComment = false;
-
-  return joinLines(lines.map((line) => {
-    if (!fence) {
-      if (inHtmlComment) {
-        inHtmlComment = updateHtmlCommentState(line, inHtmlComment);
-        return line;
-      }
-
-      const fenceStart = parseFenceStart(line);
-      if (fenceStart) {
-        fence = fenceStart;
-        return line;
-      }
-
-      const nextHtmlCommentState = updateHtmlCommentState(line, inHtmlComment);
-      if (nextHtmlCommentState) {
-        inHtmlComment = nextHtmlCommentState;
-        return line;
-      }
-
-      const definitionMatch = line.match(/^\[\^([^\]]+)\]:(\s*.*)$/u);
-      if (definitionMatch) {
-        return `TMUCS_FOOTNOTE_LABEL__${encodeFootnoteId(definitionMatch[1].trim())}__:${definitionMatch[2]}`;
-      }
-
-      return line.replace(/\[\^([^\]]+)\]/gu, (match, rawId) => (
-        `TMUCS_FOOTNOTE_REF__${encodeFootnoteId(String(rawId).trim())}__`
-      ));
-    }
-
-    if (isFenceClose(line, fence)) fence = null;
-    return line;
-  }), hasTrailingNewline);
-}
-
-export function restoreProtectedMarkdownFootnotes(markdown) {
-  return String(markdown ?? '')
-    .replace(/TMUCS_FOOTNOTE_LABEL(?:\\_\\_|__)(.+?)(?:\\_\\_|__):/gu, (match, encodedId) => (
-      `[^${decodeFootnoteId(normalizeProtectedFootnoteId(encodedId))}]:`
-    ))
-    .replace(/TMUCS_FOOTNOTE_REF(?:\\_\\_|__)(.+?)(?:\\_\\_|__)/gu, (match, encodedId) => (
-      `[^${decodeFootnoteId(normalizeProtectedFootnoteId(encodedId))}]`
-    ));
-}
-
 export function slideHasReferenceHeading(markdown) {
   return String(markdown ?? '')
     .split('\n')
     .some((line) => referenceHeadingPattern.test(line.trim()));
-}
-
-export function restorePandocRawHtml(markdown) {
-  return String(markdown ?? '').replace(/`(<\/?[A-Za-z][^`]*)`\{=html\}/gu, '$1');
-}
-
-export function restorePandocFencedDivs(markdown) {
-  const lines = String(markdown ?? '').replace(/\r\n/g, '\n').split('\n');
-  const restored = [];
-  let fence = null;
-  const divStack = [];
-
-  for (const line of lines) {
-    if (!fence) {
-      const fenceStart = parseFenceStart(line);
-      if (fenceStart) {
-        fence = fenceStart;
-        restored.push(line);
-        continue;
-      }
-
-      const openMatch = line.match(/^(\s*)(:{3,})\s+([A-Za-z][\w-]*)\s*$/);
-      if (openMatch) {
-        restored.push(`${openMatch[1]}<div class="${openMatch[3]}">`);
-        divStack.push(openMatch[3]);
-        continue;
-      }
-
-      const closeMatch = line.match(/^(\s*)(:{3,})\s*$/);
-      if (closeMatch && divStack.length > 0) {
-        restored.push(`${closeMatch[1]}</div>`);
-        divStack.pop();
-        continue;
-      }
-
-      restored.push(line);
-      continue;
-    }
-
-    restored.push(line);
-    if (isFenceClose(line, fence)) fence = null;
-  }
-
-  return restored.join('\n');
 }

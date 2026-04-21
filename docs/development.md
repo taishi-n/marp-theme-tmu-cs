@@ -20,7 +20,6 @@ Main entry points:
 - `src/markdown/*`: Markdown preprocessing
 - `src/shiki/*`: code annotation parsing and Shiki transformation
 - `src/math/*`: math annotation parsing and runtime injection
-- `src/pandoc/*`: Pandoc fallback citation helper filter
 - `vendor/csl/ieee.csl`: bundled CSL data
 
 ## Architecture Notes
@@ -56,14 +55,13 @@ Shared helpers that are reused across preprocessors and renderers should prefer 
 Citation handling is split into:
 
 - citation core
-- citation backend
+- JS citation backend
 - compatibility façade
 
 The intended boundary is:
 
-- `src/features/citations/core.mjs`: backend-neutral citation orchestration
-- `src/features/citations/backends/js.mjs`: primary Citation.js + citeproc-js backend
-- `src/features/citations/backends/pandoc.mjs`: Pandoc-specific execution and parsing
+- `src/features/citations/core.mjs`: citation orchestration and slide-footnote integration
+- `src/features/citations/backends/js.mjs`: Citation.js + citeproc backend
 - `src/markdown/process-citations.mjs`: legacy public entry point delegating into the feature layer
 
 `index.mjs` is the public package surface. If public paths or exports change, keep `index.mjs` and `package.json` exports aligned.
@@ -106,7 +104,7 @@ Use these checks based on the change:
 
 - CSS or layout changes: run `npm run build:html` and inspect the sample deck
 - engine or Markdown preprocessor changes: run `npm run build:html`
-- citation changes: run `npm run build:html` and confirm the JS citation backend still produces the expected output; test Pandoc fallback when touching fallback logic
+- citation changes: run `npm run build:html` and confirm the JS citation backend still produces the expected output
 - output-format-sensitive changes: also run `npm run build:pdf` or `npm run build:pptx`
 - package/export changes: run `npm pack --dry-run`
 
@@ -142,9 +140,7 @@ When visually checking the sample deck, pay particular attention to:
 - Step slide expansion: `src/features/code/index.mjs`, `src/markdown/expand-step-slides.mjs`
 - Citation and bibliography processing: `src/features/citations/index.mjs`, `src/features/citations/core.mjs`
 - JS citation backend: `src/features/citations/backends/js.mjs`
-- Pandoc citation backend: `src/features/citations/backends/pandoc.mjs`
 - Legacy citation façade: `src/markdown/process-citations.mjs`
-- Pandoc citation placeholder filter: `src/pandoc/citation-placeholder.lua`
 - Code annotation parsing: `src/shiki/parse-annotate-directive.mjs`
 - Step directive parsing: `src/shiki/parse-step-directive.mjs`
 - Shiki annotation rendering: `src/features/code/index.mjs`, `src/shiki/annotate-transformer.mjs`
