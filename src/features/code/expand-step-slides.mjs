@@ -1,18 +1,7 @@
-import parseStepDirective from '../shiki/parse-step-directive.mjs';
-
-function splitLinesPreservingEOF(source) {
-  const normalized = String(source ?? '').replace(/\r\n/g, '\n');
-  const hasTrailingNewline = normalized.endsWith('\n');
-  const body = hasTrailingNewline ? normalized.slice(0, -1) : normalized;
-  const lines = body.length === 0 ? [''] : body.split('\n');
-
-  return { lines, hasTrailingNewline };
-}
-
-function joinLines(lines, hasTrailingNewline) {
-  const joined = lines.join('\n');
-  return hasTrailingNewline ? `${joined}\n` : joined;
-}
+import { joinLines, splitLinesPreservingEOF } from '../../core/text-lines.mjs';
+import { isFenceClose, joinMarkdownSlides, parseFenceStart, splitMarkdownSlides } from '../../core/markdown.mjs';
+import parseStepDirective from '../../shiki/parse-step-directive.mjs';
+import { normalizeFenceLanguage } from './shared.mjs';
 
 function stripTrailingWhitespace(line) {
   return line.replace(/[ \t]+$/u, '');
@@ -25,113 +14,6 @@ function isCommentOnlyLine(line) {
 function isActualCodeLine(line) {
   const trimmed = line.trim();
   return trimmed.length > 0 && !isCommentOnlyLine(line);
-}
-
-function normalizeFenceLanguage(info = '') {
-  const [language = ''] = info.trim().split(/\s+/, 1);
-  const lower = language.toLowerCase();
-
-  if (lower === 'cpp' || lower === 'c++') return 'cpp';
-  return lower;
-}
-
-function parseFenceStart(line) {
-  const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
-  if (!match) return null;
-
-  return {
-    marker: match[1][0],
-    length: match[1].length,
-    info: match[2] ?? '',
-  };
-}
-
-function isFenceClose(line, fence) {
-  if (!fence) return false;
-
-  const match = line.match(/^ {0,3}(`{3,}|~{3,})\s*$/);
-  return Boolean(match && match[1][0] === fence.marker && match[1].length >= fence.length);
-}
-
-function isHorizontalRule(line) {
-  return /^ {0,3}(?:(?:-\s*){3,}|(?:_\s*){3,}|(?:\*\s*){3,})$/.test(line);
-}
-
-function parseFrontMatter(lines) {
-  if (lines[0]?.trim() !== '---') {
-    return {
-      frontMatterLines: [],
-      bodyLines: lines,
-      bodyStartLine: 1,
-    };
-  }
-
-  for (let index = 1; index < lines.length; index += 1) {
-    if (['---', '...'].includes(lines[index].trim())) {
-      return {
-        frontMatterLines: lines.slice(0, index + 1),
-        bodyLines: lines.slice(index + 1),
-        bodyStartLine: index + 2,
-      };
-    }
-  }
-
-  return {
-    frontMatterLines: [],
-    bodyLines: lines,
-    bodyStartLine: 1,
-  };
-}
-
-function splitSlides(markdown) {
-  const { lines, hasTrailingNewline } = splitLinesPreservingEOF(markdown);
-  const { frontMatterLines, bodyLines, bodyStartLine } = parseFrontMatter(lines);
-  const slides = [];
-
-  let currentLines = [];
-  let currentStartLine = bodyStartLine;
-  let fence = null;
-
-  for (let index = 0; index < bodyLines.length; index += 1) {
-    const line = bodyLines[index];
-    const originalLineNumber = bodyStartLine + index;
-
-    if (!fence) {
-      const fenceStart = parseFenceStart(line);
-      if (fenceStart) {
-        fence = fenceStart;
-        currentLines.push(line);
-        continue;
-      }
-
-      if (isHorizontalRule(line)) {
-        slides.push({
-          content: currentLines.join('\n'),
-          startLine: currentStartLine,
-        });
-        currentLines = [];
-        currentStartLine = originalLineNumber + 1;
-        continue;
-      }
-
-      currentLines.push(line);
-      continue;
-    }
-
-    currentLines.push(line);
-    if (isFenceClose(line, fence)) fence = null;
-  }
-
-  slides.push({
-    content: currentLines.join('\n'),
-    startLine: currentStartLine,
-  });
-
-  return {
-    frontMatter: frontMatterLines.join('\n'),
-    slides,
-    hasTrailingNewline,
-  };
 }
 
 function extractStepComment(line) {
@@ -365,15 +247,13 @@ function expandSlide(slide, options = {}) {
 
 export function expandStepSlides(markdown, options = {}) {
   const normalized = String(markdown ?? '').replace(/\r\n/g, '\n');
-  const document = splitSlides(normalized);
+  const document = splitMarkdownSlides(normalized);
   const expandedSlides = document.slides.flatMap((slide) => expandSlide(slide, options));
-  const parts = [];
-
-  if (document.frontMatter) parts.push(document.frontMatter);
-  if (expandedSlides.length > 0) parts.push(expandedSlides.join('\n\n---\n\n'));
-
-  const output = parts.join('\n\n');
-  return document.hasTrailingNewline ? `${output}\n` : output;
+  return joinMarkdownSlides({
+    frontMatter: document.frontMatter,
+    slides: expandedSlides,
+    hasTrailingNewline: document.hasTrailingNewline,
+  });
 }
 
 export default expandStepSlides;

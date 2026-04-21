@@ -1,4 +1,5 @@
-import { joinLines, splitLinesPreservingEOF } from '../core/text-lines.mjs';
+import { escapeHtml } from '../../core/html.mjs';
+import { joinLines, splitLinesPreservingEOF } from '../../core/text-lines.mjs';
 import { liteAdaptor } from 'mathjax-full/js/adaptors/liteAdaptor.js';
 import { RegisterHTMLHandler } from 'mathjax-full/js/handlers/html.js';
 import { mathjax } from 'mathjax-full/js/mathjax.js';
@@ -29,15 +30,6 @@ const noteMathDocument = mathjax.document('', {
 
 function stripTrailingWhitespace(line) {
   return String(line ?? '').replace(/[ \t]+$/u, '');
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
 }
 
 function parseInlineMathSegments(note) {

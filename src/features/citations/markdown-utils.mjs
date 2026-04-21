@@ -1,24 +1,11 @@
+import { escapeHtml } from '../../core/html.mjs';
+import { isFenceClose, parseFenceStart } from '../../core/markdown.mjs';
 import { joinLines, splitLinesPreservingEOF } from '../../core/text-lines.mjs';
+
+export { escapeHtml };
 
 const referencePlaceholderPattern = /^(:{3,})\s+\{#refs\b/;
 const referenceHeadingPattern = /^(#{1,6})\s+(references?|bibliography|works cited|参考文献)\s*$/iu;
-
-function parseFenceStart(line) {
-  const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
-  if (!match) return null;
-
-  return {
-    marker: match[1][0],
-    length: match[1].length,
-  };
-}
-
-function isFenceClose(line, fence) {
-  if (!fence) return false;
-
-  const match = line.match(/^ {0,3}(`{3,}|~{3,})\s*$/);
-  return Boolean(match && match[1][0] === fence.marker && match[1].length >= fence.length);
-}
 
 function updateHtmlCommentState(line, inHtmlComment) {
   const source = String(line ?? '');
@@ -63,15 +50,6 @@ export function normalizeBibliographyReferences(frontMatter = {}) {
 
 export function hasBibliography(frontMatter = {}) {
   return normalizeBibliographyReferences(frontMatter).length > 0;
-}
-
-export function escapeHtml(text) {
-  return String(text ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
 }
 
 export function stripReferenceListPlaceholder(markdown) {

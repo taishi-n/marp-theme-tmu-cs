@@ -1,4 +1,4 @@
-import { joinSlides, splitSlides } from './markdown-slides.mjs';
+import { joinMarkdownSlides, splitMarkdownSlides } from '../../core/markdown.mjs';
 import {
   appendBlock,
   containsCitationSyntax,
@@ -91,7 +91,7 @@ export function applyCitationRenderResult(renderResult, options = {}) {
     transformedSlides.push(appendBlock('# References', bibliographyBlock));
   }
 
-  return joinSlides({
+  return joinMarkdownSlides({
     frontMatter: renderResult.frontMatter ?? '',
     slides: transformedSlides,
     hasTrailingNewline: renderResult.hasTrailingNewline ?? false,
@@ -110,7 +110,7 @@ export function preprocessCitationsWithBackend(markdown, backend, options = {}) 
     return markdown;
   }
 
-  const splitMarkdown = splitSlides(markdown);
+  const splitMarkdown = splitMarkdownSlides(markdown);
   const renderResult = backend.render(splitMarkdown.slides, {
     bibliographyReferences: normalizeBibliographyReferences(frontMatter),
     cslPath: frontMatter.csl,

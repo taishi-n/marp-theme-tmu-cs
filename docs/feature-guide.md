@@ -88,7 +88,7 @@ Rules:
 - `:N` expands the effect to multiple code lines
 - the engine duplicates slides so each step becomes its own revealed state
 
-Implementation map: `src/features/code/index.mjs`, `src/shiki/parse-annotate-directive.mjs`, `src/shiki/parse-step-directive.mjs`, `src/shiki/annotate-transformer.mjs`, `src/markdown/expand-step-slides.mjs`
+Implementation map: `src/features/code/index.mjs`, `src/shiki/parse-annotate-directive.mjs`, `src/shiki/parse-step-directive.mjs`, `src/shiki/annotate-transformer.mjs`, `src/features/code/expand-step-slides.mjs`
 
 ## External Code Inclusion
 
@@ -113,7 +113,7 @@ Notes:
 - the engine also supports fenced blocks with `path=` or `src=` attributes
 - add `fit-height="true"` to a fenced block when the rendered code should be scaled to the remaining slide height
 
-Implementation map: `src/features/code/index.mjs`, `src/markdown/resolve-external-code.mjs`
+Implementation map: `src/features/code/index.mjs`, `src/features/code/resolve-external-code.mjs`
 
 ## Animated Images
 
@@ -149,7 +149,7 @@ Requirements and behavior:
 - the annotation must be placed at the end of the line it describes
 - the engine wraps the math block and injects a runtime that places note boxes and connectors
 
-Implementation map: `src/features/math/index.mjs`, `src/math/annotate-math-block.mjs`, `engine.mjs`
+Implementation map: `src/features/math/index.mjs`, `src/features/math/annotate-math-block.mjs`, `engine.mjs`
 
 ## Bibliography And Citation Management
 
@@ -193,4 +193,4 @@ Dependency note:
 
 - no external citation tool is required
 
-Implementation map: `src/features/citations/index.mjs`, `src/features/citations/core.mjs`, `src/features/citations/backends/js.mjs`, `src/markdown/process-citations.mjs`, `vendor/csl/ieee.csl`
+Implementation map: `src/features/citations/index.mjs`, `src/features/citations/core.mjs`, `src/features/citations/backends/js.mjs`, `vendor/csl/ieee.csl`

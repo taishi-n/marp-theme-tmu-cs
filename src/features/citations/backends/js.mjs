@@ -4,6 +4,8 @@ import { Cite, plugins } from '@citation-js/core';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import '@citation-js/plugin-bibtex';
 import '@citation-js/plugin-csl';
+import { escapeHtmlAttribute } from '../../../core/html.mjs';
+import { isFenceClose, parseFenceStart } from '../../../core/markdown.mjs';
 import { escapeHtml } from '../markdown-utils.mjs';
 
 const DEFAULT_LOCALE = 'en-US';
@@ -22,14 +24,6 @@ function createBackendError(code, message, cause) {
   error.code = code;
   if (cause) error.cause = cause;
   return error;
-}
-
-function escapeHtmlAttribute(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('"', '&quot;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
 }
 
 function normalizeDoi(value) {
@@ -304,18 +298,6 @@ function replaceInlineCitations(slideContent, cite, template, citationHistory) {
     inHtmlComment = state;
   };
 
-  const parseFenceStart = (line) => {
-    const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
-    if (!match) return null;
-    return { marker: match[1][0], length: match[1].length };
-  };
-
-  const isFenceClose = (line, currentFence) => {
-    if (!currentFence) return false;
-    const match = line.match(/^ {0,3}(`{3,}|~{3,})\s*$/);
-    return Boolean(match && match[1][0] === currentFence.marker && match[1].length >= currentFence.length);
-  };
-
   const content = String(slideContent ?? '')
     .replace(/\r\n/g, '\n')
     .split('\n')
@@ -382,7 +364,7 @@ export function createJsCitationBackend() {
           backend: 'js',
           template,
         },
-        slides: slides.map((slide) => replaceInlineCitations(slide, cite, template, citationHistory)),
+        slides: slides.map((slide) => replaceInlineCitations(slide.content ?? slide, cite, template, citationHistory)),
       };
     },
   };

@@ -27,6 +27,7 @@ This writes the sample deck to `examples/dist/slides.html`.
 Other useful commands during local verification:
 
 ```bash
+npm test
 npm run build:pdf
 npm run build:pptx
 npm run watch
@@ -102,6 +103,17 @@ This package can also be consumed from a published package source instead of a l
 ```bash
 npm install --save-dev marp-theme-tmu-cs
 ```
+
+## Public Entry Points
+
+This package intentionally exposes a small public surface:
+
+- package root: `marp-theme-tmu-cs`
+- engine path: `marp-theme-tmu-cs/engine`
+- theme CSS path: `marp-theme-tmu-cs/theme.css`
+- bundled IEEE CSL: `marp-theme-tmu-cs/csl/ieee.csl`
+
+Internal implementation files under `src/` are not part of the supported public API.
 
 ## Basic Usage
 
@@ -186,3 +198,4 @@ Long code lines are wrapped automatically, and wrapped segments end with `\` so 
 
 - [Theme styling](docs/theme-styling.md)
 - [Feature guide](docs/feature-guide.md)
+- [Development guide](docs/development.md)

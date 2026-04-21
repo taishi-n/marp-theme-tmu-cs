@@ -1,4 +1,4 @@
-import { collectMathAnnotations, renderAnnotatedMathBlock } from '../../math/annotate-math-block.mjs';
+import { collectMathAnnotations, renderAnnotatedMathBlock } from './annotate-math-block.mjs';
 
 function createWarningLogger(token, logPrefix) {
   const markdownStartLine = token.map?.[0];

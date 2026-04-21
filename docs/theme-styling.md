@@ -146,7 +146,7 @@ Annotated display-math blocks use additional wrapper elements and overlay layers
 - `.eqann-warning`
 - `.eqann-debug`
 
-The CSS defines the visual structure, while placement and connector drawing are handled by the runtime emitted from `src/math/annotate-math-block.mjs`.
+The CSS defines the visual structure, while placement and connector drawing are handled by the runtime emitted from `src/features/math/annotate-math-block.mjs`.
 
 ## Implementation Map
 
@@ -155,4 +155,4 @@ The CSS defines the visual structure, while placement and connector drawing are 
 - Citation block generation: `src/features/citations/core.mjs`
 - Primary citation backend: `src/features/citations/backends/js.mjs`
 - Code annotation rendering: `src/shiki/annotate-transformer.mjs`
-- Math annotation wrapper and runtime injection: `src/math/annotate-math-block.mjs`
+- Math annotation wrapper and runtime injection: `src/features/math/annotate-math-block.mjs`

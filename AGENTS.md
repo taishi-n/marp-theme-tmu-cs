@@ -11,6 +11,7 @@
 
 - Engine orchestration: `engine.mjs`
 - Public exports and package entry points: `index.mjs`
+  Supported package entry points: package root, `engine`, `theme.css`, `csl/ieee.csl`
 - Theme CSS and slide decoration: `theme/tmu-cs.css`
 - Shared parsing utilities: `src/core/*`
 - Pipeline stages and deck defaults: `src/pipeline/*`
@@ -18,7 +19,7 @@
   JS backend: `src/features/citations/backends/js.mjs`
 - Code highlighting, wrapping, and step/external-code integration: `src/features/code/*`
 - Math annotation integration: `src/features/math/*`
-- Step expansion and external code inclusion internals: `src/markdown/*`
 - Code annotation parsing and Shiki transformer internals: `src/shiki/*`
-- Math annotation parsing and overlay runtime internals: `src/math/*`
-- Legacy citation façade and compatibility export: `src/markdown/process-citations.mjs`
+- Math annotation parsing and overlay runtime internals: `src/features/math/annotate-math-block.mjs`
+
+Files under `src/` are internal implementation details, not stable public import paths.

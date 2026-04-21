@@ -1,10 +1,4 @@
-function escapeHtmlAttribute(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('"', '&quot;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
-}
+import { escapeHtmlAttribute } from '../core/html.mjs';
 
 function parseHtmlAttributes(input = '') {
   const attributes = {};

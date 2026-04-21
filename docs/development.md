@@ -12,15 +12,22 @@ Main entry points:
 - `docs/theme-styling.md`: user-facing theme styling reference
 - `docs/feature-guide.md`: user-facing authoring feature reference
 - `engine.mjs`: orchestrator for the rendering pipeline
-- `index.mjs`: public exports and package paths
+- `index.mjs`: package-root public exports
 - `theme/tmu-cs.css`: theme CSS
-- `src/core/*`: shared parsing and text-processing helpers
+- `src/core/*`: shared parsing, text-processing, and Markdown-structure helpers
 - `src/pipeline/*`: deck-level processing stages and HTML postprocessing
 - `src/features/*`: feature-level integration points
-- `src/markdown/*`: Markdown preprocessing
 - `src/shiki/*`: code annotation parsing and Shiki transformation
-- `src/math/*`: math annotation parsing and runtime injection
 - `vendor/csl/ieee.csl`: bundled CSL data
+
+Supported package entry points are intentionally small:
+
+- `marp-theme-tmu-cs`
+- `marp-theme-tmu-cs/engine`
+- `marp-theme-tmu-cs/theme.css`
+- `marp-theme-tmu-cs/csl/ieee.csl`
+
+Treat files under `src/` as internal implementation details rather than stable public import targets.
 
 ## Architecture Notes
 
@@ -36,8 +43,8 @@ Most feature logic should live outside `engine.mjs`:
 - `src/pipeline/markdown-pipeline.mjs`: Markdown-path discovery and preprocessing order
 - `src/pipeline/animated-images.mjs`: HTML postprocessing for GIF playback
 - `src/features/citations/*`: citation core, Markdown postprocessing, and backend boundary
-- `src/features/code/*`: code feature boundary
-- `src/features/math/*`: math feature boundary
+- `src/features/code/*`: code preprocessing and highlighting boundary
+- `src/features/math/*`: math annotation boundary
 
 When changing engine behavior, keep the processing order stable unless there is a concrete reason to alter it. The feature modules are written with the current order in mind.
 
@@ -56,15 +63,13 @@ Citation handling is split into:
 
 - citation core
 - JS citation backend
-- compatibility façade
 
 The intended boundary is:
 
 - `src/features/citations/core.mjs`: citation orchestration and slide-footnote integration
 - `src/features/citations/backends/js.mjs`: Citation.js + citeproc backend
-- `src/markdown/process-citations.mjs`: legacy public entry point delegating into the feature layer
 
-`index.mjs` is the public package surface. If public paths or exports change, keep `index.mjs` and `package.json` exports aligned.
+`index.mjs` and `package.json` together define the supported package surface. If public paths or exports change, keep them aligned and update the user-facing docs.
 
 ## Local Workflow
 
@@ -77,6 +82,7 @@ npm install
 Main validation commands:
 
 ```bash
+npm test
 npm run build:html
 npm run build:pdf
 npm run build:pptx
@@ -98,12 +104,12 @@ The regression sample deck is `examples/slides.md`. Build outputs are written to
 
 ## Validation Guidance
 
-There is no dedicated automated test suite in this repository at the moment, so validation is command- and sample-driven.
+The repository includes a lightweight `node:test` suite for preprocessing and public-surface regressions, plus sample-driven build checks.
 
 Use these checks based on the change:
 
 - CSS or layout changes: run `npm run build:html` and inspect the sample deck
-- engine or Markdown preprocessor changes: run `npm run build:html`
+- engine or Markdown preprocessor changes: run `npm test` and `npm run build:html`
 - citation changes: run `npm run build:html` and confirm the JS citation backend still produces the expected output
 - output-format-sensitive changes: also run `npm run build:pdf` or `npm run build:pptx`
 - package/export changes: run `npm pack --dry-run`
@@ -136,13 +142,12 @@ When visually checking the sample deck, pay particular attention to:
 - Theme styling: `theme/tmu-cs.css`
 - Title slide and default marginals: `src/pipeline/deck-defaults.mjs`
 - Pipeline orchestration: `engine.mjs`, `src/pipeline/markdown-pipeline.mjs`
-- External code inclusion: `src/features/code/index.mjs`, `src/markdown/resolve-external-code.mjs`
-- Step slide expansion: `src/features/code/index.mjs`, `src/markdown/expand-step-slides.mjs`
+- External code inclusion: `src/features/code/index.mjs`, `src/features/code/resolve-external-code.mjs`
+- Step slide expansion: `src/features/code/index.mjs`, `src/features/code/expand-step-slides.mjs`
 - Citation and bibliography processing: `src/features/citations/index.mjs`, `src/features/citations/core.mjs`
 - JS citation backend: `src/features/citations/backends/js.mjs`
-- Legacy citation façade: `src/markdown/process-citations.mjs`
 - Code annotation parsing: `src/shiki/parse-annotate-directive.mjs`
 - Step directive parsing: `src/shiki/parse-step-directive.mjs`
 - Shiki annotation rendering: `src/features/code/index.mjs`, `src/shiki/annotate-transformer.mjs`
 - Math annotation integration: `src/features/math/index.mjs`
-- Math annotation parsing and runtime: `src/math/annotate-math-block.mjs`
+- Math annotation parsing and runtime: `src/features/math/annotate-math-block.mjs`

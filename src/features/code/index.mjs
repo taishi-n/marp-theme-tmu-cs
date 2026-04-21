@@ -3,8 +3,9 @@ import {
   transformerNotationFocus,
   transformerNotationHighlight,
 } from '@shikijs/transformers';
-import expandStepSlides from '../../markdown/expand-step-slides.mjs';
-import resolveExternalCode from '../../markdown/resolve-external-code.mjs';
+import expandStepSlides from './expand-step-slides.mjs';
+import resolveExternalCode from './resolve-external-code.mjs';
+import { getConfiguredCodeLinkLanguages, normalizeFenceLanguage, parseFenceInfo } from './shared.mjs';
 import { createAnnotateTransformer, inspectAnnotatedCodeBlock } from '../../shiki/annotate-transformer.mjs';
 import { createWrapLongLinesTransformer, wrapCodeSource } from '../../shiki/wrap-long-lines-transformer.mjs';
 
@@ -34,83 +35,6 @@ const headingHeightsPx = {
 const codeAnnotationBaseHeightPx = (baseFontSizePx * 0.55) + (baseFontSizePx * 0.75 * 2) + 2 + (baseFontSizePx * 0.72 * 1.35) + (baseFontSizePx * 0.22 * 2);
 const codeAnnotationAdditionalHeightPx = (baseFontSizePx * 0.3) + (baseFontSizePx * 0.45) + (baseFontSizePx * 0.22 * 2) + 1 + (baseFontSizePx * 0.72 * 1.35);
 
-function normalizeFenceLanguage(info = '') {
-  const [language = ''] = info.trim().split(/\s+/, 1);
-  const lower = language.toLowerCase();
-
-  if (lower === 'cpp' || lower === 'c++') return 'cpp';
-  return lower;
-}
-
-function parseFenceInfo(info = '') {
-  let cursor = 0;
-  const input = String(info ?? '');
-
-  while (cursor < input.length && /\s/.test(input[cursor])) cursor += 1;
-
-  const languageStart = cursor;
-  while (cursor < input.length && !/\s/.test(input[cursor])) cursor += 1;
-
-  const language = input.slice(languageStart, cursor);
-  const attributes = {};
-
-  while (cursor < input.length) {
-    while (cursor < input.length && /\s/.test(input[cursor])) cursor += 1;
-    if (cursor >= input.length) break;
-
-    const keyStart = cursor;
-    while (cursor < input.length && /[A-Za-z0-9_-]/.test(input[cursor])) cursor += 1;
-
-    const key = input.slice(keyStart, cursor);
-    if (!key) {
-      while (cursor < input.length && !/\s/.test(input[cursor])) cursor += 1;
-      continue;
-    }
-
-    while (cursor < input.length && /\s/.test(input[cursor])) cursor += 1;
-    if (input[cursor] !== '=') {
-      attributes[key] = 'true';
-      continue;
-    }
-
-    cursor += 1;
-    while (cursor < input.length && /\s/.test(input[cursor])) cursor += 1;
-
-    const quote = input[cursor];
-    let value = '';
-
-    if (quote === '"' || quote === "'") {
-      cursor += 1;
-
-      while (cursor < input.length) {
-        const character = input[cursor];
-
-        if (character === '\\' && cursor + 1 < input.length) {
-          value += input[cursor + 1];
-          cursor += 2;
-          continue;
-        }
-
-        if (character === quote) {
-          cursor += 1;
-          break;
-        }
-
-        value += character;
-        cursor += 1;
-      }
-    } else {
-      const valueStart = cursor;
-      while (cursor < input.length && !/\s/.test(input[cursor])) cursor += 1;
-      value = input.slice(valueStart, cursor);
-    }
-
-    attributes[key] = value;
-  }
-
-  return { language, attributes };
-}
-
 function isTruthyAttribute(value) {
   const normalized = String(value ?? '').trim().toLowerCase();
   return ['1', 'true', 'yes', 'on', 'fit', 'fit-height'].includes(normalized);
@@ -122,22 +46,6 @@ function shouldFitCodeHeight(token) {
     || isTruthyAttribute(attributes.fitHeight)
     || isTruthyAttribute(attributes['auto-scale'])
     || isTruthyAttribute(attributes.autoScale);
-}
-
-function getConfiguredCodeLinkLanguages(frontMatter) {
-  const configured = frontMatter.codeLinkLanguages ?? frontMatter.externalCodeLanguages;
-
-  if (Array.isArray(configured)) {
-    return configured
-      .filter((value) => typeof value === 'string' && value.trim() !== '')
-      .map((value) => value.trim());
-  }
-
-  if (typeof configured === 'string' && configured.trim() !== '') {
-    return [configured.trim()];
-  }
-
-  return [];
 }
 
 function createMarkdownWarningEmitter(onWarning) {
