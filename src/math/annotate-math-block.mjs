@@ -1,4 +1,10 @@
 import { joinLines, splitLinesPreservingEOF } from '../core/text-lines.mjs';
+import { liteAdaptor } from 'mathjax-full/js/adaptors/liteAdaptor.js';
+import { RegisterHTMLHandler } from 'mathjax-full/js/handlers/html.js';
+import { mathjax } from 'mathjax-full/js/mathjax.js';
+import { TeX } from 'mathjax-full/js/input/tex.js';
+import { AllPackages } from 'mathjax-full/js/input/tex/AllPackages.js';
+import { SVG } from 'mathjax-full/js/output/svg.js';
 
 const TAB10_COLORS = [
   '#1f77b4',
@@ -13,8 +19,83 @@ const TAB10_COLORS = [
   '#17becf',
 ];
 
+const mathAdaptor = liteAdaptor();
+RegisterHTMLHandler(mathAdaptor);
+
+const noteMathDocument = mathjax.document('', {
+  InputJax: new TeX({ packages: AllPackages }),
+  OutputJax: new SVG({ fontCache: 'none' }),
+});
+
 function stripTrailingWhitespace(line) {
   return String(line ?? '').replace(/[ \t]+$/u, '');
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function parseInlineMathSegments(note) {
+  const raw = String(note || '');
+  const segments = [];
+  let text = '';
+  let math = '';
+  let inMath = false;
+
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index];
+    const prev = index > 0 ? raw[index - 1] : '';
+
+    if (char === '$' && prev !== '\\') {
+      if (inMath) {
+        segments.push({ type: 'math', value: math });
+        math = '';
+      } else if (text) {
+        segments.push({ type: 'text', value: text });
+        text = '';
+      }
+
+      inMath = !inMath;
+      continue;
+    }
+
+    if (inMath) {
+      math += char;
+    } else {
+      text += char;
+    }
+  }
+
+  if (inMath) {
+    text += '$' + math;
+  }
+
+  if (text) segments.push({ type: 'text', value: text });
+  return segments;
+}
+
+function renderInlineMathSvg(tex) {
+  const node = noteMathDocument.convert(String(tex ?? ''), { display: false });
+  const svg = mathAdaptor.firstChild(node);
+  const svgHtml = svg ? mathAdaptor.outerHTML(svg) : mathAdaptor.outerHTML(node);
+  return `<span class="eqann-inline-math">${svgHtml}</span>`;
+}
+
+function renderAnnotationNoteHtml(note) {
+  return parseInlineMathSegments(note)
+    .map((segment) => {
+      if (segment.type === 'math') {
+        return renderInlineMathSvg(segment.value);
+      }
+
+      return escapeHtml(segment.value.replace(/\\\$/g, '$'));
+    })
+    .join('');
 }
 
 function escapeJsonForHtml(value) {
@@ -202,6 +283,7 @@ function buildAnnotatedLine(line, annotationId, options = {}) {
     annotation: {
       id: annotationId,
       note: directive.note,
+      noteHtml: renderAnnotationNoteHtml(directive.note),
       label: directive.label,
       color,
     },
@@ -408,15 +490,34 @@ function mathAnnotationRuntime() {
     overlay.setAttribute('viewBox', '0 0 ' + metrics.localWidth + ' ' + metrics.localHeight);
   }
 
-  function measureBox(stage, note, theme, metrics) {
+  function setBoxContent(box, note, noteHtml) {
+    box.replaceChildren();
+
+    if (typeof noteHtml === 'string' && noteHtml !== '') {
+      const template = document.createElement('template');
+      template.innerHTML = noteHtml;
+      box.appendChild(template.content.cloneNode(true));
+      return;
+    }
+
+    if (note) {
+      box.textContent = note;
+    }
+  }
+
+  function applyBoxTheme(box, theme) {
+    box.style.borderColor = theme.softStroke;
+    box.style.color = theme.stroke;
+    box.style.background = theme.boxBg;
+  }
+
+  function measureBox(stage, note, noteHtml, theme, metrics) {
     const box = document.createElement('div');
     box.className = 'eqann-box';
     box.style.left = '-99999px';
     box.style.top = '-99999px';
-    box.style.borderColor = theme.softStroke;
-    box.style.color = theme.stroke;
-    box.style.background = theme.boxBg;
-    box.textContent = note;
+    applyBoxTheme(box, theme);
+    setBoxContent(box, note, noteHtml);
     stage.appendChild(box);
     const rect = rectToStageCoords(box.getBoundingClientRect(), metrics);
     box.remove();
@@ -532,7 +633,7 @@ function mathAnnotationRuntime() {
     }
   }
 
-  function renderStage(stage) {
+  async function renderStage(stage) {
     const math = stage.querySelector('.eqann-math');
     const backOverlay = stage.querySelector('.eqann-overlay-back');
     const frontOverlay = stage.querySelector('.eqann-overlay-front');
@@ -555,15 +656,15 @@ function mathAnnotationRuntime() {
     const measurementMetrics = getStageMetrics(stage, frontOverlay);
     log('stage:metrics:measure', describeMetrics(measurementMetrics));
 
-    const measured = annotations.map(function (annotation, index) {
+    const measured = await Promise.all(annotations.map(async function (annotation, index) {
       const theme = buildTheme(annotation.color || TAB10_COLORS[index % TAB10_COLORS.length]);
       return {
         ann: annotation,
         theme: theme,
         side: index % 2 === 0 ? 'top' : 'bottom',
-        size: measureBox(stage, annotation.note || '', theme, measurementMetrics),
+        size: measureBox(stage, annotation.note || '', annotation.noteHtml || '', theme, measurementMetrics),
       };
-    });
+    }));
 
     const topBandHeight = measured
       .filter(function (item) { return item.side === 'top'; })
@@ -596,11 +697,11 @@ function mathAnnotationRuntime() {
     const placedTop = [];
     const placedBottom = [];
 
-    measured.forEach(function (item) {
+    for (const item of measured) {
       const targetEl = math.querySelector('.eqann-' + item.ann.id);
       if (!targetEl) {
         log('overlay:target missing', item.ann);
-        return;
+        continue;
       }
 
       const targetViewportRect = targetEl.getBoundingClientRect();
@@ -628,12 +729,10 @@ function mathAnnotationRuntime() {
 
       const box = document.createElement('div');
       box.className = 'eqann-box';
-      box.textContent = item.ann.note || '';
       box.style.left = pos.x + 'px';
       box.style.top = pos.y + 'px';
-      box.style.borderColor = item.theme.softStroke;
-      box.style.color = item.theme.stroke;
-      box.style.background = item.theme.boxBg;
+      applyBoxTheme(box, item.theme);
+      setBoxContent(box, item.ann.note || '', item.ann.noteHtml || '');
       stage.appendChild(box);
 
       const boxViewportRect = box.getBoundingClientRect();
@@ -668,24 +767,26 @@ function mathAnnotationRuntime() {
       line.setAttribute('stroke-opacity', '0.9');
       line.setAttribute('stroke-width', '1.4');
       frontOverlay.appendChild(line);
-    });
+    }
   }
 
   let resizeObserver = null;
   let scheduled = false;
   let initialized = false;
 
-  function renderAll() {
+  async function renderAll() {
     scheduled = false;
-    Array.prototype.forEach.call(document.querySelectorAll('.eqann-stage'), function (stage) {
-      renderStage(stage);
-    });
+    await Promise.all(Array.prototype.map.call(document.querySelectorAll('.eqann-stage'), function (stage) {
+      return renderStage(stage);
+    }));
   }
 
   function scheduleRenderAll() {
     if (scheduled) return;
     scheduled = true;
-    window.requestAnimationFrame(renderAll);
+    window.requestAnimationFrame(function () {
+      void renderAll();
+    });
   }
 
   function init() {

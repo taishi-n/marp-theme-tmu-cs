@@ -34,7 +34,11 @@ function createAnimatedImagePlayerHtml(attributes) {
     `<span class="tmu-cs-gif-player" data-gif-src="${escapeHtmlAttribute(src)}" data-gif-alt="${escapeHtmlAttribute(alt)}"` +
     ` data-gif-style="${escapeHtmlAttribute(posterStyle)}" data-gif-class="${escapeHtmlAttribute(className)}">` +
     `<canvas class="tmu-cs-gif-poster" aria-hidden="true"></canvas>` +
-    `<button type="button" class="tmu-cs-gif-play-button">Play animation</button>` +
+    `<button type="button" class="tmu-cs-gif-play-button" aria-label="Play animation">` +
+    `<svg class="tmu-cs-gif-play-icon" viewBox="0 0 384 512" aria-hidden="true" focusable="false">` +
+    `<path fill="currentColor" d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 53.3 0 70.5v371c0 17.2 9.4 33 24.5 41.9s33.7 8.4 48.5-.7l288-186c14.6-9.4 23.5-25.7 23.5-43s-8.9-33.6-23.5-43L73 39z"/>` +
+    `</svg>` +
+    `</button>` +
     `</span>`
   );
 }

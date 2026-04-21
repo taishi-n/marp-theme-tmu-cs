@@ -6,6 +6,7 @@ import {
   hasBibliography,
   normalizeBibliographyReferences,
   renderCitationListBlock,
+  renderCitationOrderedListBlock,
   replaceMarkdownFootnoteReferences,
   slideHasReferenceHeading,
   stripReferenceListPlaceholder,
@@ -35,10 +36,10 @@ export function normalizeCitationOptions(options = {}) {
 export function applyCitationRenderResult(renderResult, options = {}) {
   const onWarning = createWarningRelay(options.onWarning);
   const transformedSlides = [];
-  const bibliographyBlock = renderCitationListBlock(
+  const bibliographyBlock = renderCitationOrderedListBlock(
     renderResult.allEntries ?? [],
-    'citation-bibliography-marker',
-    'citation-bibliography-label',
+    'citation-bibliography-list',
+    'citation-bibliography-item',
   );
   let referencesInserted = false;
   let referencesWereRequested = false;
@@ -75,7 +76,7 @@ export function applyCitationRenderResult(renderResult, options = {}) {
       referencesWereRequested = true;
 
       if (isEffectivelyEmpty(content)) {
-        content = appendBlock('## References', bibliographyBlock);
+        content = appendBlock('# References', bibliographyBlock);
         referencesInserted = bibliographyBlock !== '';
       } else if (slideHasReferenceHeading(content)) {
         content = appendBlock(content, bibliographyBlock);
@@ -87,7 +88,7 @@ export function applyCitationRenderResult(renderResult, options = {}) {
   }
 
   if (bibliographyBlock !== '' && (!referencesWereRequested || !referencesInserted)) {
-    transformedSlides.push(appendBlock('## References', bibliographyBlock));
+    transformedSlides.push(appendBlock('# References', bibliographyBlock));
   }
 
   return joinSlides({

@@ -6,6 +6,8 @@
 
 @import-theme "default";
 
+/* ASCII-ish code points use Noto Sans Mono ExtraCondensed, while CJK/full-width
+ * code points fall back to Noto Sans JP through the same logical family. */
 @font-face {
   font-family: "TMU CS Code";
   src: local("Noto Sans Mono ExtraCondensed");
@@ -43,6 +45,7 @@
   --tmu-cs-side-padding: 72px;
   --tmu-cs-top-padding: 84px;
   --tmu-cs-bottom-padding: 86px;
+  --tmu-cs-code-font-family: "TMU CS Code", "Noto Sans Mono ExtraCondensed", monospace;
 }
 
 section {
@@ -266,13 +269,11 @@ table td {
   line-height: 1.28;
 }
 
-.citation-footnotes-marker + ul li,
-.citation-bibliography-marker + ul li {
+.citation-footnotes-marker + ul li {
   margin: 0.18rem 0 0;
 }
 
-.citation-footnote-label,
-.citation-bibliography-label {
+.citation-footnote-label {
   display: inline-block;
   min-width: 2.3em;
   margin-right: 0.3em;
@@ -288,6 +289,32 @@ table td {
 .citation-links a {
   color: var(--tmu-cs-accent);
   font-weight: 600;
+}
+
+.citation-bibliography-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  counter-reset: citation-bibliography;
+  font-size: 28px;
+  line-height: 1.35;
+}
+
+.citation-bibliography-item {
+  margin: 0.32rem 0 0;
+  position: relative;
+  padding-left: 2.2em;
+  counter-increment: citation-bibliography;
+}
+
+.citation-bibliography-item::before {
+  content: "[" counter(citation-bibliography) "]";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--tmu-cs-accent);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 strong {
@@ -312,7 +339,7 @@ mark {
 code,
 pre,
 .marp-code {
-  font-family: "TMU CS Code", "Noto Sans Mono ExtraCondensed", monospace;
+  font-family: var(--tmu-cs-code-font-family);
 }
 
 :not(pre) > code {
@@ -468,12 +495,31 @@ pre,
   color: var(--tmu-cs-ink);
 }
 
+img,
+video {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+figure {
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .tmu-cs-gif-player {
   position: relative;
-  display: inline-flex;
+  display: flex;
+  width: fit-content;
   align-items: center;
   justify-content: center;
   max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .tmu-cs-gif-poster,
@@ -491,16 +537,24 @@ pre,
 
 .tmu-cs-gif-play-button {
   position: absolute;
-  padding: 0.38rem 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: 50%;
   background: rgba(0, 101, 67, 0.92);
   color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
   cursor: pointer;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.tmu-cs-gif-play-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-left: 0.08rem;
 }
 
 .tmu-cs-gif-play-button:hover,
@@ -563,7 +617,16 @@ pre,
   font-size: 16px;
   line-height: 1.3;
   white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.eqann-inline-math {
+  display: inline-block;
+  margin: 0 0.08em;
+  vertical-align: -0.08em;
+}
+
+.eqann-inline-math > svg {
+  display: inline-block;
 }
 
 .eqann-warning {

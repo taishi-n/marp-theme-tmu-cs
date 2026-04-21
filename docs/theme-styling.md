@@ -47,7 +47,14 @@ The theme styles the standard Marp/Markdown block elements:
 - `mark` uses an underline-like highlight instead of a solid block highlight
 - inline code gets a muted chip-style background
 
-The base body font uses a Japanese sans-serif stack centered on Noto Sans JP, while code uses a monospace stack centered on PlemolJP Console. The sample deck may override this locally for presentation purposes, but the packaged theme default is Noto Sans JP.
+The base body font uses a Japanese sans-serif stack centered on Noto Sans JP.
+
+Inline code and code blocks use the logical `TMU CS Code` family defined in `theme/tmu-cs.css`. This family is split by `unicode-range`:
+
+- half-width Latin characters and common symbols use `Noto Sans Mono ExtraCondensed`
+- Japanese and other full-width code points use `Noto Sans JP` (with local fallbacks such as `Noto Sans CJK JP`, `Hiragino Sans`, and `Yu Gothic`)
+
+In other words, the packaged theme default for code is not a single bundled file but a mixed local-font setup built around `Noto Sans Mono ExtraCondensed` + `Noto Sans JP`.
 
 ## Columns
 

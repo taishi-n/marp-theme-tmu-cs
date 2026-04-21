@@ -137,6 +137,14 @@ export function renderCitationListBlock(entries, markerClass, labelClass) {
   return `<div class="${markerClass}" aria-hidden="true"></div>\n\n${items}`;
 }
 
+export function renderCitationOrderedListBlock(entries, listClass, itemClass) {
+  if (entries.length === 0) return '';
+
+  const items = entries.map((entry) => `<li class="${itemClass}">${entry.bodyHtml}</li>`).join('\n');
+
+  return `<ol class="${listClass}">\n${items}\n</ol>`;
+}
+
 export function extractMarkdownFootnotes(markdown) {
   const { lines } = splitLinesPreservingEOF(markdown);
   const remainingLines = [];
