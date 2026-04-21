@@ -11,9 +11,12 @@ Main entry points:
 - `README.md`: user-facing quick start
 - `docs/theme-styling.md`: user-facing theme styling reference
 - `docs/feature-guide.md`: user-facing authoring feature reference
-- `engine.mjs`: integration point for the full rendering pipeline
+- `engine.mjs`: orchestrator for the rendering pipeline
 - `index.mjs`: public exports and package paths
 - `theme/tmu-cs.css`: theme CSS
+- `src/core/*`: shared parsing and text-processing helpers
+- `src/pipeline/*`: deck-level processing stages and HTML postprocessing
+- `src/features/*`: feature-level integration points
 - `src/markdown/*`: Markdown preprocessing
 - `src/shiki/*`: code annotation parsing and Shiki transformation
 - `src/math/*`: math annotation parsing and runtime injection
@@ -22,17 +25,33 @@ Main entry points:
 
 ## Architecture Notes
 
-`engine.mjs` is the central integration layer. It combines:
+`engine.mjs` should remain thin. It wires together:
 
-- front matter parsing
-- title slide generation
-- default `header` / `footer` injection
-- external code expansion
-- citation processing
-- Shiki highlighting and code annotation rendering
-- math annotation collection and runtime injection
+- pipeline setup
+- feature installation
+- deck-level render orchestration
+
+Most feature logic should live outside `engine.mjs`:
+
+- `src/pipeline/deck-defaults.mjs`: title slide generation and default `header` / `footer` injection
+- `src/pipeline/markdown-pipeline.mjs`: Markdown-path discovery and preprocessing order
+- `src/pipeline/animated-images.mjs`: HTML postprocessing for GIF playback
+- `src/features/citations/*`: citation feature boundary
+- `src/features/code/*`: code feature boundary
+- `src/features/math/*`: math feature boundary
 
 When changing engine behavior, keep the processing order stable unless there is a concrete reason to alter it. The feature modules are written with the current order in mind.
+
+The intended render order is:
+
+1. citation preprocessing
+2. deck defaults
+3. external code resolution
+4. step expansion
+5. Marp render
+6. HTML postprocessing
+
+Shared helpers that are reused across preprocessors and renderers should prefer `src/core/*` instead of being duplicated in feature-specific files.
 
 `index.mjs` is the public package surface. If public paths or exports change, keep `index.mjs` and `package.json` exports aligned.
 
@@ -104,12 +123,14 @@ When visually checking the sample deck, pay particular attention to:
 ## Feature-To-Source Index
 
 - Theme styling: `theme/tmu-cs.css`
-- Title slide and default marginals: `engine.mjs`
-- External code inclusion: `src/markdown/resolve-external-code.mjs`
-- Step slide expansion: `src/markdown/expand-step-slides.mjs`
-- Citation and bibliography processing: `src/markdown/process-citations.mjs`
+- Title slide and default marginals: `src/pipeline/deck-defaults.mjs`
+- Pipeline orchestration: `engine.mjs`, `src/pipeline/markdown-pipeline.mjs`
+- External code inclusion: `src/features/code/index.mjs`, `src/markdown/resolve-external-code.mjs`
+- Step slide expansion: `src/features/code/index.mjs`, `src/markdown/expand-step-slides.mjs`
+- Citation and bibliography processing: `src/features/citations/index.mjs`, `src/markdown/process-citations.mjs`
 - Pandoc citation placeholder filter: `src/pandoc/citation-placeholder.lua`
 - Code annotation parsing: `src/shiki/parse-annotate-directive.mjs`
 - Step directive parsing: `src/shiki/parse-step-directive.mjs`
-- Shiki annotation rendering: `src/shiki/annotate-transformer.mjs`
+- Shiki annotation rendering: `src/features/code/index.mjs`, `src/shiki/annotate-transformer.mjs`
+- Math annotation integration: `src/features/math/index.mjs`
 - Math annotation parsing and runtime: `src/math/annotate-math-block.mjs`

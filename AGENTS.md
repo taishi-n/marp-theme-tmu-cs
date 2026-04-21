@@ -9,10 +9,15 @@
 
 ## Source Index
 
-- Engine integration and processing order: `engine.mjs`
+- Engine orchestration: `engine.mjs`
 - Public exports and package entry points: `index.mjs`
 - Theme CSS and slide decoration: `theme/tmu-cs.css`
-- Step expansion and external code inclusion: `src/markdown/*`
-- Code annotation parsing and Shiki transformer logic: `src/shiki/*`
-- Math annotation parsing and overlay runtime: `src/math/*`
+- Shared parsing utilities: `src/core/*`
+- Pipeline stages and deck defaults: `src/pipeline/*`
+- Citation feature integration: `src/features/citations/*`
+- Code highlighting, wrapping, and step/external-code integration: `src/features/code/*`
+- Math annotation integration: `src/features/math/*`
+- Step expansion and external code inclusion internals: `src/markdown/*`
+- Code annotation parsing and Shiki transformer internals: `src/shiki/*`
+- Math annotation parsing and overlay runtime internals: `src/math/*`
 - Pandoc citation placeholder filter: `src/pandoc/*`

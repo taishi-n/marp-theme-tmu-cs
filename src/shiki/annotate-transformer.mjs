@@ -1,4 +1,5 @@
 import parseAnnotateDirective from './parse-annotate-directive.mjs';
+import { joinLines, splitLinesPreservingEOF } from '../core/text-lines.mjs';
 
 const META_KEY = '__tmuCsAnnotate';
 
@@ -8,20 +9,6 @@ function isLineElement(node) {
   const classes = node.properties?.class;
   if (Array.isArray(classes)) return classes.includes('line');
   return classes === 'line';
-}
-
-function splitLinesPreservingEOF(source) {
-  const normalized = String(source ?? '').replace(/\r\n/g, '\n');
-  const hasTrailingNewline = normalized.endsWith('\n');
-  const body = hasTrailingNewline ? normalized.slice(0, -1) : normalized;
-  const lines = body.length === 0 ? [''] : body.split('\n');
-
-  return { lines, hasTrailingNewline };
-}
-
-function joinLines(lines, hasTrailingNewline) {
-  const joined = lines.join('\n');
-  return hasTrailingNewline ? `${joined}\n` : joined;
 }
 
 function isCommentOnlyLine(line) {

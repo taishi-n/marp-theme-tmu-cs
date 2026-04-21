@@ -123,7 +123,7 @@ The CSS defines the visual structure, while placement and connector drawing are 
 ## Implementation Map
 
 - Theme variables and layout: `theme/tmu-cs.css`
-- Header/footer/title-slide defaults: `engine.mjs`
+- Header/footer/title-slide defaults: `src/pipeline/deck-defaults.mjs`
 - Citation block generation: `src/markdown/process-citations.mjs`
 - Code annotation rendering: `src/shiki/annotate-transformer.mjs`
 - Math annotation wrapper and runtime injection: `src/math/annotate-math-block.mjs`

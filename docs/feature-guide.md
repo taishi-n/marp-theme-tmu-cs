@@ -33,7 +33,7 @@ codeLinkLanguages:
 
 If `header` is not set, the engine builds one from `title / subtitle`. If `footer` is not set, the engine builds one from `author / date`.
 
-Implementation map: `engine.mjs`
+Implementation map: `engine.mjs`, `src/pipeline/deck-defaults.mjs`
 
 ## Code Highlighting And Code Annotations
 
@@ -88,7 +88,7 @@ Rules:
 - `:N` expands the effect to multiple code lines
 - the engine duplicates slides so each step becomes its own revealed state
 
-Implementation map: `src/shiki/parse-annotate-directive.mjs`, `src/shiki/parse-step-directive.mjs`, `src/shiki/annotate-transformer.mjs`, `src/markdown/expand-step-slides.mjs`
+Implementation map: `src/features/code/index.mjs`, `src/shiki/parse-annotate-directive.mjs`, `src/shiki/parse-step-directive.mjs`, `src/shiki/annotate-transformer.mjs`, `src/markdown/expand-step-slides.mjs`
 
 ## External Code Inclusion
 
@@ -112,7 +112,7 @@ Notes:
 - language can be inferred from the file extension
 - the engine also supports fenced blocks with `path=` or `src=` attributes
 
-Implementation map: `src/markdown/resolve-external-code.mjs`, `engine.mjs`
+Implementation map: `src/features/code/index.mjs`, `src/markdown/resolve-external-code.mjs`
 
 ## Animated Images
 
@@ -124,7 +124,7 @@ GIF images are wrapped by the custom engine so they do not autoplay by default i
 
 This applies to standard Markdown image syntax when the image source ends with `.gif`.
 
-Implementation map: `engine.mjs`, `theme/tmu-cs.css`
+Implementation map: `engine.mjs`, `src/pipeline/animated-images.mjs`, `theme/tmu-cs.css`
 
 ## Math Highlighting And Math Annotations
 
@@ -148,7 +148,7 @@ Requirements and behavior:
 - the annotation must be placed at the end of the line it describes
 - the engine wraps the math block and injects a runtime that places note boxes and connectors
 
-Implementation map: `src/math/annotate-math-block.mjs`, `engine.mjs`
+Implementation map: `src/features/math/index.mjs`, `src/math/annotate-math-block.mjs`, `engine.mjs`
 
 ## Bibliography And Citation Management
 
@@ -183,4 +183,4 @@ Dependency note:
 
 - `pandoc` must be installed separately for citation processing
 
-Implementation map: `src/markdown/process-citations.mjs`, `src/pandoc/citation-placeholder.lua`, `vendor/csl/ieee.csl`
+Implementation map: `src/features/citations/index.mjs`, `src/markdown/process-citations.mjs`, `src/pandoc/citation-placeholder.lua`, `vendor/csl/ieee.csl`

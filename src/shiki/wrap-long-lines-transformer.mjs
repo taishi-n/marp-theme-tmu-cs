@@ -1,19 +1,7 @@
+import { joinLines, splitLinesPreservingEOF } from '../core/text-lines.mjs';
+
 const DEFAULT_MAX_COLUMNS = 96;
 const DEFAULT_CONTINUATION_MARKER = '\\';
-
-function splitLinesPreservingEOF(source) {
-  const normalized = String(source ?? '').replace(/\r\n/g, '\n');
-  const hasTrailingNewline = normalized.endsWith('\n');
-  const body = hasTrailingNewline ? normalized.slice(0, -1) : normalized;
-  const lines = body.length === 0 ? [''] : body.split('\n');
-
-  return { lines, hasTrailingNewline };
-}
-
-function joinLines(lines, hasTrailingNewline) {
-  const joined = lines.join('\n');
-  return hasTrailingNewline ? `${joined}\n` : joined;
-}
 
 function cloneProperties(properties = {}) {
   return Object.fromEntries(
@@ -74,6 +62,10 @@ function measureNodeWidth(node) {
   if (!Array.isArray(node.children)) return 0;
 
   return node.children.reduce((sum, child) => sum + measureNodeWidth(child), 0);
+}
+
+function createTextNode(value) {
+  return { type: 'text', value };
 }
 
 function sliceNode(node, start, end) {

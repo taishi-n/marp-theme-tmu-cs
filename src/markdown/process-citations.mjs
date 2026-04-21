@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, delimiter, resolve } from 'node:path';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
+import { joinLines, splitLinesPreservingEOF } from '../core/text-lines.mjs';
 
 const citationPlaceholderPattern = /\[((?:\\.|[^\]\\])*)\]\{([^}]*)\}/g;
 const pandocRefsStartPattern = /^(:{3,})\s+\{#refs\b/;
@@ -82,22 +83,6 @@ function updateHtmlCommentState(line, inHtmlComment) {
   }
 
   return state;
-}
-
-function splitLinesPreservingEOF(source) {
-  const normalized = String(source ?? '').replace(/\r\n/g, '\n');
-  const hasTrailingNewline = normalized.endsWith('\n');
-  const body = hasTrailingNewline ? normalized.slice(0, -1) : normalized;
-
-  return {
-    lines: body === '' ? [''] : body.split('\n'),
-    hasTrailingNewline,
-  };
-}
-
-function joinLines(lines, hasTrailingNewline) {
-  const joined = lines.join('\n');
-  return hasTrailingNewline ? `${joined}\n` : joined;
 }
 
 function encodeFootnoteId(id) {
