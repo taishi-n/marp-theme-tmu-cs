@@ -500,8 +500,7 @@ pre,
   display: block;
   line-height: 1;
   margin: 0;
-  padding: 0 0 0 0.45rem;
-  border-left: 0.24rem solid transparent;
+  padding: 0;
 }
 
 .marp-code .line[data-wrap-marker]::after {
@@ -527,31 +526,73 @@ code .hljs-strong {
   opacity: 0.38;
 }
 
+.marp-code .line.is-highlighted,
+.marp-code .line.is-focused,
+.marp-code .line.is-warning,
+.marp-code .line.is-error,
+.marp-code .line.is-info {
+  box-sizing: border-box;
+  margin-left: calc(-1 * var(--base-size-16));
+  padding-left: var(--base-size-16);
+  padding-right: var(--base-size-16);
+  width: calc(100% + (2 * var(--base-size-16)));
+}
+
 .marp-code .line.is-highlighted {
-  background: color-mix(in srgb, var(--tmu-cs-accent-soft) 72%, white 28%);
-  border-left-color: var(--tmu-cs-accent);
+  background:
+    linear-gradient(
+      90deg,
+      var(--tmu-cs-accent) 0,
+      var(--tmu-cs-accent) var(--base-size-16),
+      transparent var(--base-size-16)
+    ),
+    color-mix(in srgb, var(--tmu-cs-accent-soft) 72%, white 28%);
   box-shadow: inset 0 0 0 1px rgba(0, 101, 67, 0.1);
   opacity: 1;
 }
 
 .marp-code .line.is-focused {
-  background: var(--tmu-cs-focus);
-  border-left-color: var(--tmu-cs-accent);
+  background:
+    linear-gradient(
+      90deg,
+      var(--tmu-cs-accent) 0,
+      var(--tmu-cs-accent) var(--base-size-16),
+      transparent var(--base-size-16)
+    ),
+    var(--tmu-cs-focus);
 }
 
 .marp-code .line.is-warning {
-  background: var(--tmu-cs-warning);
-  border-left-color: #d97706;
+  background:
+    linear-gradient(
+      90deg,
+      #d97706 0,
+      #d97706 var(--base-size-16),
+      transparent var(--base-size-16)
+    ),
+    var(--tmu-cs-warning);
 }
 
 .marp-code .line.is-error {
-  background: var(--tmu-cs-error);
-  border-left-color: #dc2626;
+  background:
+    linear-gradient(
+      90deg,
+      #dc2626 0,
+      #dc2626 var(--base-size-16),
+      transparent var(--base-size-16)
+    ),
+    var(--tmu-cs-error);
 }
 
 .marp-code .line.is-info {
-  background: var(--tmu-cs-info);
-  border-left-color: #0284c7;
+  background:
+    linear-gradient(
+      90deg,
+      #0284c7 0,
+      #0284c7 var(--base-size-16),
+      transparent var(--base-size-16)
+    ),
+    var(--tmu-cs-info);
 }
 
 .marp-code .line.has-annotation {
