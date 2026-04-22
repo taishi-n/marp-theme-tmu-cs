@@ -11,24 +11,31 @@ function isLineElement(node) {
   return classes === 'line';
 }
 
-function isCommentOnlyLine(line) {
-  return /^\s*\/\//.test(line);
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function isActualCodeLine(line) {
+function isCommentOnlyLine(line, commentPrefix) {
+  if (!commentPrefix) return false;
+  const pattern = new RegExp(`^\\s*${escapeRegExp(commentPrefix)}`);
+  return pattern.test(line);
+}
+
+function isActualCodeLine(line, commentPrefix) {
   const trimmed = line.trim();
-  return trimmed.length > 0 && !isCommentOnlyLine(line);
+  return trimmed.length > 0 && !isCommentOnlyLine(line, commentPrefix);
 }
 
 function stripTrailingWhitespace(line) {
   return line.replace(/[ \t]+$/u, '');
 }
 
-function extractAnnotateComment(line) {
+function extractAnnotateComment(line, commentPrefix) {
+  if (!commentPrefix) return null;
   const markerIndex = line.indexOf('[!annotate');
   if (markerIndex === -1) return null;
 
-  const commentStart = line.lastIndexOf('//', markerIndex);
+  const commentStart = line.lastIndexOf(commentPrefix, markerIndex);
   if (commentStart === -1) return null;
 
   const beforeComment = line.slice(0, commentStart);
@@ -98,6 +105,7 @@ function collectAnnotateMetadata(source, options = {}) {
   const strippedLines = [];
   const actualCodeSourceLines = [];
   const pendingAnnotations = [];
+  const commentPrefix = options.commentPrefix ?? null;
 
   const warn = (lineNumber, message) => {
     options.onWarning?.({
@@ -110,12 +118,12 @@ function collectAnnotateMetadata(source, options = {}) {
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
-    const directiveComment = extractAnnotateComment(line);
+    const directiveComment = extractAnnotateComment(line, commentPrefix);
 
     if (!directiveComment) {
       strippedLines.push(line);
 
-      if (isActualCodeLine(line)) actualCodeSourceLines.push(strippedLines.length);
+      if (isActualCodeLine(line, commentPrefix)) actualCodeSourceLines.push(strippedLines.length);
       continue;
     }
 
@@ -126,7 +134,7 @@ function collectAnnotateMetadata(source, options = {}) {
       strippedLines.push(sanitizedLine);
       currentSourceLine = strippedLines.length;
 
-      if (isActualCodeLine(sanitizedLine)) actualCodeSourceLines.push(currentSourceLine);
+      if (isActualCodeLine(sanitizedLine, commentPrefix)) actualCodeSourceLines.push(currentSourceLine);
     }
 
     const directive = parseAnnotateDirective(directiveComment.comment, {
@@ -136,7 +144,7 @@ function collectAnnotateMetadata(source, options = {}) {
 
     if (!directive) continue;
 
-    const anchorSourceLine = currentSourceLine && isActualCodeLine(sanitizedLine ?? '')
+    const anchorSourceLine = currentSourceLine && isActualCodeLine(sanitizedLine ?? '', commentPrefix)
       ? currentSourceLine
       : findPreviousActualCodeLine();
 
@@ -181,8 +189,8 @@ function collectAnnotateMetadata(source, options = {}) {
   };
 }
 
-export function inspectAnnotatedCodeBlock(source) {
-  const { code, annotations } = collectAnnotateMetadata(source, {});
+export function inspectAnnotatedCodeBlock(source, options = {}) {
+  const { code, annotations } = collectAnnotateMetadata(source, options);
 
   return {
     annotationCount: annotations.length,

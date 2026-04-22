@@ -5,7 +5,7 @@
 - the `tmu-cs` theme CSS
 - a custom Marp engine
 - JS-based bibliography processing
-- Shiki-based C++ code highlighting and annotations
+- Shiki-based code highlighting plus magic-comment annotations for supported line-comment languages
 - display-math annotations
 - external code inclusion from Markdown
 
@@ -79,8 +79,6 @@ math: mathjax
 title: Demo
 author: Your Name
 bibliography: references.bib
-codeLinkLanguages:
-  - cpp
 ---
 # Hello
 
@@ -155,8 +153,6 @@ math: mathjax
 title: TMU-CS Demo
 author: Your Name
 bibliography: references.bib
-codeLinkLanguages:
-  - cpp
 ---
 ```
 
@@ -168,10 +164,10 @@ External code inclusion:
 [sample.cpp](cpp/sample.cpp)
 ```
 
-External code fences also support height fitting:
+External code fences also support height fitting, and the engine infers the language from the referenced file extension:
 
 ````md
-```cpp path="cpp/sample.cpp" fit-height="true"
+``` path="cpp/sample.cpp" fit-height="true"
 ```
 ````
 
@@ -179,6 +175,11 @@ Annotated code:
 
 ```cpp
 auto p = std::make_unique<int>(42); // [!annotate label="unique_ptr" note="Ownership is transferred to std::unique_ptr."]
+```
+
+```python
+value = 1
+# [!annotate label="value" note="Initial value."]
 ```
 
 Step-emphasized code:
@@ -193,7 +194,21 @@ log_status();           // [!step 6 info]
 return c;               // [!step 7 highlight:2]
 ```
 
+```python
+value = 1               # [!step 1 highlight]
+total = value + 2       # [!step 2 focus]
+print(total)            # [!step 3 info]
+```
+
 Available actions are `highlight`, `focus`, `warning`, `error`, and `info`. The syntax is `[!step <number> <action>[:N]]`, where `:N` extends the emphasis to `N` consecutive lines.
+
+Magic-comment annotations and step expansion are available for fenced languages that use line comments supported by the theme. Current prefixes are:
+
+- `//`: `c`, `cpp`, `csharp`, `fsharp`, `go`, `java`, `javascript`, `jsx`, `kotlin`, `php`, `rust`, `scala`, `swift`, `typescript`, `tsx`
+- `#`: `perl`, `python`, `r`, `ruby`, `shell`, `toml`, `yaml`
+- `--`: `lua`, `sql`
+
+Other Shiki-supported languages still receive syntax highlighting, but the package-specific `annotate` and `step` directives are ignored unless the language is in the list above.
 
 Math annotation:
 

@@ -42,6 +42,64 @@ const extensionLanguageMap = new Map([
   ['zsh', 'shell'],
 ]);
 
+export const supportedShikiLanguages = [
+  'c',
+  'cpp',
+  'csharp',
+  'css',
+  'fsharp',
+  'go',
+  'haskell',
+  'html',
+  'java',
+  'javascript',
+  'json',
+  'jsx',
+  'kotlin',
+  'lua',
+  'perl',
+  'php',
+  'python',
+  'r',
+  'ruby',
+  'rust',
+  'scala',
+  'shell',
+  'sql',
+  'swift',
+  'toml',
+  'typescript',
+  'tsx',
+  'yaml',
+];
+
+const lineCommentPrefixesByLanguage = new Map([
+  ['c', '//'],
+  ['cpp', '//'],
+  ['csharp', '//'],
+  ['fsharp', '//'],
+  ['go', '//'],
+  ['java', '//'],
+  ['javascript', '//'],
+  ['jsx', '//'],
+  ['kotlin', '//'],
+  ['lua', '--'],
+  ['perl', '#'],
+  ['php', '//'],
+  ['python', '#'],
+  ['r', '#'],
+  ['ruby', '#'],
+  ['rust', '//'],
+  ['scala', '//'],
+  ['shell', '#'],
+  ['sql', '--'],
+  ['swift', '//'],
+  ['toml', '#'],
+  ['typescript', '//'],
+  ['tsx', '//'],
+  ['yaml', '#'],
+]);
+
 export function normalizeCodeLanguage(language = '') {
   const normalized = String(language ?? '').trim().toLowerCase();
 
@@ -62,6 +120,18 @@ export function normalizeFenceLanguage(info = '') {
   return normalizeCodeLanguage(language);
 }
 
+export function isShikiLanguageSupported(language = '') {
+  return supportedShikiLanguages.includes(normalizeCodeLanguage(language));
+}
+
+export function getLineCommentPrefix(language = '') {
+  return lineCommentPrefixesByLanguage.get(normalizeCodeLanguage(language)) ?? null;
+}
+
+export function supportsMagicComments(language = '') {
+  return getLineCommentPrefix(language) !== null;
+}
+
 export function parseFenceInfo(info = '') {
   let cursor = 0;
   const input = String(info ?? '');
@@ -71,7 +141,11 @@ export function parseFenceInfo(info = '') {
   const languageStart = cursor;
   while (cursor < input.length && !/\s/.test(input[cursor])) cursor += 1;
 
-  const language = input.slice(languageStart, cursor);
+  let language = input.slice(languageStart, cursor);
+  if (language.includes('=')) {
+    language = '';
+    cursor = languageStart;
+  }
   const attributes = {};
 
   while (cursor < input.length) {
@@ -131,31 +205,7 @@ export function parseFenceInfo(info = '') {
   return { language, attributes };
 }
 
-export function createAllowedLanguageSet(configuredLanguages = []) {
-  return new Set(
-    configuredLanguages
-      .map((language) => normalizeCodeLanguage(language))
-      .filter((language) => language !== ''),
-  );
-}
-
 export function inferLanguageFromPath(reference) {
   const extension = extname(reference).toLowerCase().slice(1);
   return extensionLanguageMap.get(extension) ?? '';
-}
-
-export function getConfiguredCodeLinkLanguages(frontMatter = {}) {
-  const configured = frontMatter.codeLinkLanguages ?? frontMatter.externalCodeLanguages;
-
-  if (Array.isArray(configured)) {
-    return configured
-      .filter((value) => typeof value === 'string' && value.trim() !== '')
-      .map((value) => value.trim());
-  }
-
-  if (typeof configured === 'string' && configured.trim() !== '') {
-    return [configured.trim()];
-  }
-
-  return [];
 }

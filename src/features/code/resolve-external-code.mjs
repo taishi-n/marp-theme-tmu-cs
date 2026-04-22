@@ -2,9 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { isFenceClose, parseFenceStart } from '../../core/markdown.mjs';
 import {
-  createAllowedLanguageSet,
   inferLanguageFromPath,
-  normalizeCodeLanguage,
   normalizeFenceLanguage,
   parseFenceInfo,
 } from './shared.mjs';
@@ -109,6 +107,26 @@ function createFenceLines(source, language) {
   return [`${fence}${language}`, ...splitContentLines(source), fence];
 }
 
+function formatFenceAttribute(key, value) {
+  if (value === 'true') return key;
+
+  const escapedValue = String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"');
+
+  return `${key}="${escapedValue}"`;
+}
+
+function buildExpandedFenceOpening(fence, language, attributes) {
+  const marker = fence.marker.repeat(fence.length);
+  const renderedAttributes = Object.entries(attributes)
+    .filter(([key]) => key !== 'path' && key !== 'src')
+    .map(([key, value]) => formatFenceAttribute(key, value));
+
+  const infoParts = [language, ...renderedAttributes].filter((part) => String(part ?? '').trim() !== '');
+  return infoParts.length > 0 ? `${marker}${infoParts.join(' ')}` : marker;
+}
+
 function readExternalSource(reference, options) {
   const resolvedPath = resolveReferencePath(reference, options.markdownPath);
 
@@ -123,9 +141,8 @@ function readExternalSource(reference, options) {
 function resolveCodeLink(link, options) {
   if (!isRelativeMarkdownLink(link.destination)) return null;
 
-  const titleLanguage = normalizeCodeLanguage(link.title);
-  const inferredLanguage = titleLanguage || inferLanguageFromPath(link.destination);
-  if (inferredLanguage === '' || !options.allowedLanguages.has(inferredLanguage)) return null;
+  const inferredLanguage = inferLanguageFromPath(link.destination);
+  if (inferredLanguage === '') return null;
 
   const source = readExternalSource(link.destination, options);
   return createFenceLines(source, inferredLanguage);
@@ -134,7 +151,6 @@ function resolveCodeLink(link, options) {
 export function resolveExternalCode(markdown, options = {}) {
   const lines = String(markdown ?? '').replace(/\r\n/g, '\n').split('\n');
   const output = [];
-  const allowedLanguages = createAllowedLanguageSet(options.allowedLanguages);
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
@@ -143,7 +159,6 @@ export function resolveExternalCode(markdown, options = {}) {
 
     if (standaloneLink) {
       const resolvedLinkLines = resolveCodeLink(standaloneLink, {
-        allowedLanguages,
         lineNumber: openingLineNumber,
         markdownPath: options.markdownPath,
       });
@@ -165,6 +180,8 @@ export function resolveExternalCode(markdown, options = {}) {
     const parsedInfo = parseFenceInfo(info);
     const language = normalizeFenceLanguage(parsedInfo.language);
     const externalPath = parsedInfo.attributes.path ?? parsedInfo.attributes.src;
+    const inferredLanguage = externalPath ? inferLanguageFromPath(externalPath) : '';
+    const resolvedLanguage = inferredLanguage || language;
 
     const blockLines = [line];
     const codeLines = [];
@@ -183,7 +200,7 @@ export function resolveExternalCode(markdown, options = {}) {
       break;
     }
 
-    if (externalPath && language !== '' && allowedLanguages.has(language)) {
+    if (externalPath && resolvedLanguage !== '') {
       if (codeLines.some((codeLine) => codeLine.trim().length > 0)) {
         options.onWarning?.({
           line: openingLineNumber,
@@ -196,12 +213,16 @@ export function resolveExternalCode(markdown, options = {}) {
         markdownPath: options.markdownPath,
       });
 
-      output.push(line, ...splitContentLines(source), lines[cursor]);
+      output.push(
+        buildExpandedFenceOpening({ marker, length }, resolvedLanguage, parsedInfo.attributes),
+        ...splitContentLines(source),
+        lines[cursor],
+      );
     } else {
-      if (externalPath && language !== '' && !allowedLanguages.has(language)) {
+      if (externalPath && resolvedLanguage === '') {
         options.onWarning?.({
           line: openingLineNumber,
-          message: `external code fence for "${externalPath}" was not expanded because language "${language}" is not enabled in codeLinkLanguages.`,
+          message: `external code fence for "${externalPath}" was not expanded because its language could not be inferred from the file extension.`,
         });
       }
 

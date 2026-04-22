@@ -1,26 +1,33 @@
 import { joinLines, splitLinesPreservingEOF } from '../../core/text-lines.mjs';
 import { isFenceClose, joinMarkdownSlides, parseFenceStart, splitMarkdownSlides } from '../../core/markdown.mjs';
 import parseStepDirective from '../../shiki/parse-step-directive.mjs';
-import { normalizeFenceLanguage } from './shared.mjs';
+import { getLineCommentPrefix, normalizeFenceLanguage, supportsMagicComments } from './shared.mjs';
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function stripTrailingWhitespace(line) {
   return line.replace(/[ \t]+$/u, '');
 }
 
-function isCommentOnlyLine(line) {
-  return /^\s*\/\//.test(line);
+function isCommentOnlyLine(line, commentPrefix) {
+  if (!commentPrefix) return false;
+  const pattern = new RegExp(`^\\s*${escapeRegExp(commentPrefix)}`);
+  return pattern.test(line);
 }
 
-function isActualCodeLine(line) {
+function isActualCodeLine(line, commentPrefix) {
   const trimmed = line.trim();
-  return trimmed.length > 0 && !isCommentOnlyLine(line);
+  return trimmed.length > 0 && !isCommentOnlyLine(line, commentPrefix);
 }
 
-function extractStepComment(line) {
+function extractStepComment(line, commentPrefix) {
+  if (!commentPrefix) return null;
   const markerIndex = line.indexOf('[!step');
   if (markerIndex === -1) return null;
 
-  const commentStart = line.lastIndexOf('//', markerIndex);
+  const commentStart = line.lastIndexOf(commentPrefix, markerIndex);
   if (commentStart === -1) return null;
 
   const beforeComment = line.slice(0, commentStart);
@@ -32,10 +39,10 @@ function extractStepComment(line) {
   };
 }
 
-function appendNotation(line, notations) {
+function appendNotation(line, notations, commentPrefix) {
   if (notations.length === 0) return line;
 
-  const suffix = notations.map((notation) => `// ${notation}`).join(' ');
+  const suffix = notations.map((notation) => `${commentPrefix} ${notation}`).join(' ');
   return `${stripTrailingWhitespace(line)} ${suffix}`;
 }
 
@@ -44,6 +51,7 @@ function collectStepMetadata(source, options = {}) {
   const strippedLines = [];
   const actualCodeSourceLines = [];
   const pendingDirectives = [];
+  const commentPrefix = options.commentPrefix ?? null;
 
   const warn = (lineNumber, message) => {
     options.onWarning?.({
@@ -56,11 +64,11 @@ function collectStepMetadata(source, options = {}) {
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
-    const directiveComment = extractStepComment(line);
+    const directiveComment = extractStepComment(line, commentPrefix);
 
     if (!directiveComment) {
       strippedLines.push(line);
-      if (isActualCodeLine(line)) actualCodeSourceLines.push(strippedLines.length);
+      if (isActualCodeLine(line, commentPrefix)) actualCodeSourceLines.push(strippedLines.length);
       continue;
     }
 
@@ -71,7 +79,7 @@ function collectStepMetadata(source, options = {}) {
       strippedLines.push(sanitizedLine);
       currentSourceLine = strippedLines.length;
 
-      if (isActualCodeLine(sanitizedLine)) actualCodeSourceLines.push(currentSourceLine);
+      if (isActualCodeLine(sanitizedLine, commentPrefix)) actualCodeSourceLines.push(currentSourceLine);
     }
 
     const directive = parseStepDirective(directiveComment.comment, {
@@ -81,7 +89,7 @@ function collectStepMetadata(source, options = {}) {
 
     if (!directive) continue;
 
-    const anchorSourceLine = currentSourceLine && isActualCodeLine(sanitizedLine ?? '')
+    const anchorSourceLine = currentSourceLine && isActualCodeLine(sanitizedLine ?? '', commentPrefix)
       ? currentSourceLine
       : findPreviousActualCodeLine();
 
@@ -119,7 +127,7 @@ function collectStepMetadata(source, options = {}) {
   };
 }
 
-function createCodeVariant(code, metadata, step) {
+function createCodeVariant(code, metadata, step, commentPrefix) {
   const { lines, hasTrailingNewline } = splitLinesPreservingEOF(code);
   const notationsByLine = new Map();
 
@@ -134,7 +142,7 @@ function createCodeVariant(code, metadata, step) {
 
   for (const [lineNumber, notations] of notationsByLine.entries()) {
     const index = lineNumber - 1;
-    lines[index] = appendNotation(lines[index], notations);
+    lines[index] = appendNotation(lines[index], notations, commentPrefix);
   }
 
   return joinLines(lines, hasTrailingNewline);
@@ -183,8 +191,9 @@ function expandSlide(slide, options = {}) {
 
     const originalCode = codeLines.join('\n');
     const language = normalizeFenceLanguage(fenceStart.info);
+    const commentPrefix = getLineCommentPrefix(language);
 
-    if (language !== 'cpp') {
+    if (!supportsMagicComments(language) || !commentPrefix) {
       segments.push({
         type: 'fence',
         content: buildFenceBlock(openingLine, originalCode, closingLine),
@@ -193,6 +202,7 @@ function expandSlide(slide, options = {}) {
     }
 
     const metadata = collectStepMetadata(originalCode, {
+      commentPrefix,
       onWarning: options.onWarning,
       sourceLineOffset: openingLineNumber,
     });
@@ -201,6 +211,7 @@ function expandSlide(slide, options = {}) {
       type: 'step-fence',
       opening: openingLine,
       closing: closingLine,
+      commentPrefix,
       originalCode,
       code: metadata.code,
       metadata,
@@ -238,7 +249,7 @@ function expandSlide(slide, options = {}) {
       if (segment.type === 'markdown' || segment.type === 'fence') return segment.content;
       return buildFenceBlock(
         segment.opening,
-        createCodeVariant(segment.code, segment.metadata, step),
+        createCodeVariant(segment.code, segment.metadata, step, segment.commentPrefix),
         segment.closing,
       );
     }).join('\n'),

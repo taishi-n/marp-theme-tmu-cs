@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createHighlighter } from 'shiki';
 import { installCodeFeature } from './src/features/code/index.mjs';
+import { supportedShikiLanguages } from './src/features/code/shared.mjs';
 import { installMathFeature } from './src/features/math/index.mjs';
 import enhanceAnimatedImages from './src/pipeline/animated-images.mjs';
 import inlineStandaloneAssets from './src/pipeline/standalone-assets.mjs';
@@ -14,7 +15,7 @@ const defaultCitationStylePath = fileURLToPath(new URL('./vendor/csl/ieee.csl', 
 
 const highlighterPromise = createHighlighter({
   themes: ['github-light'],
-  langs: ['cpp'],
+  langs: supportedShikiLanguages,
 });
 
 export default async ({ marp }) => {

@@ -26,8 +26,6 @@ author: Your Name
 affiliation: Tokyo Metropolitan University
 date: 2026-04-20
 bibliography: references.bib
-codeLinkLanguages:
-  - cpp
 ---
 ```
 
@@ -37,15 +35,20 @@ Implementation map: `engine.mjs`, `src/pipeline/deck-defaults.mjs`
 
 ## Annotated And Step-Emphasized Code
 
-The theme uses Shiki for fenced code block highlighting, but the package-specific authoring features described here are the magic-comment based annotation and step-emphasis flows for `cpp` and `c++` fenced blocks.
+The theme uses Shiki for fenced code block highlighting. The package-specific magic-comment based annotation and step-emphasis flows are available for supported languages that have line comments.
 
 ### Annotated Code With `annotate`
 
-Use `// [!annotate ...]` comments to attach explanatory notes to the previous line of actual code.
+Use a supported line comment prefix plus `[!annotate ...]` to attach explanatory notes to the previous line of actual code.
 
 ```cpp
 auto p = std::make_unique<int>(42);
 // [!annotate label="unique_ptr" note="Ownership is managed by std::unique_ptr."]
+```
+
+```python
+value = 1
+# [!annotate label="value" note="Initial value."]
 ```
 
 Rules:
@@ -64,15 +67,27 @@ int b = 2;
 // [!annotate:2 label="Inputs" note="These lines initialize the operands."]
 ```
 
+Supported line comment prefixes:
+
+- `//`: `c`, `cpp`, `csharp`, `fsharp`, `go`, `java`, `javascript`, `jsx`, `kotlin`, `php`, `rust`, `scala`, `swift`, `typescript`, `tsx`
+- `#`: `perl`, `python`, `r`, `ruby`, `shell`, `toml`, `yaml`
+- `--`: `lua`, `sql`
+
 ### Step-Emphasized Code With `step`
 
-Use `// [!step ...]` comments to create slide-by-slide emphasis variants.
+Use the language's supported line comment prefix plus `[!step ...]` to create slide-by-slide emphasis variants.
 
 ```cpp
 for (int i = 0; i < 10; i++) {  // [!step 1 warning]
   std::cout << i << '\n';       // [!step 2 info]
 }
 return 0;                       // [!step 3 focus]
+```
+
+```python
+for i in range(10):   # [!step 1 warning]
+    print(i)          # [!step 2 info]
+return_value = 0      # [!step 3 focus]
 ```
 
 Syntax:
@@ -87,30 +102,24 @@ Rules:
 - supported actions are `highlight`, `focus`, `warning`, `error`, and `info`
 - `:N` expands the effect to multiple code lines
 - the engine duplicates slides so each step becomes its own revealed state
+- languages without a supported line comment prefix still get Shiki syntax highlighting, but `annotate` and `step` directives are ignored
 
 Implementation map: `src/features/code/index.mjs`, `src/shiki/parse-annotate-directive.mjs`, `src/shiki/parse-step-directive.mjs`, `src/shiki/annotate-transformer.mjs`, `src/features/code/expand-step-slides.mjs`
 
 ## External Code Inclusion
 
-Standalone Markdown links can be expanded into fenced code blocks when the language is allowed by front matter.
+Standalone Markdown links can be expanded into fenced code blocks automatically when the language can be inferred from the file extension.
 
 ```md
 [sample.cpp](cpp/sample.cpp)
 ```
 
-Enable the language in front matter:
-
-```yaml
-codeLinkLanguages:
-  - cpp
-```
-
 Notes:
 
 - the link must occupy the whole line
-- only enabled languages are expanded
 - language can be inferred from the file extension
 - the engine also supports fenced blocks with `path=` or `src=` attributes
+- fenced external code blocks do not need an explicit fence language when the file extension is known
 - add `fit-height="true"` to a fenced block when the rendered code should be scaled to the remaining slide height
 
 Implementation map: `src/features/code/index.mjs`, `src/features/code/resolve-external-code.mjs`

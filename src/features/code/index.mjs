@@ -5,7 +5,13 @@ import {
 } from '@shikijs/transformers';
 import expandStepSlides from './expand-step-slides.mjs';
 import resolveExternalCode from './resolve-external-code.mjs';
-import { getConfiguredCodeLinkLanguages, normalizeFenceLanguage, parseFenceInfo } from './shared.mjs';
+import {
+  getLineCommentPrefix,
+  isShikiLanguageSupported,
+  normalizeFenceLanguage,
+  parseFenceInfo,
+  supportsMagicComments,
+} from './shared.mjs';
 import { createAnnotateTransformer, inspectAnnotatedCodeBlock } from '../../shiki/annotate-transformer.mjs';
 import { createWrapLongLinesTransformer, wrapCodeSource } from '../../shiki/wrap-long-lines-transformer.mjs';
 
@@ -122,8 +128,10 @@ function estimateCodeAnnotationHeight(annotationCount) {
 function estimateCodeBlockHeight(token, options = {}) {
   const language = normalizeFenceLanguage(token.info);
 
-  if (language === 'cpp') {
-    const { annotationCount, lineCount } = inspectAnnotatedCodeBlock(token.content);
+  if (supportsMagicComments(language)) {
+    const { annotationCount, lineCount } = inspectAnnotatedCodeBlock(token.content, {
+      commentPrefix: getLineCommentPrefix(language),
+    });
 
     return (
       (options.hasPreviousContent ? customCodeMarginTopPx : 0)
@@ -220,7 +228,6 @@ function computeFitHeightMetadata(tokens) {
 
 export function preprocessCodeMarkdown(markdown, options = {}) {
   const resolvedMarkdown = resolveExternalCode(markdown, {
-    allowedLanguages: getConfiguredCodeLinkLanguages(options.frontMatter ?? {}),
     markdownPath: options.markdownPath,
     onWarning: createMarkdownWarningEmitter(options.onWarning),
   });
@@ -308,7 +315,7 @@ export function installCodeFeature(marp, options = {}) {
     }
     const fitHeight = token.meta?.[fitHeightMetaKey];
 
-    if (language !== 'cpp') {
+    if (!isShikiLanguageSupported(language)) {
       const originalContent = token.content;
 
       try {
@@ -323,38 +330,47 @@ export function installCodeFeature(marp, options = {}) {
     }
 
     try {
-      const html = highlighter.codeToHtml(source, {
-        lang: 'cpp',
-        theme: 'github-light',
-        transformers: [
-          transformerNotationHighlight({
-            classActiveLine: 'is-highlighted',
-            classActivePre: 'has-highlighted',
-          }),
-          transformerNotationFocus({
-            classActiveLine: 'is-focused',
-            classActivePre: 'has-focused',
-          }),
-          transformerNotationErrorLevel({
-            classMap: {
-              warning: 'is-warning',
-              error: 'is-error',
-              info: 'is-info',
-            },
-            classActivePre: 'has-message-lines',
-          }),
+      const transformers = [
+        transformerNotationHighlight({
+          classActiveLine: 'is-highlighted',
+          classActivePre: 'has-highlighted',
+        }),
+        transformerNotationFocus({
+          classActiveLine: 'is-focused',
+          classActivePre: 'has-focused',
+        }),
+        transformerNotationErrorLevel({
+          classMap: {
+            warning: 'is-warning',
+            error: 'is-error',
+            info: 'is-info',
+          },
+          classActivePre: 'has-message-lines',
+        }),
+      ];
+
+      if (supportsMagicComments(language)) {
+        transformers.push(
           createAnnotateTransformer({
+            commentPrefix: getLineCommentPrefix(language),
             onWarning: createWarningLogger(token, logPrefix),
             sourceLineOffset: typeof token.map?.[0] === 'number' ? token.map[0] + 1 : 0,
           }),
-          createWrapLongLinesTransformer(codeWrapOptions),
-        ],
+        );
+      }
+
+      transformers.push(createWrapLongLinesTransformer(codeWrapOptions));
+
+      const html = highlighter.codeToHtml(source, {
+        lang: language,
+        theme: 'github-light',
+        transformers,
       });
 
       return wrapFittedCodeBlock(normalizeShikiPreTag(html), fitHeight);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.warn(`${logPrefix} Failed to render cpp block with Shiki. Falling back to default renderer. ${message}`);
+      console.warn(`${logPrefix} Failed to render ${language || 'plain-text'} block with Shiki. Falling back to default renderer. ${message}`);
       return wrapFittedCodeBlock(
         stripCodeBlockAutoScaling(defaultFence(tokens, idx, renderOptions, env, self)),
         fitHeight,
