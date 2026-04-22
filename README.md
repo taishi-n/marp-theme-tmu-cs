@@ -48,27 +48,21 @@ npm run build:html:standalone
 
 This repository is not only a theme CSS package. The `tmu-cs` theme also depends on the custom Marp engine in this package for citation processing, code highlighting, math annotations, and external code inclusion. For that reason, using only the CSS file is not enough if you want the full feature set.
 
-The recommended setup is to create a separate slide project and install this repository as a dependency there.
+The recommended setup is to keep one local clone of this repository, register it with `npm link`, and use the packaged `marp-tmu-cs` wrapper from each slide project. That avoids copying this package into every project and also avoids writing a per-project `marp.config.mjs` when you use the wrapper CLI.
 
-Example:
+Recommended local setup:
 
 ```bash
 git clone https://github.com/tmu-cs/marp-theme-tmu-cs.git ~/src/marp-theme-tmu-cs
+cd ~/src/marp-theme-tmu-cs
+npm install
+npm link
 
 mkdir ~/work/my-slides
 cd ~/work/my-slides
 npm init -y
 npm install --save-dev @marp-team/marp-cli
-npm install --save-dev ~/src/marp-theme-tmu-cs
-```
-
-Create `marp.config.mjs` in the slide project:
-
-```js
-export default {
-  themeSet: ["./node_modules/marp-theme-tmu-cs/theme/tmu-cs.css"],
-  engine: "./node_modules/marp-theme-tmu-cs/engine.mjs",
-};
+npm link marp-theme-tmu-cs
 ```
 
 Create `slides.md`:
@@ -87,7 +81,27 @@ bibliography: references.bib
 This is a citation [@postel1981ip].
 ```
 
-Build from the slide project:
+Build from the slide project with the wrapper CLI:
+
+```bash
+npx marp-tmu-cs slides.md -o slides.html
+npx marp-tmu-cs --pdf slides.md -o slides.pdf
+npx marp-tmu-cs --pptx slides.md -o slides.pptx
+npx marp-tmu-cs --standalone slides.md -o slides.html
+```
+
+`marp-tmu-cs` automatically supplies the bundled engine and theme CSS when they are not explicitly provided, so a project-local `marp.config.mjs` is optional.
+
+If you prefer to use plain `marp`, create `marp.config.mjs` in the slide project:
+
+```js
+export default {
+  themeSet: ["./node_modules/marp-theme-tmu-cs/theme/tmu-cs.css"],
+  engine: "./node_modules/marp-theme-tmu-cs/engine.mjs",
+};
+```
+
+Then build from the slide project:
 
 ```bash
 npx marp slides.md -o slides.html
@@ -95,17 +109,7 @@ npx marp --pdf slides.md -o slides.pdf
 npx marp --pptx slides.md -o slides.pptx
 ```
 
-If you are actively developing this theme and want another project to follow local changes immediately, you can also use `npm link`:
-
-```bash
-cd ~/src/marp-theme-tmu-cs
-npm link
-
-cd ~/work/my-slides
-npm link marp-theme-tmu-cs
-```
-
-This package can also be consumed from a published package source instead of a local clone. In that case, replace the local path install with:
+This package can also be consumed from a published package source instead of a local clone. In that case, install it directly and either keep using `marp-tmu-cs` or point plain `marp` at the package paths:
 
 ```bash
 npm install --save-dev marp-theme-tmu-cs
@@ -124,6 +128,16 @@ Internal implementation files under `src/` are not part of the supported public 
 
 ## Basic Usage
 
+Recommended wrapper usage:
+
+```bash
+npx marp-tmu-cs slides.md -o slides.html
+npx marp-tmu-cs --pdf slides.md -o slides.pdf
+npx marp-tmu-cs --pptx slides.md -o slides.pptx
+```
+
+Equivalent plain `marp` usage:
+
 ```bash
 npx marp \
   --theme-set ./node_modules/marp-theme-tmu-cs/theme/tmu-cs.css \
@@ -132,13 +146,11 @@ npx marp \
   -o slides.html
 ```
 
-For standalone HTML output, use the packaged wrapper CLI so you can pass `--standalone`:
+For standalone HTML output, use the packaged wrapper CLI with `--standalone`:
 
 ```bash
 npx marp-tmu-cs \
   --standalone \
-  --theme-set ./node_modules/marp-theme-tmu-cs/theme/tmu-cs.css \
-  --engine ./node_modules/marp-theme-tmu-cs/engine.mjs \
   slides.md \
   -o slides.html
 ```

@@ -2,6 +2,8 @@
 
 This document describes the main authoring features provided by `marp-theme-tmu-cs`.
 
+For day-to-day rendering from another project, the intended entrypoint is the packaged `marp-tmu-cs` wrapper. It supplies the bundled engine and theme CSS automatically unless you override them explicitly.
+
 ## Engine Defaults
 
 The custom engine extends normal Marp rendering with document-level defaults.
@@ -163,6 +165,12 @@ Implementation map: `engine.mjs`, `src/pipeline/animated-images.mjs`, `theme/tmu
 ## Standalone HTML Asset Bundling
 
 When you build through the packaged `marp-tmu-cs` wrapper with `--standalone`, the engine rewrites local asset references so the output HTML can be shared as a single file.
+
+Typical command:
+
+```bash
+npx marp-tmu-cs --standalone slides.md -o slides.html
+```
 
 Behavior:
 

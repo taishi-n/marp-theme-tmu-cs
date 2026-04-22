@@ -3,12 +3,13 @@
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
+import { applyTmuCsDefaults } from './marp-cli-options.mjs';
 
 const require = createRequire(import.meta.url);
 const marpCliPath = require.resolve('@marp-team/marp-cli/marp-cli.js');
 const rawArgs = process.argv.slice(2);
 const standalone = rawArgs.includes('--standalone');
-const forwardedArgs = rawArgs.filter((arg) => arg !== '--standalone');
+const forwardedArgs = applyTmuCsDefaults(rawArgs.filter((arg) => arg !== '--standalone'));
 
 function findOutputPath(args) {
   for (let index = 0; index < args.length; index += 1) {

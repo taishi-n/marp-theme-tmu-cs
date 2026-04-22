@@ -11,6 +11,7 @@ Main entry points:
 - `README.md`: user-facing quick start
 - `docs/theme-styling.md`: user-facing theme styling reference
 - `docs/feature-guide.md`: user-facing authoring feature reference
+- `scripts/marp-tmu-cs.mjs`: packaged wrapper CLI for external project usage
 - `engine.mjs`: orchestrator for the rendering pipeline
 - `index.mjs`: package-root public exports
 - `theme/tmu-cs.css`: theme CSS
@@ -71,6 +72,8 @@ The intended boundary is:
 
 `index.mjs` and `package.json` together define the supported package surface. If public paths or exports change, keep them aligned and update the user-facing docs.
 
+The external-project workflow documented in `README.md` is based on `npm link` plus `npx marp-tmu-cs ...`. The wrapper should remain usable without a project-local `marp.config.mjs`: when `--engine` and `--theme-set` are omitted, it is expected to inject the package defaults automatically.
+
 ## Local Workflow
 
 Install dependencies:
@@ -115,6 +118,7 @@ Use these checks based on the change:
 - citation changes: run `npm run build:html` and confirm the JS citation backend still produces the expected output
 - output-format-sensitive changes: also run `npm run build:pdf` or `npm run build:pptx`
 - package/export changes: run `npm pack --dry-run`
+- wrapper CLI argument handling changes: run `npm test` and verify `node scripts/marp-tmu-cs.mjs --help`
 
 When visually checking the sample deck, pay particular attention to:
 
