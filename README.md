@@ -36,6 +36,8 @@ npm run watch
 
 The sample source is `examples/slides.md`. It exercises the theme styling and the package-specific authoring features in one deck.
 
+A hosted sample deck is also available at <https://taishi.org/marp-theme-tmu-cs/sample-slide.html>.
+
 To build a single-file HTML that inlines local images, audio, videos, GIF player sources, and local HTML iframes, use:
 
 ```bash
