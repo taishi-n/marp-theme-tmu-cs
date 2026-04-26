@@ -142,6 +142,8 @@ h6 {
   text-align: left;
   color: var(--tmu-cs-accent);
   line-height: 1.18;
+  word-break: auto-phrase;
+  text-wrap: balance;
 }
 
 h1 {
@@ -190,6 +192,11 @@ ul,
 ol,
 blockquote {
   font-size: 28px;
+}
+
+p {
+  word-break: auto-phrase;
+  text-wrap: pretty;
 }
 
 blockquote {
