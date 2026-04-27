@@ -317,8 +317,6 @@ section.column-layout {
   row-gap: 0;
 }
 
-section.column-layout > header,
-section.column-layout > footer,
 section.column-layout > h1,
 section.column-layout > h2,
 section.column-layout > h3,
