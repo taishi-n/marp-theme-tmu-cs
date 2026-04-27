@@ -189,6 +189,7 @@ It is the main authoring reference for TOC insertion, external code expansion, a
 
 - `` `&lt;!-- toc --&gt;` ``: insert a TOC using the deck default depth
 - `` `&lt;!-- toc level=3 --&gt;` ``: override the TOC depth for one page
+- `` `&lt;!-- _class: all-text-center align-center --&gt;` ``: center all text horizontally and place the slide content vertically in the middle
 - `[sample.cpp](cpp/sample.cpp)`: expand a standalone code link into a fenced block
 - ```` ```cpp path="cpp/sample.cpp" fit-height="true" ````: load external code and scale it to the remaining height
 - `// [!annotate ...]` or `# [!annotate ...]`: attach code annotations
@@ -368,3 +369,17 @@ It is useful for checking balance, line breaks, and scaling consistency.
 -->
 
 # <!--fit--> Huge<br />Words
+
+---
+
+<!-- _class: all-text-center align-center -->
+
+<!--
+This slide demonstrates the `all-text-center align-center` class combination inherited from the original theme.
+It centers text horizontally and centers the whole slide content vertically, which is useful for credits and closing slides.
+-->
+
+![w:500](../assets/taishi.svg)
+
+Implemented by [OpenAI Codex](https://openai.com/codex/) with prompts from [Taishi Nakashima](https://taishi.org).
+Codes are available on [GitHub](https://github.com/taishi-n/marp-theme-tmu-cs)!
