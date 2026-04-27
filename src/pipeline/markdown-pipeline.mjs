@@ -4,6 +4,7 @@ import { parseFrontMatter } from '../core/front-matter.mjs';
 import { preprocessCitationMarkdown } from '../features/citations/index.mjs';
 import { preprocessCodeMarkdown, warnForOverflowingCodeBlocks } from '../features/code/index.mjs';
 import applyDeckDefaults from './deck-defaults.mjs';
+import applySectionPages from './section-pages.mjs';
 
 function findWorkspaceFile(candidate, currentDir = process.cwd()) {
   const normalizedCandidate = String(candidate ?? '').replaceAll('\\', '/');
@@ -96,7 +97,12 @@ export function prepareMarkdownForRender(markdown, context) {
     },
   });
   const preparedDeck = applyDeckDefaults(citedMarkdown);
-  const resolvedMarkdown = preprocessCodeMarkdown(preparedDeck.markdown, {
+  const sectionedMarkdown = applySectionPages(preparedDeck.markdown, {
+    onWarning: (message) => {
+      context.onWarning?.(`${message}`);
+    },
+  });
+  const resolvedMarkdown = preprocessCodeMarkdown(sectionedMarkdown, {
     frontMatter: preparedDeck.frontMatter,
     markdownPath: context.markdownPath,
     onWarning: context.onWarning,

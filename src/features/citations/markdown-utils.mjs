@@ -254,3 +254,14 @@ export function slideHasReferenceHeading(markdown) {
     .split('\n')
     .some((line) => referenceHeadingPattern.test(line.trim()));
 }
+
+export function slideIsReferenceHeadingOnly(markdown) {
+  const stripped = String(markdown ?? '')
+    .split('\n')
+    .filter((line) => !referenceHeadingPattern.test(line.trim()))
+    .join('\n')
+    .replace(/<!--[\s\S]*?-->/gu, '')
+    .trim();
+
+  return stripped === '' && slideHasReferenceHeading(markdown);
+}

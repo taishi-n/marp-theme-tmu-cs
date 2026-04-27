@@ -5,6 +5,7 @@ import { installCodeFeature } from './src/features/code/index.mjs';
 import { supportedShikiLanguages } from './src/features/code/shared.mjs';
 import { installMathFeature } from './src/features/math/index.mjs';
 import enhanceAnimatedImages from './src/pipeline/animated-images.mjs';
+import recalculateAuxiliaryPagination from './src/pipeline/auxiliary-pagination.mjs';
 import inlineStandaloneAssets from './src/pipeline/standalone-assets.mjs';
 import { getMarkdownPathFromEnv, prepareMarkdownForRender, warnForPreparedMarkdown } from './src/pipeline/markdown-pipeline.mjs';
 
@@ -54,9 +55,9 @@ export default async ({ marp }) => {
       console.warn(`${logPrefix} Failed to estimate code block overflow. ${message}`);
     }
 
-    const renderedHtml = enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env), {
+    const renderedHtml = recalculateAuxiliaryPagination(enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env), {
       markdownPath,
-    });
+    }));
 
     if (!standaloneEnabled) return renderedHtml;
 

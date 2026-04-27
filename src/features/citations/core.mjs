@@ -8,6 +8,7 @@ import {
   renderCitationListBlock,
   renderCitationOrderedListBlock,
   replaceMarkdownFootnoteReferences,
+  slideIsReferenceHeadingOnly,
   slideHasReferenceHeading,
   stripReferenceListPlaceholder,
 } from './markdown-utils.mjs';
@@ -82,6 +83,12 @@ export function applyCitationRenderResult(renderResult, options = {}) {
         content = appendBlock(content, bibliographyBlock);
         referencesInserted = bibliographyBlock !== '';
       }
+    }
+
+    if (!hadRefsBlock && slideIsReferenceHeadingOnly(content) && bibliographyBlock !== '') {
+      referencesWereRequested = true;
+      content = appendBlock(content, bibliographyBlock);
+      referencesInserted = true;
     }
 
     transformedSlides.push(content);

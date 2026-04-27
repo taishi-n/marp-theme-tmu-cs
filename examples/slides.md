@@ -3,174 +3,188 @@ marp: true
 theme: tmu-cs
 paginate: true
 math: mathjax
+sectionPages: true
+sectionPageLevel: 2
 title: TMU-CS
 subtitle: Marp slides with citations and annotations
 author: Taishi Nakashima
 affiliation: Tokyo Metropolitan University
 date: 2026-04-20
-header: TMU-CS / Marp slides with citations and annotations
-footer: Taishi Nakashima, Tokyo Metropolitan University / 2026-04-20
 bibliography: references.bib
 ---
 
-# 見出し
+# Table of contents
 
-# h1 header
-
-## h2 header
-
-### h3 header
+<!-- toc -->
 
 <!--
-見出しの説明
+This TOC slide is intentionally placed right after the title slide.
+Because it is treated as an auxiliary page, it should hide header, footer, and pagination.
+-->
+
+---
+
+## Basic usage
+
+<!--
+This section covers plain Markdown authoring with the theme: headings, emphasis, lists,
+tables, blockquotes, columns, and common embedded media.
 -->
 
 ---
 
 <!-- _class: column-layout -->
 
-# 基本文法
-
-<div class="column">
-
-| 項目       | 文法                      | 結果                    |
-| :--------- | :------------------------ | :---------------------- |
-| 見出し     | `# h1`, `## h2`, `### h3` | 前ページ参照            |
-| 太字       | `**太字**`                | **太字** [^1]           |
-| 斜体       | `_斜体_`                  | _斜体_                  |
-| 取り消し線 | `~~取り消し線~~`          | ~~取り消し線~~          |
-| マーカー   | `<mark>ハイライト</mark>` | <mark>ハイライト</mark> |
-| 引用       | 行頭で `> `               | 右側参照                |
-
-</div>
-
-<div class="column">
-
-- 番号なしリスト
-  - 番号なしリストの入れ子
-
-1. 番号付きリスト
-   1. 番号付きリストの入れ子
-
-> 引用の例
-
-</div>
-
-[^1]: テーマカラーは [東京都立大学システムデザイン学部情報科学科](https://cs.sd.tmu.ac.jp) の学科カラーの柚葉色 (`#006543`)．注釈は注釈をする箇所に `text [^1]` のように書き，注釈の内容を任意の箇所に `[^1]: 注釈の例` のように書く．
-
 <!--
-Markdown の見た目と出力の対応が最も分かりやすい導入ページです。
+This slide maps common GitHub-flavored Markdown syntax to the rendered theme output.
+Use it to explain the default typography, table styling, lists, blockquotes, and inline footnotes.
 -->
 
----
-
-<!-- _class: column-layout -->
-
-# マルチカラム
+### Markdown basics
 
 <div class="column">
 
-### 左カラム
-
-- 概要
-- 背景
-- 問題設定
+| Item | Syntax | Result |
+| :--- | :----- | :----- |
+| Heading | `# h1`, `## h2`, `### h3` | See the slide structure |
+| Bold | `**bold**` | **bold** [^theme-color] |
+| Italic | `_italic_` | _italic_ |
+| Strike | `~~strike~~` | ~~strike~~ |
+| Mark | `<mark>highlight</mark>` | <mark>highlight</mark> |
 
 </div>
 
 <div class="column">
 
-### 中央カラム
+- Unordered list
+  - Nested unordered list
 
-- 目的
-- 手法
-- 導出
+1. Ordered list
+   1. Nested ordered list
 
-</div>
-
-<div class="column">
-
-### 右カラム
-
-- 実験条件
-- 実験結果
-- まとめ
+> A regular blockquote
 
 </div>
+
+[^theme-color]: The accent color comes from the Department of Computer Science at Tokyo Metropolitan University (`#006543`).
 
 ---
-
-<!-- _class: column-layout -->
-
-# メディア
-
-<div class="column">
-
-- 画像: ![h:130 Bubble Sort](https://upload.wikimedia.org/wikipedia/commons/e/ef/BubbleSort.jpg)
-- アニメ: ![h:130 Bubble Sort Animation](https://upload.wikimedia.org/wikipedia/commons/2/2a/Bubble_sort_with_flag.gif)
-- 音声: <audio controls src="https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3"></audio>
-
-</div>
-
-<div class="column">
-
-- 音声（スペクトログラム）: <audio class="wavesurfer-spectrogram" controls src="../assets/sine-stereo-440-660.wav" data-spectrogram-height="90" data-spectrogram-fft-samples="2048"></audio>
-
-</div>
 
 <!--
-このページでは画像の埋め込みを説明します。
-Marp では画像記法に `h:` を付けると、高さを指定して表示サイズを揃えられます。
-ここでは外部 URL の JPEG 画像を高さ 200px で表示しています。
-
-このページではアニメーション画像の埋め込みを説明します。
-GIF でも同じ `h:` 記法で高さを揃えられるので、静止画と同じ基準でレイアウトできます。
-外部 URL と高さ指定だけで差し替えられる点を案内してください。
-
-音声は raw HTML の `audio` 要素で再生でき，`controls` を付けると標準 UI が表示されます。
-wavesurfer.js を使ったスペクトログラム表示にも対応しています。
+This slide shows the definition-card pattern implemented through a blockquote whose first line is a level-4 heading.
+It is useful for theorem-like callouts, terminology, and compact concept summaries.
 -->
 
----
+### Definition card
 
-# 数式
-
-インライン数式: $e^{i\pi} + 1 = 0$
-
-ディスプレイ数式:
-
-$$
-X_k % [!annotate note="周波数領域の第 $k$ 成分"]
-=
-\sum_{n=0}^{N-1} % [!annotate note="全サンプルにわたる総和"]
-x_n % [!annotate note="離散時間信号"]
-\exp\!\left( -2\pi i \frac{kn}{N} \right) % [!annotate note="回転因子"]
-$$
-
-> #### Eigen vector
+> #### Eigenvector
 >
 > Let $V$ be a vector space and $T: V \to V$ a linear transformation. A nonzero vector $v \in V$ is called an eigenvector of $T$ if there exists a scalar $\lambda$ such that $T(v) = \lambda v$.
 > The scalar $\lambda$ is called the corresponding eigenvalue.
 
+---
+
+<!-- _class: column-layout -->
+
 <!--
-このページでは通常の数式記法を説明します。
-本文中のインライン数式は `$...$`、独立した式は `$$...$$` です。
-Marp の `math: mathjax` を有効にすると、この記法が MathJax で描画されます。
+This slide demonstrates the custom `column-layout` class and the three-column balance used by the theme.
+It is the main reference slide for multi-column authoring.
+-->
 
-行末の `% [!annotate ...]` が、その行全体をハイライト対象にし、note box と connector を自動配置します。
-通常の display math に最小限のコメントを足すだけで使える点を強調してください。
+### Column layout
 
-blockquote の 1 行目に `####` 見出しを書くと、見出し帯つきの定義カードとして表示されます。
-用語の定義や短い概念説明を本文から分離したいときに使えます。
+<div class="column">
+
+#### Left
+
+- Background
+- Problem setting
+- Assumptions
+
+</div>
+
+<div class="column">
+
+#### Center
+
+- Method
+- Derivation
+- Parameters
+
+</div>
+
+<div class="column">
+
+#### Right
+
+- Results
+- Discussion
+- Conclusion
+
+</div>
+
+---
+
+<!-- _class: column-layout -->
+
+<!--
+This slide collects the supported media primitives: static images, animated GIF playback, plain audio, and spectrogram audio.
+Use it to explain the difference between standard HTML media and the theme-specific wavesurfer integration.
+-->
+
+### Media
+
+<div class="column">
+
+- Image: ![h:130 Bubble Sort](https://upload.wikimedia.org/wikipedia/commons/e/ef/BubbleSort.jpg)
+- Animated GIF: ![h:130 Bubble Sort Animation](https://upload.wikimedia.org/wikipedia/commons/2/2a/Bubble_sort_with_flag.gif)
+- Plain audio: <audio controls src="https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3"></audio>
+
+</div>
+
+<div class="column">
+
+- Spectrogram audio: <audio class="wavesurfer-spectrogram" controls src="../assets/sine-stereo-440-660.wav" data-spectrogram-height="90" data-spectrogram-fft-samples="2048"></audio>
+
+</div>
+
+## Theme-specific syntax
+
+<!--
+This section focuses on authoring features added by this package:
+math annotations, code annotations, step expansion, citations, bibliography placeholders,
+and large-type slides.
 -->
 
 ---
 
-# コードブロック
+<!--
+This slide demonstrates inline math, display math, and line-level math annotations rendered by the theme.
+The annotation comments are kept in source and turned into visual callouts during preprocessing.
+-->
 
-- [shiki](https://shiki.style) によるシンタックスハイライト
-- 外部ファイルの読み込みも対応
-  - `[sample.cpp](cpp/sample.cpp)`
+### Math annotations
+
+Inline math: $e^{i\pi} + 1 = 0$
+
+$$
+X_k % [!annotate note="The $k$-th component in the frequency domain"]
+=
+\sum_{n=0}^{N-1} % [!annotate note="Summation over every sample"]
+x_n % [!annotate note="Discrete-time signal"]
+\exp\!\left( -2\pi i \frac{kn}{N} \right) % [!annotate note="Complex rotation factor"]
+$$
+
+---
+
+<!--
+This slide is the baseline code-highlighting example without external annotations.
+It shows that fenced code blocks in multiple languages inherit the same Shiki-based color theme.
+-->
+
+### External code and highlighting
+
+- [sample.cpp](cpp/sample.cpp)
 
 ```cpp
 #include <iostream>
@@ -185,38 +199,39 @@ for i in range(5):
     print(i)
 ```
 
-<!--
-コードブロック
-シンタックスハイライト
-外部コード読み込み
-alternative: ``` path="cpp/sample.cpp" fit-height="true" でも外部コードを読み込める
--->
-
 ---
 
-# 注釈付きコード
+<!--
+This slide introduces the annotation syntax on external C++ code and the available highlight states.
+It is meant to show the source file reference rather than inline code.
+-->
+
+### Annotated code
 
 [sample-highlight.cpp](cpp/sample-highlight.cpp)
 
-- C++ では `// [!annotate]`、Python では `# [!annotate]` により注釈を追加可能
-  - `highlight`, `focus`, `warning`, `error`, `info` を指定可能
+- Use `// [!annotate]` in C++ and `# [!annotate]` in Python
+- Supported styles: `highlight`, `focus`, `warning`, `error`, `info`
 
 ---
 
-# 注釈付きコード2
+<!--
+This slide mirrors the previous one for Python source files.
+It highlights that the same annotation model works across languages with comment-prefix differences only.
+-->
+
+### Annotated code in Python
 
 [sample-highlight.py](python/sample-highlight.py)
 
-<!--
-このページではコードハイライト拡張を説明します。
-外部ファイル内の `// [!code ...]` / `// [!annotate ...]` や `# [!code ...]` / `# [!annotate ...]` が、強調表示や補足説明に変換されます。
-この例では行列とベクトルの積を計算する処理に対して、C++ と Python の両方で `highlight`、`focus`、`warning`、`error`、`info` を使っています。
-alternative: ``` path="cpp/sample-highlight.cpp" fit-height="true" や ``` path="python/sample-highlight.py" fit-height="true" も利用できます。
--->
-
 ---
 
-# ステップ強調コード
+<!--
+This is the first step-emphasis slide and introduces the source syntax for progressive code highlighting.
+Subsequent slides are generated automatically from the same block to reveal each emphasis state in order.
+-->
+
+### Step-based emphasis
 
 ```cpp fit-height="true"
 #include <iostream>
@@ -234,69 +249,73 @@ int main() {
 }
 ```
 
-- `// [!step <number> <action>[:N]]` でその行を各ステップで順番に強調可能
+- `// [!step <number> <action>[:N]]` creates slide-by-slide emphasis states
 
 ---
-
-# 引用
-
-- IP の基本仕様 [@postel1981ip]
-- C++ の定番の参考書 [@stroustrup2022tour]
-
-```md
-- IP の基本仕様 [@postel1981ip]
-- C++ の定番の参考書 [@stroustrup2022tour]
-```
 
 <!--
-このページでは文献引用の例として、RFC 791 と『A Tour of C++』を参照しています。
-`[@key]` を書くと本文中の引用が整形され、同じスライドの脚注と末尾の参考文献一覧へ反映されます。
-技術仕様書や書籍のように異なる種類の文献を同じ流れで扱えることを案内してください。
+This slide demonstrates inline citations and the generated per-slide citation footnotes.
+It is the main example for `[@key]` authoring with the bibliography defined in front matter.
 -->
+
+### Inline citations
+
+- Core Internet Protocol specification [@postel1981ip]
+- A standard C++ textbook [@stroustrup2022tour]
+
+```md
+- Core Internet Protocol specification [@postel1981ip]
+- A standard C++ textbook [@stroustrup2022tour]
+```
 
 ---
 
-# 参考文献
+<!--
+This page documents the placeholder syntax.
+The actual bibliography is rendered on the final References slide below.
+-->
+
+### Reference slide placeholder
 
 ```md
-# 参考文献
+# References
 
 ::: {#refs}
 :::
 ```
 
-::: {#refs}
-:::
+---
 
 <!--
-このページは参考文献一覧の差し込み位置です。
-`# References` 見出しと `::: {#refs}` ブロックを書いておくと、引用した文献が末尾に自動展開されます。
-speaker note では bibliography と csl の front matter 設定もあわせて案内してください。
+This is the actual bibliography insertion point for the sample deck.
+The citation preprocessing stage recognizes the empty references slide and injects the rendered bibliography here.
 -->
 
----
-
-# <!--fit--> 高橋<br />メソッド
+# References
 
 ---
-
-# <!--fit--> 特徴
-
----
-
-# <!--fit--> 巨大な<br />文字
-
----
-
-<!-- _class: all-text-center align-center -->
-
-![w:500](../assets/taishi.svg)
-
-Implemented by [OpenAI Codex](https://openai.com/codex/) with prompts from [Taishi Nakashima](https://taishi.org).
-Codes are available on [GitHub](https://github.com/taishi-n/marp-theme-tmu-cs)!
 
 <!--
-このページでは `all-text-center align-center` による中央配置を説明します。
-`all-text-center` でスライド内テキストを中央揃えにし、`align-center` で内容全体を上下中央に寄せています。
-画像も本文の一部として中央配置され、プロフィールや短いタイトル付き画像スライドに使えます。
+These slides act as Takahashi-method examples.
+They demonstrate how auto-scaling large headlines behave with the theme.
 -->
+
+# <!--fit--> Takahashi<br />Method
+
+---
+
+<!--
+This slide is a minimal single-word large-type example.
+It demonstrates the centered layout and scaling for short emphasis slides.
+-->
+
+# <!--fit--> Focus
+
+---
+
+<!--
+This slide is another fitted two-line headline and completes the large-type sequence.
+It is useful for checking balance, line breaks, and scaling consistency.
+-->
+
+# <!--fit--> Huge<br />Words

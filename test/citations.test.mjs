@@ -80,3 +80,36 @@ test('preprocessCitationMarkdown appends a references slide when none is present
     await rm(tempDir, { force: true, recursive: true });
   }
 });
+
+test('preprocessCitationMarkdown fills an empty references heading slide instead of appending another one', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-citations-'));
+
+  try {
+    const markdownPath = join(tempDir, 'slides.md');
+    await writeFile(join(tempDir, 'refs.bib'), `${bibliography}\n`);
+
+    const markdown = [
+      '# Intro',
+      '',
+      'This is a citation [@demo2024].',
+      '',
+      '---',
+      '',
+      '# References',
+      '',
+    ].join('\n');
+
+    const processed = preprocessCitationMarkdown(markdown, {
+      defaultCslPath,
+      frontMatter: {
+        bibliography: 'refs.bib',
+      },
+      markdownPath,
+    });
+
+    assert.equal((processed.match(/\n# References\n/g) ?? []).length, 1);
+    assert.match(processed, /# References\n\n<ol class="citation-bibliography-list">/);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});

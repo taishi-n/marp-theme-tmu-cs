@@ -83,6 +83,12 @@ section.title-slide::after {
   display: none;
 }
 
+section.auxiliary-page::after,
+section.auxiliary-page > header,
+section.auxiliary-page > footer {
+  display: none;
+}
+
 section > header,
 section > footer {
   position: absolute;
@@ -95,8 +101,22 @@ section > footer {
 
 section > header {
   top: 26px;
+  display: block;
   padding-bottom: 0.18rem;
   border-bottom: 0.08rem solid var(--tmu-cs-accent);
+}
+
+section > header::after {
+  content: attr(data-section-name);
+  position: absolute;
+  right: 0;
+  top: 0;
+  color: var(--tmu-cs-accent);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
 }
 
 section > footer {
@@ -129,6 +149,43 @@ section.all-text-center :is(ul, ol) {
 
 section.align-center {
   justify-content: center;
+}
+
+section.section-page {
+  justify-content: center;
+  padding-top: 120px;
+  padding-bottom: 120px;
+}
+
+section.section-page > h1,
+section.section-page > h2,
+section.section-page > h3,
+section.section-page > h4,
+section.section-page > h5,
+section.section-page > h6 {
+  margin-bottom: 0;
+  border-bottom: 0;
+  text-align: center;
+  font-size: 40pt;
+  line-height: 1.08;
+}
+
+section.toc-page {
+  padding-top: 110px;
+}
+
+section.toc-page > :is(h1, h2, h3, h4, h5, h6) {
+  margin-bottom: 1.1rem;
+}
+
+section.toc-page > ul {
+  margin: 0;
+  padding-left: 1.3em;
+}
+
+section.toc-page > ul li {
+  margin: 0.2rem 0;
+  font-size: 30px;
 }
 
 h1,
