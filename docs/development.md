@@ -41,7 +41,9 @@ Treat files under `src/` as internal implementation details rather than stable p
 Most feature logic should live outside `engine.mjs`:
 
 - `src/pipeline/deck-defaults.mjs`: title slide generation and default `header` / `footer` injection
+- `src/pipeline/section-pages.mjs`: section page insertion and TOC command expansion
 - `src/pipeline/markdown-pipeline.mjs`: Markdown-path discovery and preprocessing order
+- `src/pipeline/auxiliary-pagination.mjs`: HTML postprocessing for auxiliary slides and visible pagination
 - `src/pipeline/animated-images.mjs`: HTML postprocessing for GIF playback
 - `src/features/citations/*`: citation core, Markdown postprocessing, and backend boundary
 - `src/features/code/*`: code preprocessing and highlighting boundary
@@ -53,10 +55,11 @@ The intended render order is:
 
 1. citation preprocessing
 2. deck defaults
-3. external code resolution
-4. step expansion
-5. Marp render
-6. HTML postprocessing
+3. section page / TOC preprocessing
+4. external code resolution
+5. step expansion
+6. Marp render
+7. HTML postprocessing
 
 Shared helpers that are reused across preprocessors and renderers should prefer `src/core/*` instead of being duplicated in feature-specific files.
 
@@ -124,7 +127,9 @@ When visually checking the sample deck, pay particular attention to:
 
 - title slide generation
 - default header and footer
+- current section name in the header
 - pagination
+- auxiliary pages such as section pages and TOC pages
 - code blocks and code annotation panels
 - math annotation overlays
 - citations and Markdown footnotes
@@ -148,6 +153,8 @@ When visually checking the sample deck, pay particular attention to:
 - Theme styling: `theme/tmu-cs.css`
 - Title slide and default marginals: `src/pipeline/deck-defaults.mjs`
 - Pipeline orchestration: `engine.mjs`, `src/pipeline/markdown-pipeline.mjs`
+- Section-page / TOC preprocessing: `src/pipeline/section-pages.mjs`
+- Auxiliary pagination and current-section header labels: `src/pipeline/auxiliary-pagination.mjs`
 - Standalone HTML asset bundling: `scripts/marp-tmu-cs.mjs`, `src/pipeline/standalone-assets.mjs`
 - External code inclusion: `src/features/code/index.mjs`, `src/features/code/resolve-external-code.mjs`
 - Step slide expansion: `src/features/code/index.mjs`, `src/features/code/expand-step-slides.mjs`

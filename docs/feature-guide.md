@@ -10,6 +10,8 @@ The custom engine extends normal Marp rendering with document-level defaults.
 
 - it can generate a title slide from front matter
 - it can add default `header` and `footer` values when they are omitted
+- it can insert automatic section pages
+- it can expand explicit TOC slides
 - it resolves external code before rendering
 - it processes citations before slide rendering
 - it expands step-based code slides before final rendering
@@ -34,6 +36,47 @@ bibliography: references.bib
 If `header` is not set, the engine builds one from `title / subtitle`. If `footer` is not set, the engine builds one from `author / date`.
 
 Implementation map: `engine.mjs`, `src/pipeline/deck-defaults.mjs`
+
+## Section Pages And TOC Slides
+
+The engine provides deck-structure features beyond standard Marp directives.
+
+Front matter:
+
+```yaml
+---
+sectionPages: true
+sectionPageLevel: 2
+tocPageMaxLevel: 2
+---
+```
+
+Commands:
+
+```md
+# Table of contents
+
+<!-- toc -->
+
+---
+
+# Deep TOC Example
+
+<!-- toc level=3 -->
+```
+
+Behavior:
+
+- `sectionPages: true` inserts auxiliary section pages automatically
+- `sectionPageLevel` chooses which heading level is treated as a section boundary
+- section headings used for automatic section pages are absorbed into the section page instead of being left behind as a duplicate heading-only slide
+- `tocPageMaxLevel` sets the default maximum heading level included by `<!-- toc -->`
+- `<!-- toc level=N -->` overrides the maximum included heading level for one TOC slide
+- headings that use the `<!--fit-->` large-type pattern are excluded from generated TOCs
+- in HTML output, section pages and TOC pages hide header, footer, and pagination, and they do not increment the visible page count
+- normal slides show the current section name on the right side of the header
+
+Implementation map: `src/pipeline/section-pages.mjs`, `src/pipeline/auxiliary-pagination.mjs`
 
 ## Annotated And Step-Emphasized Code
 
@@ -232,6 +275,7 @@ Behavior:
 - cited items are rendered into a footnote-style area on each slide
 - Markdown footnotes are merged into the same visual region
 - a References slide is populated in place when the slide contains a `::: {#refs}` placeholder
+- an otherwise empty `# References` slide is also populated in place
 - if no references slide is present, the engine appends one when needed
 - DOI and URL metadata are turned into links in bibliography entries
 

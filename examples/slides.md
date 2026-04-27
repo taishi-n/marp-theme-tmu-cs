@@ -148,6 +148,55 @@ Use it to explain the difference between standard HTML media and the theme-speci
 
 </div>
 
+## Theme-specific directives
+
+<!--
+This section introduces the custom front matter directives and inline commands added by this theme package.
+It separates deck-structure controls from the rendering features demonstrated later.
+-->
+
+---
+
+<!--
+This slide summarizes the custom front matter directives provided by the theme engine.
+Use it as the quick reference for automatic section pages and table-of-contents depth control.
+-->
+
+### Deck-level directives
+
+| Key | Purpose | Typical value |
+| :-- | :------ | :------------ |
+| `sectionPages` | Insert automatic section pages at the chosen heading level | `true` |
+| `sectionPageLevel` | Choose which heading level starts a new section | `2` |
+| `tocPageMaxLevel` | Limit how deep `&lt;!-- toc --&gt;` expands by default | `2` or `3` |
+
+```yaml
+---
+sectionPages: true
+sectionPageLevel: 2
+tocPageMaxLevel: 2
+---
+```
+
+---
+
+<!--
+This slide explains the inline commands and magic comments interpreted by the custom engine.
+It is the main authoring reference for TOC insertion, external code expansion, annotations, and step emphasis.
+-->
+
+### Inline commands and markers
+
+- `` `&lt;!-- toc --&gt;` ``: insert a TOC using the deck default depth
+- `` `&lt;!-- toc level=3 --&gt;` ``: override the TOC depth for one page
+- `[sample.cpp](cpp/sample.cpp)`: expand a standalone code link into a fenced block
+- ```` ```cpp path="cpp/sample.cpp" fit-height="true" ````: load external code and scale it to the remaining height
+- `// [!annotate ...]` or `# [!annotate ...]`: attach code annotations
+- `// [!step ...]` or `# [!step ...]`: generate step-by-step emphasis slides
+- `% [!annotate ...]` at the end of a TeX line: attach math annotations
+
+---
+
 ## Theme-specific syntax
 
 <!--

@@ -4,12 +4,17 @@
 
 - the `tmu-cs` theme CSS
 - a custom Marp engine
+- automatic section pages and TOC slide expansion
 - JS-based bibliography processing
 - Shiki-based code highlighting plus magic-comment annotations for supported line-comment languages
 - display-math annotations
 - external code inclusion from Markdown
 
 Bibliography processing is fully implemented in JavaScript with Citation.js and citeproc.
+
+Demo slide deck:
+
+- <https://taishi.org/marp-theme-tmu-cs/sample-slide.html>
 
 ## Getting Started
 
@@ -35,8 +40,6 @@ npm run watch
 ```
 
 The sample source is `examples/slides.md`. It exercises the theme styling and the package-specific authoring features in one deck.
-
-A hosted sample deck is also available at <https://taishi.org/marp-theme-tmu-cs/sample-slide.html>.
 
 To build a single-file HTML that inlines local images, audio, videos, GIF player sources, and local HTML iframes, use:
 
@@ -170,7 +173,41 @@ bibliography: references.bib
 ---
 ```
 
+Optional deck-structure directives:
+
+```yaml
+---
+sectionPages: true
+sectionPageLevel: 2
+tocPageMaxLevel: 2
+---
+```
+
 ## Theme-Specific Syntax
+
+Deck-level directives and inline commands:
+
+```yaml
+---
+sectionPages: true
+sectionPageLevel: 2
+tocPageMaxLevel: 2
+---
+```
+
+- `sectionPages`: insert auxiliary section pages automatically
+- `sectionPageLevel`: choose which heading level starts a section
+- `tocPageMaxLevel`: choose how deep `<!-- toc -->` expands by default
+- `<!-- toc -->`: expand a TOC slide at the default depth
+- `<!-- toc level=3 -->`: override the TOC depth for one page
+
+In HTML output, section pages and TOC pages are treated as auxiliary slides:
+
+- header, footer, and pagination are hidden
+- they are excluded from the visible page-number count
+- normal slides show the current section name at the right side of the header
+  using the same visual style as the page number
+  in the footer
 
 External code inclusion:
 

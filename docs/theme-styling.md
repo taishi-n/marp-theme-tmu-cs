@@ -22,6 +22,8 @@ Each slide is styled through the `section` element.
 - pagination appears in the bottom-right corner through `section::after`
 - header and footer are positioned absolutely and span the slide width
 - header uses the title/subtitle area visually, while footer shares space with pagination
+- normal content slides show the current section name at the right edge of the header
+  using the same accent-weighted small-text treatment as pagination
 
 The custom engine can populate default `header` and `footer` values from front matter when those fields are omitted.
 
@@ -35,6 +37,17 @@ Slides with the `title-slide` class have their own layout rules.
 - the slide starts lower on the canvas than a normal content slide
 
 The engine can auto-generate this slide from front matter fields such as `title`, `subtitle`, `author`, `affiliation`, and `date`.
+
+## Section Pages And Auxiliary Slides
+
+Slides with `section-page`, `toc-page`, or `auxiliary-page` have dedicated behavior.
+
+- `section-page` centers the section heading and uses the same large heading size as the title slide title
+- `toc-page` is used for explicit `<!-- toc -->` slides
+- `auxiliary-page` hides header, footer, and visible pagination
+- in HTML output, auxiliary pages are removed from the visible page-number count by postprocessing
+
+These classes are attached by the custom engine rather than written directly into the final HTML source.
 
 ## Typography And Common Elements
 
@@ -161,6 +174,8 @@ The spectrogram wrapper hides the native `audio` controls, adds explicit play/st
 
 - Theme variables and layout: `theme/tmu-cs.css`
 - Header/footer/title-slide defaults: `src/pipeline/deck-defaults.mjs`
+- Section-page / TOC-page injection: `src/pipeline/section-pages.mjs`
+- Auxiliary pagination and current-section header labels: `src/pipeline/auxiliary-pagination.mjs`
 - Citation block generation: `src/features/citations/core.mjs`
 - Primary citation backend: `src/features/citations/backends/js.mjs`
 - Code annotation rendering: `src/shiki/annotate-transformer.mjs`
