@@ -66,10 +66,24 @@ section {
     var(--tmu-cs-bottom-padding);
 }
 
+section::before,
+section::after {
+  position: absolute;
+}
+
+section::before {
+  content: attr(data-header);
+  left: var(--tmu-cs-side-padding);
+  bottom: 24px;
+  color: var(--tmu-cs-muted);
+  font-size: 16px;
+  line-height: 1.2;
+}
+
 section::after {
   content: attr(data-marpit-pagination) " / " attr(data-marpit-pagination-total);
   right: var(--tmu-cs-side-padding);
-  bottom: 24px;
+  top: 26px;
   padding: 0;
   color: var(--tmu-cs-accent);
   font-size: 16px;
@@ -79,10 +93,12 @@ section::after {
   letter-spacing: 0.01em;
 }
 
+section.title-slide::before,
 section.title-slide::after {
   display: none;
 }
 
+section.auxiliary-page::before,
 section.auxiliary-page::after,
 section.auxiliary-page > header,
 section.auxiliary-page > footer {
@@ -102,14 +118,18 @@ section > footer {
 section > header {
   top: 26px;
   display: block;
-  padding-bottom: 0.18rem;
+  min-height: 1.35em;
+  padding-bottom: 0.62rem;
   border-bottom: 0.08rem solid var(--tmu-cs-accent);
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
 }
 
 section > header::after {
   content: attr(data-section-name);
   position: absolute;
-  right: 0;
+  left: 0;
   top: 0;
   color: var(--tmu-cs-accent);
   font-size: 16px;
@@ -122,8 +142,8 @@ section > header::after {
 section > footer {
   bottom: 24px;
   padding-top: 0.18rem;
-  padding-right: 5.5rem;
   border-top: 0.04rem solid rgba(0, 101, 67, 0.18);
+  text-align: right;
 }
 
 /* Inspired by the alignment utility classes in classmethod-marp-theme:
@@ -135,6 +155,7 @@ section.all-text-center :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, figcaptio
   text-align: center;
 }
 
+section.all-text-center::before,
 section.all-text-center::after,
 section.all-text-center > header,
 section.all-text-center > footer {
@@ -982,6 +1003,7 @@ section:has(> h1[data-auto-scaling]):not(:has(> :not(header):not(footer):not(h1)
   text-align: center;
 }
 
+section:has(> h1[data-auto-scaling]):not(:has(> :not(header):not(footer):not(h1)))::before,
 section:has(> h1[data-auto-scaling]):not(:has(> :not(header):not(footer):not(h1)))::after,
 section:has(> h1[data-auto-scaling]):not(:has(> :not(header):not(footer):not(h1))) > header,
 section:has(> h1[data-auto-scaling]):not(:has(> :not(header):not(footer):not(h1))) > footer {
