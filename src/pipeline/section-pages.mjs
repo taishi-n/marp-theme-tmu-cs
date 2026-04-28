@@ -1,10 +1,10 @@
 import { createGitHubHeadingSlugger } from '../core/github-heading-slug.mjs';
 import { hasOwn, parseFrontMatter } from '../core/front-matter.mjs';
 import { parseMarkdownHeadings } from '../core/headings.mjs';
-import { joinMarkdownSlides, splitMarkdownSlides } from '../core/markdown.mjs';
+import { isFenceClose, joinMarkdownSlides, parseFenceStart, splitMarkdownSlides } from '../core/markdown.mjs';
 import { splitLinesPreservingEOF } from '../core/text-lines.mjs';
 
-const tocCommandPattern = /<!--\s*toc(?:\s+level\s*=\s*(?<level>\d+))?\s*-->/gu;
+const tocCommandLinePattern = /^<!--\s*toc(?:\s+level\s*=\s*(?<level>\d+))?\s*-->$/u;
 const slideClassMarkerPattern = /<span class="([^"]*\btmu-cs-slide-class--[^\s"]+[^"]*)"><\/span>/u;
 
 function isFalseLike(value) {
@@ -86,6 +86,46 @@ function resolveTocMaxLevel(frontMatter, fallbackLevel) {
 
 function headingExcludedFromToc(heading) {
   return /<!--\s*fit\s*-->/iu.test(String(heading?.rawText ?? ''));
+}
+
+function findStandaloneTocCommand(slideContent) {
+  const { lines } = splitLinesPreservingEOF(slideContent);
+  let fence = null;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+
+    if (!fence) {
+      const fenceStart = parseFenceStart(line);
+      if (fenceStart) {
+        fence = fenceStart;
+        continue;
+      }
+
+      const match = line.trim().match(tocCommandLinePattern);
+      if (match) {
+        return {
+          lineIndex: index,
+          level: match.groups?.level,
+        };
+      }
+
+      continue;
+    }
+
+    if (isFenceClose(line, fence)) {
+      fence = null;
+    }
+  }
+
+  return null;
+}
+
+function replaceLineAtIndex(content, lineIndex, replacement) {
+  const lines = content.replace(/\r\n/g, '\n').split('\n');
+  if (lineIndex < 0 || lineIndex >= lines.length) return content;
+  lines[lineIndex] = replacement;
+  return lines.join('\n');
 }
 
 function hasMeaningfulContentBeforeHeading(slideContent, headingLineIndex) {
@@ -280,11 +320,9 @@ function expandTocCommands(markdown, frontMatter, options = {}) {
   }
 
   const slides = document.slides.map((slide, slideIndex) => {
-    tocCommandPattern.lastIndex = 0;
-    const commandMatch = tocCommandPattern.exec(slide.content);
+    const commandMatch = findStandaloneTocCommand(slide.content);
     if (!commandMatch) return slide;
-    tocCommandPattern.lastIndex = 0;
-    const tocMaxLevel = parsePositiveInteger(commandMatch.groups?.level, defaultTocMaxLevel);
+    const tocMaxLevel = parsePositiveInteger(commandMatch.level, defaultTocMaxLevel);
 
     const section = sectionBySlideIndex.get(slideIndex);
     if (!section) {
@@ -296,8 +334,9 @@ function expandTocCommands(markdown, frontMatter, options = {}) {
       return {
         ...slide,
         content: prependSlideClassMarker(
-          slide.content.replace(
-            tocCommandPattern,
+          replaceLineAtIndex(
+            slide.content,
+            commandMatch.lineIndex,
             buildTocList(deckHeadings, deckHeadings[0]?.level ?? null),
           ),
           ['toc-page', 'auxiliary-page'],
@@ -314,7 +353,7 @@ function expandTocCommands(markdown, frontMatter, options = {}) {
     return {
       ...slide,
       content: prependSlideClassMarker(
-        slide.content.replace(tocCommandPattern, toc),
+        replaceLineAtIndex(slide.content, commandMatch.lineIndex, toc),
         ['toc-page', 'auxiliary-page'],
       ),
     };

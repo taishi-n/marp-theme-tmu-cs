@@ -173,6 +173,44 @@ test('applySectionPages excludes fit headings from toc output', () => {
   assert.match(processed, /- \[Normal heading\]\(#normal-heading\)/);
 });
 
+test('applySectionPages ignores inline toc syntax examples in prose and tables', () => {
+  const markdown = [
+    '---',
+    'sectionPages: true',
+    'sectionPageLevel: 2',
+    'tocPageMaxLevel: 2',
+    '---',
+    '',
+    '## Directives',
+    '',
+    '### Deck-level directives',
+    '',
+    '| Key | Purpose |',
+    '| :-- | :------ |',
+    '| `tocPageMaxLevel` | Limit how deep `<!-- toc -->` expands by default |',
+    '',
+    '---',
+    '',
+    '### Inline commands',
+    '',
+    '- `<!-- toc -->`: insert a TOC using the deck default depth',
+    '- `<!-- toc level=3 -->`: override the TOC depth for one page',
+    '',
+    '```md',
+    '<!-- toc -->',
+    '```',
+    '',
+  ].join('\n');
+
+  const processed = applySectionPages(markdown);
+
+  assert.match(processed, /\| `tocPageMaxLevel` \| Limit how deep `<!-- toc -->` expands by default \|/);
+  assert.match(processed, /- `<!-- toc -->`: insert a TOC using the deck default depth/);
+  assert.match(processed, /- `<!-- toc level=3 -->`: override the TOC depth for one page/);
+  assert.match(processed, /```md\n<!-- toc -->\n```/);
+  assert.doesNotMatch(processed, /<span class="tmu-cs-slide-class--toc-page tmu-cs-slide-class--auxiliary-page"><\/span>/);
+});
+
 test('applySectionPages generates GitHub-style unique heading anchors in toc links', () => {
   const markdown = [
     '# Agenda',

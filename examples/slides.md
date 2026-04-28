@@ -168,7 +168,7 @@ Use it as the quick reference for automatic section pages and table-of-contents 
 | :-- | :------ | :------------ |
 | `sectionPages` | Insert automatic section pages at the chosen heading level | `true` |
 | `sectionPageLevel` | Choose which heading level starts a new section | `2` |
-| `tocPageMaxLevel` | Limit how deep `&lt;!-- toc --&gt;` expands by default | `2` or `3` |
+| `tocPageMaxLevel` | Limit how deep `<!-- toc -->` expands by default | `2` or `3` |
 
 ```yaml
 ---
@@ -187,9 +187,9 @@ It is the main authoring reference for TOC insertion, external code expansion, a
 
 ### Inline commands and markers
 
-- `` `&lt;!-- toc --&gt;` ``: insert a TOC using the deck default depth
-- `` `&lt;!-- toc level=3 --&gt;` ``: override the TOC depth for one page
-- `` `&lt;!-- _class: all-text-center align-center --&gt;` ``: center all text horizontally and place the slide content vertically in the middle
+- `<!-- toc -->`: insert a TOC using the deck default depth
+- `<!-- toc level=3 -->`: override the TOC depth for one page
+- `<!-- _class: all-text-center align-center -->`: center all text horizontally and place the slide content vertically in the middle
 - `[sample.cpp](cpp/sample.cpp)`: expand a standalone code link into a fenced block
 - ```` ```cpp path="cpp/sample.cpp" fit-height="true" ````: load external code and scale it to the remaining height
 - `// [!annotate ...]` or `# [!annotate ...]`: attach code annotations
