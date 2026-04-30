@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, extname, isAbsolute, resolve } from 'node:path';
 import { escapeHtml, escapeHtmlAttribute } from '../core/html.mjs';
@@ -53,6 +54,10 @@ function stripUrlSuffix(value = '') {
   return String(value ?? '').replace(/[?#].*$/u, '');
 }
 
+function isRemoteHttpReference(reference = '') {
+  return /^https?:\/\//iu.test(String(reference ?? '').trim());
+}
+
 function isLocalRelativeReference(reference = '') {
   const value = String(reference ?? '').trim();
 
@@ -78,6 +83,11 @@ function detectMimeType(filePath) {
   return binaryMimeTypes.get(extension) ?? textMimeTypes.get(extension) ?? 'application/octet-stream';
 }
 
+function detectRemoteMimeType(reference = '', fallbackMimeType = '') {
+  const extension = extname(stripUrlSuffix(reference)).toLowerCase();
+  return fallbackMimeType || binaryMimeTypes.get(extension) || textMimeTypes.get(extension) || 'application/octet-stream';
+}
+
 function isTextAsset(filePath) {
   return textMimeTypes.has(extname(filePath).toLowerCase());
 }
@@ -100,6 +110,115 @@ function toDataUrl(filePath, options = {}) {
   return `data:${mimeType};base64,${buffer.toString('base64')}`;
 }
 
+function toRemoteDataUrl(reference, fetchedAsset = {}) {
+  const buffer = Buffer.isBuffer(fetchedAsset.buffer)
+    ? fetchedAsset.buffer
+    : Buffer.from(fetchedAsset.buffer ?? '');
+  const mimeType = detectRemoteMimeType(reference, fetchedAsset.mimeType);
+  return `data:${mimeType};base64,${buffer.toString('base64')}`;
+}
+
+function isKrokiDiagramReference(reference = '') {
+  return /^https?:\/\/kroki\.io\/[^/]+\/svg\/[^/?#]+$/iu.test(String(reference ?? '').trim());
+}
+
+function fetchRemoteAssetSync(reference, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 30000;
+  const script = `
+    import { request as httpRequest } from 'node:http';
+    import { request as httpsRequest } from 'node:https';
+
+    const reference = process.argv[1];
+    const timeoutMs = Number.parseInt(process.argv[2] || '', 10) || 10000;
+    const target = new URL(reference);
+    const requestImpl = target.protocol === 'http:' ? httpRequest : httpsRequest;
+
+    const fail = (message) => {
+      process.stderr.write(String(message));
+      process.exit(1);
+    };
+
+    const request = requestImpl(target, {
+      headers: {
+        Accept: 'image/svg+xml,image/*;q=0.8,*/*;q=0.5',
+        'User-Agent': 'marp-theme-tmu-cs standalone fetch',
+      },
+      method: 'GET',
+      timeout: timeoutMs,
+    }, (response) => {
+      if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        process.stdout.write(JSON.stringify({
+          redirect: response.headers.location,
+        }));
+        response.resume();
+        response.on('end', () => process.exit(0));
+        return;
+      }
+
+      if (response.statusCode !== 200) {
+        response.resume();
+        fail('status:' + String(response.statusCode ?? 0));
+        return;
+      }
+
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      response.on('end', () => {
+        process.stdout.write(JSON.stringify({
+          buffer: Buffer.concat(chunks).toString('base64'),
+          mimeType: String(response.headers['content-type'] || '').split(';', 1)[0] || '',
+        }));
+        process.exit(0);
+      });
+    });
+
+    request.on('timeout', () => {
+      request.destroy(new Error('timeout'));
+    });
+
+    request.on('error', (error) => {
+      fail(error instanceof Error ? error.message : String(error));
+    });
+
+    request.end();
+  `;
+
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', script, reference, String(timeoutMs)], {
+    encoding: 'utf8',
+    timeout: timeoutMs + 1000,
+  });
+
+  if (result.error) {
+    const message = result.error instanceof Error ? result.error.message : String(result.error);
+    options.onWarning?.(`failed to fetch remote asset "${reference}". ${message}`);
+    return null;
+  }
+
+  if ((result.status ?? 0) !== 0) {
+    const message = String(result.stderr ?? '').trim() || `status:${result.status ?? 1}`;
+    options.onWarning?.(`failed to fetch remote asset "${reference}". ${message}`);
+    return null;
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(String(result.stdout ?? '').trim());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    options.onWarning?.(`failed to decode remote asset "${reference}". ${message}`);
+    return null;
+  }
+
+  if (typeof payload.redirect === 'string' && payload.redirect !== '') {
+    return fetchRemoteAssetSync(payload.redirect, options);
+  }
+
+  return {
+    buffer: Buffer.from(String(payload.buffer ?? ''), 'base64'),
+    mimeType: String(payload.mimeType ?? ''),
+  };
+}
+
 function inlineLocalAttributeReference(html, spec, context) {
   const pattern = new RegExp(`<${spec.tag}\\b([^>]*)>`, 'giu');
 
@@ -116,6 +235,22 @@ function inlineLocalAttributeReference(html, spec, context) {
     attributes[spec.attribute] = dataUrl;
     const serializedAttributes = serializeAttributes(attributes, { allowEmpty: true });
     return `<${spec.tag}${serializedAttributes ? ` ${serializedAttributes}` : ''}>`;
+  });
+}
+
+function inlineStandaloneDiagramReference(html, context) {
+  return String(html ?? '').replace(/<img\b([^>]*)>/giu, (match, rawAttributes) => {
+    const attributes = parseHtmlAttributes(rawAttributes);
+    const source = attributes.src ?? '';
+
+    if (!isKrokiDiagramReference(source)) return match;
+
+    const fetchedAsset = context.fetchRemoteAsset?.(source, context);
+    if (!fetchedAsset) return match;
+
+    attributes.src = toRemoteDataUrl(source, fetchedAsset);
+    const serializedAttributes = serializeAttributes(attributes, { allowEmpty: true });
+    return `<img${serializedAttributes ? ` ${serializedAttributes}` : ''}>`;
   });
 }
 
@@ -195,6 +330,7 @@ function inlineHtmlDocument(html, context) {
     output = inlineLocalAttributeReference(output, spec, context);
   }
 
+  output = inlineStandaloneDiagramReference(output, context);
   output = inlineGifPlayerDataSource(output, context);
   output = inlineLocalIframes(output, context);
 
@@ -255,6 +391,10 @@ export default function inlineStandaloneAssets(html, options = {}) {
 
   const context = {
     basePath,
+    fetchRemoteAsset: options.fetchRemoteAsset ?? ((reference, fetchContext) => {
+      if (!isRemoteHttpReference(reference)) return null;
+      return fetchRemoteAssetSync(reference, fetchContext);
+    }),
     onWarning: options.onWarning,
     visitedHtml: new Set(),
   };

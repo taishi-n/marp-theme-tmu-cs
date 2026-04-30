@@ -66,3 +66,30 @@ test('inlineStandaloneAssets leaves remote assets unchanged', async () => {
     await rm(tempDir, { force: true, recursive: true });
   }
 });
+
+test('inlineStandaloneAssets inlines Kroki SVG images for standalone output', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-standalone-'));
+
+  try {
+    const markdownPath = join(tempDir, 'slides.md');
+    await writeFile(markdownPath, '# demo\n');
+
+    const html = '<section><img src="https://kroki.io/mermaid/svg/example" alt="diagram"></section>';
+    const output = inlineStandaloneAssets(html, {
+      markdownPath,
+      outputPath: markdownPath,
+      fetchRemoteAsset: (reference) => {
+        assert.equal(reference, 'https://kroki.io/mermaid/svg/example');
+        return {
+          buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
+          mimeType: 'image/svg+xml',
+        };
+      },
+    });
+
+    assert.match(output, /<img src="data:image\/svg\+xml;base64,[^"]+" alt="diagram">/);
+    assert.doesNotMatch(output, /https:\/\/kroki\.io\/mermaid\/svg\/example/);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});

@@ -169,6 +169,34 @@ Notes:
 
 Implementation map: `src/features/code/index.mjs`, `src/features/code/resolve-external-code.mjs`
 
+## Diagrams Via Kroki
+
+Kroki-backed diagram languages can be written as normal fenced code blocks without raw HTML.
+
+Mermaid example:
+
+````md
+```mermaid
+flowchart LR
+    User[User] --> API[Web API]
+    API --> Result[Response]
+```
+````
+
+Other supported fence languages include `plantuml`, `graphviz`, `dot`, `vega`, `vegalite`, `nomnoml`, and the other Kroki languages listed in `src/features/diagrams/languages.mjs`.
+
+Behavior:
+
+- diagram fences are rendered through a Kroki backend instead of the normal code highlighter
+- output uses a remote `https://kroki.io/` image URL with SVG output
+- Marp auto-scaling is applied so large diagrams are scaled down to fit the slide area
+- no raw HTML is required in Markdown source
+- standalone HTML output fetches Kroki SVG diagrams during build and rewrites them to `data:` URLs
+- PDF and PPTX output may work when the output pipeline can fetch the remote diagram image, but this is best-effort rather than guaranteed offline behavior
+- diagram syntax errors or Kroki availability problems surface as missing images in rendered output
+
+Implementation map: `engine.mjs`, `src/features/diagrams/index.mjs`, `src/features/diagrams/kroki-backend.mjs`
+
 ## Media Enhancements
 
 GIF images are wrapped by the custom engine so they do not autoplay by default in HTML output.
@@ -218,9 +246,10 @@ npx marp-tmu-cs --standalone slides.md -o slides.html
 Behavior:
 
 - local `img`, `audio`, `video`, and `source` assets are converted to `data:` URLs
+- Kroki-hosted SVG diagram images are fetched during build and converted to `data:` URLs
 - local GIF player sources are converted to `data:` URLs after GIF wrapping
 - local HTML `iframe` sources are converted to `srcdoc`, and their local scripts, stylesheets, and media references are inlined recursively
-- remote URLs such as CDN assets are left unchanged
+- remote URLs such as CDN assets are left unchanged, except for Kroki SVG diagram images
 - `--standalone` is intended for HTML output only
 
 Implementation map: `scripts/marp-tmu-cs.mjs`, `engine.mjs`, `src/pipeline/standalone-assets.mjs`

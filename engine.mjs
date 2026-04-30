@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { createHighlighter } from 'shiki';
 import { installCodeFeature } from './src/features/code/index.mjs';
 import { supportedShikiLanguages } from './src/features/code/shared.mjs';
+import { installDiagramFeature } from './src/features/diagrams/index.mjs';
+import { createKrokiBackend } from './src/features/diagrams/kroki-backend.mjs';
 import { installMathFeature } from './src/features/math/index.mjs';
 import enhanceAnimatedImages from './src/pipeline/animated-images.mjs';
 import recalculateAuxiliaryPagination from './src/pipeline/auxiliary-pagination.mjs';
@@ -29,6 +31,9 @@ export default async ({ marp }) => {
 
   const originalRenderMarkdown = marp.renderMarkdown.bind(marp);
   const mathFeature = installMathFeature(marp, { logPrefix });
+  installDiagramFeature(marp, {
+    backend: createKrokiBackend(),
+  });
   installCodeFeature(marp, { highlighter, logPrefix });
   const standaloneEnabled = process.env.TMU_CS_STANDALONE === '1';
   const standaloneOutputPath = process.env.TMU_CS_STANDALONE_OUTPUT;

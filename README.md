@@ -7,6 +7,7 @@
 - automatic section pages and TOC slide expansion
 - JS-based bibliography processing
 - Shiki-based code highlighting plus magic-comment annotations for supported line-comment languages
+- Kroki-backed diagram rendering from fenced code blocks
 - display-math annotations
 - external code inclusion from Markdown
 

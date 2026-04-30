@@ -304,6 +304,66 @@ int main() {
 ---
 
 <!--
+These slides demonstrate Kroki-backed diagram rendering from normal fenced code blocks.
+They intentionally avoid raw HTML so the authoring model stays consistent with Markdown-first slides.
+-->
+
+### Mermaid flowchart
+
+```mermaid
+flowchart LR
+    User[User] --> API[Web API]
+    API --> Result[Response]
+```
+
+Write the diagram as a normal fenced code block; the engine renders it through Kroki. See the [official Kroki repository](https://github.com/yuzutech/kroki).
+
+---
+
+<!--
+This slide shows that the same pipeline works for non-Mermaid diagram syntaxes supported by Kroki.
+-->
+
+### PlantUML diagram
+
+```plantuml
+@startuml
+left to right direction
+actor User
+rectangle WebAPI {
+  usecase "Place order" as UC1
+  usecase "Start async job" as UC2
+}
+User --> UC1
+UC1 .> UC2 : triggers
+@enduml
+```
+
+The same pipeline works for other Kroki-supported diagram languages.
+
+---
+
+<!--
+This slide adds a Graphviz example so the regression deck covers a third Kroki language family.
+-->
+
+### Graphviz diagram
+
+```graphviz
+digraph OrderFlow {
+  rankdir=LR;
+  User -> WebAPI [label="request"];
+  WebAPI -> Worker [label="enqueue"];
+  Worker -> Storage [label="read/write"];
+  Worker -> WebAPI [label="done"];
+}
+```
+
+The same pipeline works for other Kroki-supported diagram languages.
+
+---
+
+<!--
 This slide demonstrates inline citations and the generated per-slide citation footnotes.
 It is the main example for `[@key]` authoring with the bibliography defined in front matter.
 -->
