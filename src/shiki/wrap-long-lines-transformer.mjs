@@ -68,6 +68,15 @@ function createTextNode(value) {
   return { type: 'text', value };
 }
 
+function ensureVisibleBlankLine(lineNode) {
+  if (measureNodeWidth(lineNode) > 0) return lineNode;
+
+  return {
+    ...lineNode,
+    children: [createTextNode('\u200b')],
+  };
+}
+
 function sliceNode(node, start, end) {
   if (!node || end <= start) return null;
 
@@ -181,7 +190,7 @@ export function createWrapLongLinesTransformer(options = {}) {
           continue;
         }
 
-        wrappedChildren.push(...wrapLineNode(child, options));
+        wrappedChildren.push(...wrapLineNode(child, options).map(ensureVisibleBlankLine));
       }
 
       node.children = wrappedChildren;

@@ -3,6 +3,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { Marp } from '@marp-team/marp-core';
+import engine from '../engine.mjs';
 import { preprocessCodeMarkdown } from '../src/features/code/index.mjs';
 
 test('preprocessCodeMarkdown expands external code and step slides together', async () => {
@@ -127,4 +129,13 @@ test('preprocessCodeMarkdown leaves unsupported languages unchanged', () => {
   const processed = preprocessCodeMarkdown(markdown);
 
   assert.equal(processed, markdown);
+});
+
+test('rendered external code preserves blank lines', async () => {
+  const marp = await engine({ marp: new Marp() });
+  const { html } = marp.render('[sample.cpp](cpp/sample.cpp)\n', {
+    file: { absolutePath: join(process.cwd(), 'examples', 'slides.md') },
+  });
+
+  assert.match(html, /<span class="line">\u200b<\/span>/);
 });
