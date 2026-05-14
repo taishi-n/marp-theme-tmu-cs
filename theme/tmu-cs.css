@@ -45,6 +45,9 @@
   --tmu-cs-side-padding: 72px;
   --tmu-cs-top-padding: 84px;
   --tmu-cs-bottom-padding: 86px;
+  --tmu-cs-footer-bottom: 24px;
+  --tmu-cs-footer-top-padding: 0.18rem;
+  --tmu-cs-footer-band-height: 1.9rem;
   --tmu-cs-code-font-family: "TMU CS Code", "Noto Sans Mono ExtraCondensed", monospace;
 }
 
@@ -74,10 +77,15 @@ section::after {
 section::before {
   content: attr(data-header);
   left: var(--tmu-cs-side-padding);
-  bottom: 24px;
+  right: var(--tmu-cs-side-padding);
+  bottom: var(--tmu-cs-footer-bottom);
+  padding-top: var(--tmu-cs-footer-top-padding);
+  border-top: 0.04rem solid rgba(0, 101, 67, 0.18);
   color: var(--tmu-cs-muted);
   font-size: 16px;
   line-height: 1.2;
+  text-align: left;
+  white-space: nowrap;
 }
 
 section::after {
@@ -140,10 +148,10 @@ section > header::after {
 }
 
 section > footer {
-  bottom: 24px;
-  padding-top: 0.18rem;
-  border-top: 0.04rem solid rgba(0, 101, 67, 0.18);
+  bottom: var(--tmu-cs-footer-bottom);
+  padding-top: var(--tmu-cs-footer-top-padding);
   text-align: right;
+  white-space: nowrap;
 }
 
 /* Inspired by the alignment utility classes in classmethod-marp-theme:
@@ -402,7 +410,7 @@ section.column-layout > h4,
 section.column-layout > h5,
 section.column-layout > h6,
 section.column-layout > p,
-section.column-layout > ul,
+section.column-layout > ul:not(.citation-bibliography-list):not(:has(.citation-footnote-label)),
 section.column-layout > ol,
 section.column-layout > blockquote,
 section.column-layout > table,
@@ -438,10 +446,6 @@ section.column-layout > div.column > :last-child {
   visibility: hidden;
 }
 
-.citation-footnotes-marker {
-  margin-top: auto;
-}
-
 .citation-footnotes-marker + ul,
 .citation-bibliography-marker + ul {
   margin: 0.42rem 0 0;
@@ -451,6 +455,12 @@ section.column-layout > div.column > :last-child {
 }
 
 .citation-footnotes-marker + ul {
+  position: absolute;
+  left: var(--tmu-cs-side-padding);
+  right: var(--tmu-cs-side-padding);
+  width: auto;
+  bottom: calc(var(--tmu-cs-footer-bottom) + var(--tmu-cs-footer-band-height));
+  margin: 0;
   font-size: 16px;
   line-height: 1.22;
 }

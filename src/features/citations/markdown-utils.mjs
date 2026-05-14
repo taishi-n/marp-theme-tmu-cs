@@ -34,6 +34,10 @@ export function containsCitationSyntax(markdown) {
   return /\[@[^\]]+\]/u.test(String(markdown ?? ''));
 }
 
+export function containsMarkdownFootnoteSyntax(markdown) {
+  return /\[\^[^\]]+\]/u.test(String(markdown ?? ''));
+}
+
 export function normalizeBibliographyReferences(frontMatter = {}) {
   if (typeof frontMatter.bibliography === 'string') {
     return frontMatter.bibliography.trim() === '' ? [] : [frontMatter.bibliography.trim()];
@@ -240,7 +244,7 @@ export function replaceMarkdownFootnoteReferences(markdown, definitions, onWarni
     .filter((id) => definitions.has(id))
     .map((id, index) => ({
       label: `[${index + 1}]`,
-      bodyHtml: escapeHtml(definitions.get(id)),
+      bodyHtml: definitions.get(id),
     }));
 
   return {
