@@ -546,6 +546,7 @@ pre,
 :not(pre) > code {
   margin: 0;
   padding: 0.2em 0.4em;
+  border: 1px solid var(--tmu-cs-border);
   border-radius: 6px;
   background: var(--bgColor-neutral-muted);
   color: inherit;
@@ -573,7 +574,7 @@ pre,
 :is(pre, marp-pre) {
   margin: 0 0 var(--base-size-16);
   padding: var(--base-size-16);
-  border: 0;
+  border: 1px solid var(--tmu-cs-border);
   border-radius: 6px;
   box-shadow: none;
   background: var(--bgColor-muted);
