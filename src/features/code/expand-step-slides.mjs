@@ -132,6 +132,19 @@ function buildFenceBlock(opening, code, closing) {
   return `${opening}\n${code}\n${closing}`;
 }
 
+function renderSegmentsForStep(segments, step = null) {
+  return segments.map((segment) => {
+    if (segment.type === 'markdown' || segment.type === 'fence') return segment.content;
+    return buildFenceBlock(
+      segment.opening,
+      step === null
+        ? segment.code
+        : createCodeVariant(segment.code, segment.metadata, step, segment.commentPrefix),
+      segment.closing,
+    );
+  }).join('\n');
+}
+
 function expandSlide(slide, options = {}) {
   const { lines } = splitLinesPreservingEOF(slide.content);
   const segments = [];
@@ -218,22 +231,13 @@ function expandSlide(slide, options = {}) {
 
     if (!hasSanitizedChange) return [slide.content];
 
-    return [segments.map((segment) => {
-      if (segment.type === 'markdown' || segment.type === 'fence') return segment.content;
-      return buildFenceBlock(segment.opening, segment.code, segment.closing);
-    }).join('\n')];
+    return [renderSegmentsForStep(segments)];
   }
 
-  return steps.map((step) =>
-    segments.map((segment) => {
-      if (segment.type === 'markdown' || segment.type === 'fence') return segment.content;
-      return buildFenceBlock(
-        segment.opening,
-        createCodeVariant(segment.code, segment.metadata, step, segment.commentPrefix),
-        segment.closing,
-      );
-    }).join('\n'),
-  );
+  return [
+    renderSegmentsForStep(segments),
+    ...steps.map((step) => renderSegmentsForStep(segments, step)),
+  ];
 }
 
 export function expandStepSlides(markdown, options = {}) {

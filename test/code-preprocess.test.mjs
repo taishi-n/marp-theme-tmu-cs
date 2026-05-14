@@ -26,15 +26,16 @@ test('preprocessCodeMarkdown expands external code and step slides together', as
       '',
     ].join('\n');
 
-    const processed = preprocessCodeMarkdown(markdown, {
+  const processed = preprocessCodeMarkdown(markdown, {
       markdownPath,
     });
 
-    assert.equal(processed.split('\n\n---\n\n').length, 3);
+    assert.equal(processed.split('\n\n---\n\n').length, 4);
     assert.match(processed, /```cpp\nint external_value = 7;\n```/);
     assert.ok(!processed.includes('[!step'));
     assert.match(processed, /\[!code highlight]/);
     assert.match(processed, /\[!code focus]/);
+    assert.match(processed, /```cpp\nint a = 0;\nint b = 1;\n```/);
   } finally {
     await rm(tempDir, { force: true, recursive: true });
   }
@@ -79,8 +80,9 @@ test('preprocessCodeMarkdown expands step slides for python line comments', () =
 
   const processed = preprocessCodeMarkdown(markdown);
 
-  assert.equal(processed.split('\n\n---\n\n').length, 2);
+  assert.equal(processed.split('\n\n---\n\n').length, 3);
   assert.ok(!processed.includes('[!step'));
+  assert.match(processed, /```python\nvalue = 1\ntotal = value \+ 2\n```/);
   assert.match(processed, /# \[!code highlight]/);
   assert.match(processed, /# \[!code focus]/);
 });
@@ -96,7 +98,8 @@ test('preprocessCodeMarkdown preserves visible comments before step directives',
 
   const processed = preprocessCodeMarkdown(markdown);
 
-  assert.equal(processed.split('\n\n---\n\n').length, 2);
+  assert.equal(processed.split('\n\n---\n\n').length, 3);
+  assert.match(processed, /```cpp\nint value = 1; \/\/ keep this comment\nint total = value \+ 2; \/\/ and this one\n```/);
   assert.match(processed, /int value = 1; \/\/ keep this comment \/\/ \[!code highlight]/);
   assert.match(processed, /int total = value \+ 2; \/\/ and this one \/\/ \[!code focus]/);
 });
@@ -112,8 +115,9 @@ test('preprocessCodeMarkdown expands step slides for sql line comments', () => {
 
   const processed = preprocessCodeMarkdown(markdown);
 
-  assert.equal(processed.split('\n\n---\n\n').length, 2);
+  assert.equal(processed.split('\n\n---\n\n').length, 3);
   assert.ok(!processed.includes('[!step'));
+  assert.match(processed, /```sql\nSELECT \*\nFROM users\n```/);
   assert.match(processed, /-- \[!code highlight]/);
   assert.match(processed, /-- \[!code info]/);
 });
