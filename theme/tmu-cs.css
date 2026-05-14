@@ -678,67 +678,6 @@ code .hljs-strong {
     var(--tmu-cs-info);
 }
 
-.marp-code .line.has-annotation {
-  box-shadow: inset 0 -1px 0 rgba(0, 101, 67, 0.18);
-}
-
-.code-annotations {
-  margin-top: 0;
-  margin-bottom: var(--base-size-16);
-  padding: 0.75rem var(--base-size-16) 0.85rem;
-  border: 0;
-  border-top: 1px solid var(--borderColor-muted);
-  border-radius: 0 0 6px 6px;
-  background: var(--bgColor-muted);
-  font-size: 16px;
-}
-
-.marp-code.has-annotations {
-  margin-bottom: 0;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-.marp-code.has-annotations + .code-annotations {
-  margin-top: 0;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-}
-
-.code-annotation {
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-  gap: 0.45rem;
-  align-items: start;
-  padding: 0.22rem 0;
-}
-
-.code-annotation + .code-annotation {
-  margin-top: 0.3rem;
-  padding-top: 0.45rem;
-  border-top: 1px solid rgba(0, 101, 67, 0.12);
-}
-
-.code-annotation-lines {
-  min-width: 3.2em;
-  color: var(--tmu-cs-muted);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.code-annotation-label {
-  padding: 0.08rem 0.45rem;
-  border-radius: 999px;
-  background: var(--tmu-cs-accent-soft);
-  color: var(--tmu-cs-accent);
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.code-annotation-note {
-  color: var(--tmu-cs-ink);
-}
-
 img,
 video,
 audio {

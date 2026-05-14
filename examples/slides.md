@@ -6,7 +6,7 @@ math: mathjax
 sectionPages: true
 sectionPageLevel: 2
 title: TMU-CS
-subtitle: Marp slides with citations and annotations
+subtitle: Marp slides with citations and step highlighting
 author: Taishi Nakashima
 affiliation: Tokyo Metropolitan University
 date: 2026-04-20
@@ -182,7 +182,7 @@ tocPageMaxLevel: 2
 
 <!--
 This slide explains the inline commands and magic comments interpreted by the custom engine.
-It is the main authoring reference for TOC insertion, external code expansion, annotations, and step emphasis.
+It is the main authoring reference for TOC insertion, external code expansion, and step emphasis.
 -->
 
 ### Inline commands and markers
@@ -192,9 +192,8 @@ It is the main authoring reference for TOC insertion, external code expansion, a
 - `<!-- _class: all-text-center align-center -->`: center all text horizontally and place the slide content vertically in the middle
 - `[sample.cpp](cpp/sample.cpp)`: expand a standalone code link into a fenced block
 - ```` ```cpp path="cpp/sample.cpp" fit-height="true" ````: load external code and scale it to the remaining height
-- `// [!annotate ...]` or `# [!annotate ...]`: attach code annotations
 - `// [!step ...]` or `# [!step ...]`: generate step-by-step emphasis slides
-- `% [!annotate ...]` at the end of a TeX line: attach math annotations
+- `% [!math-annotate ...]` at the end of a TeX line: attach math annotations
 
 ---
 
@@ -202,8 +201,7 @@ It is the main authoring reference for TOC insertion, external code expansion, a
 
 <!--
 This section focuses on authoring features added by this package:
-math annotations, code annotations, step expansion, citations, bibliography placeholders,
-and large-type slides.
+math annotations, step expansion, citations, bibliography placeholders, and large-type slides.
 -->
 
 ---
@@ -218,11 +216,11 @@ The annotation comments are kept in source and turned into visual callouts durin
 Inline math: $e^{i\pi} + 1 = 0$
 
 $$
-X_k % [!annotate note="The $k$-th component in the frequency domain"]
+X_k % [!math-annotate note="The $k$-th component in the frequency domain"]
 =
-\sum_{n=0}^{N-1} % [!annotate note="Summation over every sample"]
-x_n % [!annotate note="Discrete-time signal"]
-\exp\!\left( -2\pi i \frac{kn}{N} \right) % [!annotate note="Complex rotation factor"]
+\sum_{n=0}^{N-1} % [!math-annotate note="Summation over every sample"]
+x_n % [!math-annotate note="Discrete-time signal"]
+\exp\!\left( -2\pi i \frac{kn}{N} \right) % [!math-annotate note="Complex rotation factor"]
 $$
 
 ---
@@ -252,25 +250,25 @@ for i in range(5):
 ---
 
 <!--
-This slide introduces the annotation syntax on external C++ code and the available highlight states.
+This slide introduces step-based highlighting on external C++ code.
 It is meant to show the source file reference rather than inline code.
 -->
 
-### Annotated code
+### Step-highlighted code
 
 [sample-highlight.cpp](cpp/sample-highlight.cpp)
 
-- Use `// [!annotate]` in C++ and `# [!annotate]` in Python
+- Use `// [!step]` in C++ and `# [!step]` in Python
 - Supported styles: `highlight`, `focus`, `warning`, `error`, `info`
 
 ---
 
 <!--
 This slide mirrors the previous one for Python source files.
-It highlights that the same annotation model works across languages with comment-prefix differences only.
+It highlights that the same step model works across languages with comment-prefix differences only.
 -->
 
-### Annotated code in Python
+### Step-highlighted code in Python
 
 [sample-highlight.py](python/sample-highlight.py)
 
@@ -287,14 +285,14 @@ Subsequent slides are generated automatically from the same block to reveal each
 #include <iostream>
 
 int main() {
-  const int matrix[2][3] = {{1, 2, 3}, {4, 5, 6}};  // [!step 1 highlight]
-  const int vector[3] = {7, 8, 9};                  // [!step 2 highlight]
+  const int matrix[2][3] = {{1, 2, 3}, {4, 5, 6}};  // input matrix [!step 1 highlight]
+  const int vector[3] = {7, 8, 9};                  // input vector [!step 2 highlight]
 
-  for (int row = 0; row < 2; ++row) {                // [!step 3 focus:4]
+  for (int row = 0; row < 2; ++row) {                // loop over rows [!step 3 focus:4]
     const int sum = matrix[row][0] * vector[0]
-      + matrix[row][1] * vector[1]                   // [!step 4 warning]
-      + matrix[row][2] * vector[2];                  // [!step 5 error]
-    std::cout << sum << '\n';                        // [!step 6 info]
+      + matrix[row][1] * vector[1]                   // middle term [!step 4 warning]
+      + matrix[row][2] * vector[2];                  // final term [!step 5 error]
+    std::cout << sum << '\n';                        // output result [!step 6 info]
   }
 }
 ```

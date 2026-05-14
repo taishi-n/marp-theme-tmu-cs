@@ -80,37 +80,7 @@ Implementation map: `src/pipeline/section-pages.mjs`, `src/pipeline/auxiliary-pa
 
 ## Annotated And Step-Emphasized Code
 
-The theme uses Shiki for fenced code block highlighting. The package-specific magic-comment based annotation and step-emphasis flows are available for supported languages that have line comments.
-
-### Annotated Code With `annotate`
-
-Use a supported line comment prefix plus `[!annotate ...]` to attach explanatory notes to the previous line of actual code.
-
-```cpp
-auto p = std::make_unique<int>(42);
-// [!annotate label="unique_ptr" note="Ownership is managed by std::unique_ptr."]
-```
-
-```python
-value = 1
-# [!annotate label="value" note="Initial value."]
-```
-
-Rules:
-
-- `label` is required
-- `note` is required
-- `:N` may be used to target a range of lines
-- comment-only annotation lines attach to the nearest preceding actual code line
-- long rendered lines are wrapped automatically, and each continued visual segment ends with `\`
-
-Range example:
-
-```cpp
-int a = 1;
-int b = 2;
-// [!annotate:2 label="Inputs" note="These lines initialize the operands."]
-```
+The theme uses Shiki for fenced code block highlighting. The package-specific magic-comment flow for code blocks is step-based emphasis on supported languages that have line comments.
 
 Supported line comment prefixes:
 
@@ -135,6 +105,14 @@ for i in range(10):   # [!step 1 warning]
 return_value = 0      # [!step 3 focus]
 ```
 
+Visible comments may be kept before the directive:
+
+```cpp
+for (int i = 0; i < 10; i++) {  // loop counter [!step 1 warning]
+  std::cout << i << '\n';       // output current value [!step 2 info]
+}
+```
+
 Syntax:
 
 ```text
@@ -146,10 +124,12 @@ Rules:
 - step numbers must be positive integers
 - supported actions are `highlight`, `focus`, `warning`, `error`, and `info`
 - `:N` expands the effect to multiple code lines
+- the directive must appear at the end of the comment; any comment text before it remains visible
 - the engine duplicates slides so each step becomes its own revealed state
-- languages without a supported line comment prefix still get Shiki syntax highlighting, but `annotate` and `step` directives are ignored
+- as of the current version, code-block `[!annotate]` is no longer supported; use ordinary comments for explanations
+- languages without a supported line comment prefix still get Shiki syntax highlighting, but `step` directives are ignored
 
-Implementation map: `src/features/code/index.mjs`, `src/shiki/parse-annotate-directive.mjs`, `src/shiki/parse-step-directive.mjs`, `src/shiki/annotate-transformer.mjs`, `src/features/code/expand-step-slides.mjs`
+Implementation map: `src/features/code/index.mjs`, `src/shiki/parse-step-directive.mjs`, `src/features/code/expand-step-slides.mjs`
 
 ## External Code Inclusion
 
@@ -256,13 +236,13 @@ Implementation map: `scripts/marp-tmu-cs.mjs`, `engine.mjs`, `src/pipeline/stand
 
 ## Math Highlighting And Math Annotations
 
-Display math can be annotated line by line using `% [!annotate ...]` comments at the end of TeX lines.
+Display math can be annotated line by line using `% [!math-annotate ...]` comments at the end of TeX lines.
 
 ```tex
 $$
-X_k % [!annotate note="The k-th frequency component"]
-= \sum_{n=0}^{N-1} % [!annotate note="Summation over all samples"]
-x_n % [!annotate label="signal" note="Discrete-time signal"]
+X_k % [!math-annotate note="The k-th frequency component"]
+= \sum_{n=0}^{N-1} % [!math-annotate note="Summation over all samples"]
+x_n % [!math-annotate label="signal" note="Discrete-time signal"]
 $$
 ```
 
@@ -274,6 +254,7 @@ Requirements and behavior:
 - `color` is optional and accepts hex-style values
 - `:N` is parsed but ignored for math annotations
 - the annotation must be placed at the end of the line it describes
+- as of the current version, math uses `[!math-annotate ...]` while code-block `[!annotate]` remains removed
 - the engine wraps the math block and injects a runtime that places note boxes and connectors
 
 Implementation map: `src/features/math/index.mjs`, `src/features/math/annotate-math-block.mjs`, `engine.mjs`

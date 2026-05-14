@@ -6,13 +6,11 @@ import {
 import expandStepSlides from './expand-step-slides.mjs';
 import resolveExternalCode from './resolve-external-code.mjs';
 import {
-  getLineCommentPrefix,
   isShikiLanguageSupported,
   normalizeFenceLanguage,
   parseFenceInfo,
   supportsMagicComments,
 } from './shared.mjs';
-import { createAnnotateTransformer, inspectAnnotatedCodeBlock } from '../../shiki/annotate-transformer.mjs';
 import { createWrapLongLinesTransformer, wrapCodeSource } from '../../shiki/wrap-long-lines-transformer.mjs';
 
 const baseFontSizePx = 16;
@@ -38,9 +36,6 @@ const headingHeightsPx = {
   h3: (baseFontSizePx * 0.72 * 1.18) + (baseFontSizePx * 0.34),
 };
 
-const codeAnnotationBaseHeightPx = (baseFontSizePx * 0.55) + (baseFontSizePx * 0.75 * 2) + 2 + (baseFontSizePx * 0.72 * 1.35) + (baseFontSizePx * 0.22 * 2);
-const codeAnnotationAdditionalHeightPx = (baseFontSizePx * 0.3) + (baseFontSizePx * 0.45) + (baseFontSizePx * 0.22 * 2) + 1 + (baseFontSizePx * 0.72 * 1.35);
-
 function isTruthyAttribute(value) {
   const normalized = String(value ?? '').trim().toLowerCase();
   return ['1', 'true', 'yes', 'on', 'fit', 'fit-height'].includes(normalized);
@@ -58,16 +53,6 @@ function createMarkdownWarningEmitter(onWarning) {
   return ({ line, message }) => {
     const location = typeof line === 'number' ? `line ${line}` : 'markdown';
     onWarning?.(`${location}: ${message}`);
-  };
-}
-
-function createWarningLogger(token, logPrefix) {
-  const markdownStartLine = token.map?.[0];
-
-  return ({ line, message }) => {
-    const location = typeof line === 'number' ? `line ${line}` : 'code block';
-    const block = typeof markdownStartLine === 'number' ? ` (fence starts near markdown line ${markdownStartLine + 1})` : '';
-    console.warn(`${logPrefix} ${location}: ${message}${block}`);
   };
 }
 
@@ -120,29 +105,16 @@ function findMatchingCloseIndex(tokens, startIndex) {
   return startIndex;
 }
 
-function estimateCodeAnnotationHeight(annotationCount) {
-  if (annotationCount <= 0) return 0;
-  return codeAnnotationBaseHeightPx + ((annotationCount - 1) * codeAnnotationAdditionalHeightPx);
-}
-
 function estimateCodeBlockHeight(token, options = {}) {
   const language = normalizeFenceLanguage(token.info);
+  const lineHeightPx = supportsMagicComments(language) ? baseFontSizePx : defaultCodeFontSizePx;
 
-  if (supportsMagicComments(language)) {
-    const { annotationCount, lineCount } = inspectAnnotatedCodeBlock(token.content, {
-      commentPrefix: getLineCommentPrefix(language),
-    });
-
-    return (
-      (options.hasPreviousContent ? customCodeMarginTopPx : 0)
-      + codePaddingYPx
-      + customCodeBorderYPx
-      + (lineCount * baseFontSizePx)
-      + estimateCodeAnnotationHeight(annotationCount)
-    );
-  }
-
-  return codePaddingYPx + (countCodeLines(token.content) * defaultCodeFontSizePx);
+  return (
+    (options.hasPreviousContent ? customCodeMarginTopPx : 0)
+    + codePaddingYPx
+    + (supportsMagicComments(language) ? customCodeBorderYPx : 0)
+    + (countCodeLines(token.content) * lineHeightPx)
+  );
 }
 
 function formatPixels(value) {
@@ -155,7 +127,17 @@ function stripCodeBlockAutoScaling(html) {
 
 function normalizeShikiPreTag(html) {
   return stripCodeBlockAutoScaling(html).replace(/^<pre\b([^>]*)>/, (_match, attrs) => {
-    const normalizedAttrs = String(attrs ?? '').replace(/\sstyle="[^"]*"/, '');
+    let normalizedAttrs = String(attrs ?? '').replace(/\sstyle="[^"]*"/, '');
+    const classMatch = normalizedAttrs.match(/\sclass="([^"]*)"/);
+
+    if (classMatch) {
+      const classes = classMatch[1].split(/\s+/).filter(Boolean);
+      if (!classes.includes('marp-code')) classes.push('marp-code');
+      normalizedAttrs = normalizedAttrs.replace(/\sclass="[^"]*"/, ` class="${classes.join(' ')}"`);
+    } else {
+      normalizedAttrs += ' class="marp-code"';
+    }
+
     return `<pre is="marp-pre"${normalizedAttrs}>`;
   });
 }
@@ -303,8 +285,6 @@ export function warnForOverflowingCodeBlocks(markdown, marp, env = {}, options =
 export function installCodeFeature(marp, options = {}) {
   const defaultFence = marp.markdown.renderer.rules.fence;
   const highlighter = options.highlighter;
-  const logPrefix = options.logPrefix;
-
   marp.markdown.renderer.rules.fence = (tokens, idx, renderOptions, env, self) => {
     const token = tokens[idx];
     const language = normalizeFenceLanguage(token.info);
@@ -349,16 +329,6 @@ export function installCodeFeature(marp, options = {}) {
         }),
       ];
 
-      if (supportsMagicComments(language)) {
-        transformers.push(
-          createAnnotateTransformer({
-            commentPrefix: getLineCommentPrefix(language),
-            onWarning: createWarningLogger(token, logPrefix),
-            sourceLineOffset: typeof token.map?.[0] === 'number' ? token.map[0] + 1 : 0,
-          }),
-        );
-      }
-
       transformers.push(createWrapLongLinesTransformer(codeWrapOptions));
 
       const html = highlighter.codeToHtml(source, {
@@ -370,7 +340,7 @@ export function installCodeFeature(marp, options = {}) {
       return wrapFittedCodeBlock(normalizeShikiPreTag(html), fitHeight);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.warn(`${logPrefix} Failed to render ${language || 'plain-text'} block with Shiki. Falling back to default renderer. ${message}`);
+      console.warn(`${options.logPrefix} Failed to render ${language || 'plain-text'} block with Shiki. Falling back to default renderer. ${message}`);
       return wrapFittedCodeBlock(
         stripCodeBlockAutoScaling(defaultFence(tokens, idx, renderOptions, env, self)),
         fitHeight,

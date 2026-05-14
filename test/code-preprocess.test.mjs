@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { preprocessCodeMarkdown } from '../src/features/code/index.mjs';
-import { inspectAnnotatedCodeBlock } from '../src/shiki/annotate-transformer.mjs';
 
 test('preprocessCodeMarkdown expands external code and step slides together', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-code-'));
@@ -84,6 +83,22 @@ test('preprocessCodeMarkdown expands step slides for python line comments', () =
   assert.match(processed, /# \[!code focus]/);
 });
 
+test('preprocessCodeMarkdown preserves visible comments before step directives', () => {
+  const markdown = [
+    '```cpp',
+    'int value = 1; // keep this comment [!step 1 highlight]',
+    'int total = value + 2; // and this one [!step 2 focus]',
+    '```',
+    '',
+  ].join('\n');
+
+  const processed = preprocessCodeMarkdown(markdown);
+
+  assert.equal(processed.split('\n\n---\n\n').length, 2);
+  assert.match(processed, /int value = 1; \/\/ keep this comment \/\/ \[!code highlight]/);
+  assert.match(processed, /int total = value \+ 2; \/\/ and this one \/\/ \[!code focus]/);
+});
+
 test('preprocessCodeMarkdown expands step slides for sql line comments', () => {
   const markdown = [
     '```sql',
@@ -112,33 +127,4 @@ test('preprocessCodeMarkdown leaves unsupported languages unchanged', () => {
   const processed = preprocessCodeMarkdown(markdown);
 
   assert.equal(processed, markdown);
-});
-
-test('inspectAnnotatedCodeBlock supports line-comment prefixes beyond cpp', () => {
-  const pythonAnnotated = inspectAnnotatedCodeBlock(
-    [
-      'value = 1',
-      '# [!annotate label="value" note="Initial value."]',
-      'total = value + 2',
-    ].join('\n'),
-    { commentPrefix: '#' },
-  );
-
-  const sqlAnnotated = inspectAnnotatedCodeBlock(
-    [
-      'SELECT *',
-      'FROM users',
-      '-- [!annotate:2 label="query" note="Main query body."]',
-    ].join('\n'),
-    { commentPrefix: '--' },
-  );
-
-  assert.deepEqual(pythonAnnotated, {
-    annotationCount: 1,
-    lineCount: 2,
-  });
-  assert.deepEqual(sqlAnnotated, {
-    annotationCount: 1,
-    lineCount: 2,
-  });
 });

@@ -4,7 +4,7 @@ This document describes the user-visible styling provided by `theme/tmu-cs.css`.
 
 ## Visual Direction
 
-The theme uses a white background, dark body text, and a green accent (`#006543`) as the primary identity color. The color tokens are defined in `:root` and reused across headings, pagination, footnotes, citations, code annotations, and math overlays.
+The theme uses a white background, dark body text, and a green accent (`#006543`) as the primary identity color. The color tokens are defined in `:root` and reused across headings, pagination, footnotes, citations, code emphasis states, and math overlays.
 
 Key groups of variables include:
 
@@ -125,7 +125,7 @@ Citation references and Markdown footnotes are rendered into a shared footnote-s
 
 This styling is paired with the citation core/backend pipeline in `src/features/citations/*`.
 
-## Code Blocks And Code Annotation Panels
+## Code Blocks
 
 Code styling is driven by `.marp-code` and related selectors.
 
@@ -137,15 +137,6 @@ Code styling is driven by `.marp-code` and related selectors.
   - `.is-warning`
   - `.is-error`
   - `.is-info`
-- annotated lines add `.has-annotation`
-
-When code annotations are present, the code block is followed by a `.code-annotations` panel. Each annotation row contains:
-
-- line numbers
-- a label pill
-- explanatory text
-
-This presentation is paired with the Shiki transformer in `src/shiki/annotate-transformer.mjs`.
 
 ## Math Annotation Overlay
 
@@ -178,6 +169,5 @@ The spectrogram wrapper hides the native `audio` controls, adds explicit play/st
 - Auxiliary pagination and current-section header labels: `src/pipeline/auxiliary-pagination.mjs`
 - Citation block generation: `src/features/citations/core.mjs`
 - Primary citation backend: `src/features/citations/backends/js.mjs`
-- Code annotation rendering: `src/shiki/annotate-transformer.mjs`
 - Math annotation wrapper and runtime injection: `src/features/math/annotate-math-block.mjs`
 - GIF and spectrogram media wrappers: `src/pipeline/animated-images.mjs`

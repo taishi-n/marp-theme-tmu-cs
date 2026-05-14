@@ -20,6 +20,8 @@ const TAB10_COLORS = [
   '#17becf',
 ];
 
+const MATH_ANNOTATE_DIRECTIVE = '!math-annotate';
+
 const mathAdaptor = liteAdaptor();
 RegisterHTMLHandler(mathAdaptor);
 
@@ -114,7 +116,7 @@ function unescapeQuotedValue(value) {
 }
 
 function extractAnnotateComment(line) {
-  const markerIndex = line.indexOf('[!annotate');
+  const markerIndex = line.indexOf(`[${MATH_ANNOTATE_DIRECTIVE}`);
   if (markerIndex === -1) return null;
 
   const commentStart = line.lastIndexOf('%', markerIndex);
@@ -128,7 +130,7 @@ function extractAnnotateComment(line) {
 
 function parseAnnotateDirective(input, options = {}) {
   const raw = String(input ?? '');
-  const start = raw.indexOf('[!annotate');
+  const start = raw.indexOf(`[${MATH_ANNOTATE_DIRECTIVE}`);
 
   if (start === -1) return null;
 
@@ -139,9 +141,9 @@ function parseAnnotateDirective(input, options = {}) {
   }
 
   const body = raw.slice(start + 1, end).trim();
-  if (!body.startsWith('!annotate')) return null;
+  if (!body.startsWith(MATH_ANNOTATE_DIRECTIVE)) return null;
 
-  let cursor = '!annotate'.length;
+  let cursor = MATH_ANNOTATE_DIRECTIVE.length;
 
   if (body[cursor] === ':') {
     cursor += 1;

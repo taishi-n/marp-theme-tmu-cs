@@ -18,7 +18,7 @@ Main entry points:
 - `src/core/*`: shared parsing, text-processing, and Markdown-structure helpers
 - `src/pipeline/*`: deck-level processing stages and HTML postprocessing
 - `src/features/*`: feature-level integration points
-- `src/shiki/*`: code annotation parsing and Shiki transformation
+- `src/shiki/*`: step directive parsing and Shiki line-wrapping helpers
 - `vendor/csl/ieee.csl`: bundled CSL data
 
 Supported package entry points are intentionally small:
@@ -130,7 +130,7 @@ When visually checking the sample deck, pay particular attention to:
 - current section name in the header
 - pagination
 - auxiliary pages such as section pages and TOC pages
-- code blocks and code annotation panels
+- code blocks and step emphasis states
 - math annotation overlays
 - citations and Markdown footnotes
 
@@ -160,8 +160,6 @@ When visually checking the sample deck, pay particular attention to:
 - Step slide expansion: `src/features/code/index.mjs`, `src/features/code/expand-step-slides.mjs`
 - Citation and bibliography processing: `src/features/citations/index.mjs`, `src/features/citations/core.mjs`
 - JS citation backend: `src/features/citations/backends/js.mjs`
-- Code annotation parsing: `src/shiki/parse-annotate-directive.mjs`
 - Step directive parsing: `src/shiki/parse-step-directive.mjs`
-- Shiki annotation rendering: `src/features/code/index.mjs`, `src/shiki/annotate-transformer.mjs`
 - Math annotation integration: `src/features/math/index.mjs`
 - Math annotation parsing and runtime: `src/features/math/annotate-math-block.mjs`

@@ -6,7 +6,7 @@
 - a custom Marp engine
 - automatic section pages and TOC slide expansion
 - JS-based bibliography processing
-- Shiki-based code highlighting plus magic-comment annotations for supported line-comment languages
+- Shiki-based code highlighting plus step-based emphasis for supported line-comment languages
 - Kroki-backed diagram rendering from fenced code blocks
 - display-math annotations
 - external code inclusion from Markdown
@@ -50,7 +50,7 @@ npm run build:html:standalone
 
 ## Using From Another Project
 
-This repository is not only a theme CSS package. The `tmu-cs` theme also depends on the custom Marp engine in this package for citation processing, code highlighting, math annotations, and external code inclusion. For that reason, using only the CSS file is not enough if you want the full feature set.
+This repository is not only a theme CSS package. The `tmu-cs` theme also depends on the custom Marp engine in this package for citation processing, code highlighting, math annotations, step expansion, and external code inclusion. For that reason, using only the CSS file is not enough if you want the full feature set.
 
 The recommended setup is to keep one local clone of this repository, register it with `npm link`, and use the packaged `marp-tmu-cs` wrapper from each slide project. That avoids copying this package into every project and also avoids writing a per-project `marp.config.mjs` when you use the wrapper CLI.
 
@@ -223,17 +223,6 @@ External code fences also support height fitting, and the engine infers the lang
 ```
 ````
 
-Annotated code:
-
-```cpp
-auto p = std::make_unique<int>(42); // [!annotate label="unique_ptr" note="Ownership is transferred to std::unique_ptr."]
-```
-
-```python
-value = 1
-# [!annotate label="value" note="Initial value."]
-```
-
 Step-emphasized code:
 
 ```cpp
@@ -254,22 +243,28 @@ print(total)            # [!step 3 info]
 
 Available actions are `highlight`, `focus`, `warning`, `error`, and `info`. The syntax is `[!step <number> <action>[:N]]`, where `:N` extends the emphasis to `N` consecutive lines.
 
-Magic-comment annotations and step expansion are available for fenced languages that use line comments supported by the theme. Current prefixes are:
+Visible comments may be kept before the directive, for example `int a = 0; // loop counter [!step 1 highlight]`.
+
+As of the current version, code-block `[!annotate]` has been removed. Use ordinary code comments for explanatory text and `[!step ...]` only for staged emphasis.
+
+Magic-comment step expansion is available for fenced languages that use line comments supported by the theme. Current prefixes are:
 
 - `//`: `c`, `cpp`, `csharp`, `fsharp`, `go`, `java`, `javascript`, `jsx`, `kotlin`, `php`, `rust`, `scala`, `swift`, `typescript`, `tsx`
 - `#`: `perl`, `python`, `r`, `ruby`, `shell`, `toml`, `yaml`
 - `--`: `lua`, `sql`
 
-Other Shiki-supported languages still receive syntax highlighting, but the package-specific `annotate` and `step` directives are ignored unless the language is in the list above.
+Other Shiki-supported languages still receive syntax highlighting, but the package-specific `step` directive is ignored unless the language is in the list above.
 
 Math annotation:
 
 ```tex
 $$
-X_k % [!annotate note="The k-th frequency component"]
+X_k % [!math-annotate note="The k-th frequency component"]
 = \sum_{n=0}^{N-1} x_n
 $$
 ```
+
+As of the current version, display-math annotations use `[!math-annotate ...]`. The old code-block `[!annotate]` directive remains removed.
 
 Citations:
 

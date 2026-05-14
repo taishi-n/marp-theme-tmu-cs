@@ -1,42 +1,15 @@
+import {
+  extractTrailingCommentDirective,
+  isActualCodeLine,
+  stripTrailingWhitespace,
+} from '../../core/comment-directives.mjs';
 import { joinLines, splitLinesPreservingEOF } from '../../core/text-lines.mjs';
 import { isFenceClose, joinMarkdownSlides, parseFenceStart, splitMarkdownSlides } from '../../core/markdown.mjs';
 import parseStepDirective from '../../shiki/parse-step-directive.mjs';
 import { getLineCommentPrefix, normalizeFenceLanguage, supportsMagicComments } from './shared.mjs';
 
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function stripTrailingWhitespace(line) {
-  return line.replace(/[ \t]+$/u, '');
-}
-
-function isCommentOnlyLine(line, commentPrefix) {
-  if (!commentPrefix) return false;
-  const pattern = new RegExp(`^\\s*${escapeRegExp(commentPrefix)}`);
-  return pattern.test(line);
-}
-
-function isActualCodeLine(line, commentPrefix) {
-  const trimmed = line.trim();
-  return trimmed.length > 0 && !isCommentOnlyLine(line, commentPrefix);
-}
-
 function extractStepComment(line, commentPrefix) {
-  if (!commentPrefix) return null;
-  const markerIndex = line.indexOf('[!step');
-  if (markerIndex === -1) return null;
-
-  const commentStart = line.lastIndexOf(commentPrefix, markerIndex);
-  if (commentStart === -1) return null;
-
-  const beforeComment = line.slice(0, commentStart);
-
-  return {
-    beforeComment,
-    comment: line.slice(commentStart),
-    isCommentOnly: beforeComment.trim().length === 0,
-  };
+  return extractTrailingCommentDirective(line, commentPrefix, '[!step');
 }
 
 function appendNotation(line, notations, commentPrefix) {
@@ -72,7 +45,14 @@ function collectStepMetadata(source, options = {}) {
       continue;
     }
 
-    const sanitizedLine = directiveComment.isCommentOnly ? null : stripTrailingWhitespace(directiveComment.beforeComment);
+    if (directiveComment.hasTrailingContent) {
+      warn(index + 1, 'step directive must appear at the end of the comment.');
+      strippedLines.push(line);
+      if (isActualCodeLine(line, commentPrefix)) actualCodeSourceLines.push(strippedLines.length);
+      continue;
+    }
+
+    const sanitizedLine = directiveComment.renderedLine;
     let currentSourceLine = null;
 
     if (sanitizedLine !== null) {
