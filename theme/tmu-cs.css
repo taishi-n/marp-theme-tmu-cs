@@ -689,7 +689,7 @@ code .hljs-strong {
     var(--tmu-cs-info);
 }
 
-img,
+img:not(.emoji),
 video,
 audio {
   display: block;
@@ -699,6 +699,14 @@ audio {
   max-height: none;
   margin-left: auto;
   margin-right: auto;
+}
+
+img.emoji {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin: 0;
+  vertical-align: -0.1em;
 }
 
 figure {

@@ -21,6 +21,48 @@ const highlighterPromise = createHighlighter({
   langs: supportedShikiLanguages,
 });
 
+function findOutputArgument(args = []) {
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+
+    if (argument === '-o' || argument === '--output') {
+      const next = args[index + 1];
+      return typeof next === 'string' && next !== '' ? next : undefined;
+    }
+
+    if (argument.startsWith('--output=')) {
+      return argument.slice('--output='.length);
+    }
+  }
+
+  return undefined;
+}
+
+function detectOutputFormat(args = process.argv.slice(2)) {
+  const normalizedArgs = args.map((arg) => String(arg));
+
+  if (normalizedArgs.some((arg) => arg === '--pdf')) return 'pdf';
+  if (normalizedArgs.some((arg) => arg === '--pptx')) return 'pptx';
+  if (normalizedArgs.some((arg) => arg === '--image' || arg.startsWith('--image='))) return 'image';
+  if (normalizedArgs.some((arg) => arg === '--images' || arg.startsWith('--images='))) return 'images';
+  if (normalizedArgs.some((arg) => arg === '--notes')) return 'notes';
+
+  const outputPath = findOutputArgument(normalizedArgs)?.toLowerCase();
+  if (outputPath?.endsWith('.pdf')) return 'pdf';
+  if (outputPath?.endsWith('.pptx')) return 'pptx';
+  if (outputPath?.endsWith('.png') || outputPath?.endsWith('.jpg') || outputPath?.endsWith('.jpeg')) return 'image';
+  if (outputPath?.endsWith('.txt')) return 'notes';
+
+  return 'html';
+}
+
+function renderNativeEmojiHtml(html) {
+  return String(html ?? '').replace(
+    /<img class="emoji"[^>]*\balt="([^"]*)"[^>]*\bdata-marp-twemoji=""[^>]*\/>/gu,
+    (_, alt) => alt,
+  );
+}
+
 export default async ({ marp }) => {
   const [highlighter, themeCss] = await Promise.all([
     highlighterPromise,
@@ -37,6 +79,7 @@ export default async ({ marp }) => {
   installCodeFeature(marp, { highlighter, logPrefix });
   const standaloneEnabled = process.env.TMU_CS_STANDALONE === '1';
   const standaloneOutputPath = process.env.TMU_CS_STANDALONE_OUTPUT;
+  const outputFormat = detectOutputFormat();
 
   marp.renderMarkdown = (markdown, env = {}) => {
     mathFeature.resetRuntimeInjection();
@@ -60,9 +103,13 @@ export default async ({ marp }) => {
       console.warn(`${logPrefix} Failed to estimate code block overflow. ${message}`);
     }
 
-    const renderedHtml = recalculateAuxiliaryPagination(enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env), {
+    let renderedHtml = recalculateAuxiliaryPagination(enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env), {
       markdownPath,
     }));
+
+    if (outputFormat === 'html') {
+      renderedHtml = renderNativeEmojiHtml(renderedHtml);
+    }
 
     if (!standaloneEnabled) return renderedHtml;
 
