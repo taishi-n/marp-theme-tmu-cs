@@ -5,26 +5,28 @@ import { join } from 'node:path';
 import test from 'node:test';
 import enhanceAnimatedImages from '../src/pipeline/animated-images.mjs';
 
-test('enhanceAnimatedImages wraps wavesurfer spectrogram audio with player markup', () => {
+test('enhanceAnimatedImages wraps spectrogram audio with wavegram player markup', () => {
   const html = '<section><p><audio class="demo wavesurfer-spectrogram" controls src="./tone.wav" data-spectrogram-height="120" data-spectrogram-fft-samples="2048"></audio></p></section>';
   const output = enhanceAnimatedImages(html);
 
-  assert.match(output, /<div class="tmu-cs-spectrogram-player" data-wavesurfer-spectrogram-player>/);
-  assert.match(output, /data-wavesurfer-play/);
-  assert.match(output, /data-wavesurfer-stop/);
-  assert.match(output, /data-wavesurfer-time/);
+  assert.match(output, /<div class="tmu-cs-spectrogram-player" data-wavegram-spectrogram-player>/);
+  assert.doesNotMatch(output, /data-wavegram-play(?:=|\s|>)/);
+  assert.doesNotMatch(output, /data-wavegram-stop(?:=|\s|>)/);
+  assert.doesNotMatch(output, /data-wavegram-time(?:=|\s|>)/);
+  assert.doesNotMatch(output, /Loading spectrogram/);
   assert.match(output, /<audio class="demo wavesurfer-spectrogram" src="\.\/tone\.wav" data-spectrogram-height="120" data-spectrogram-fft-samples="2048"><\/audio>/);
   assert.doesNotMatch(output, /<audio[^>]*controls/);
-  assert.match(output, /tmu-cs-spectrogram-player__waveform/);
-  assert.match(output, /tmu-cs-spectrogram-player__spectrogram/);
-  assert.match(output, /splitChannels: true/);
-  assert.match(output, /labelsBackground: accentColor/);
-  assert.match(output, /fftSamples = parsePositiveInteger\(audio\.dataset\.spectrogramFftSamples, 1024\)/);
-  assert.match(output, /frequencyMax: 0/);
-  assert.match(output, /colorMap: 'roseus'/);
+  assert.match(output, /<wavegram-player data-wavegram-player="" src="\.\/tone\.wav" spectrogram-height="120" fft-size="2048"><\/wavegram-player>/);
+  assert.doesNotMatch(output, /waveform-height=/);
+  assert.doesNotMatch(output, /color-map=/);
+  assert.match(output, /customElements\.define\("wavegram-player"/);
   assert.match(output, /const sourceUrl = resolveAudioSource\(audio\)/);
-  assert.match(output, /wavesurfer\.load\(sourceUrl\)/);
-  assert.match(output, /cdn\.jsdelivr\.net\/npm\/wavesurfer\.js@7\.12\.6/);
+  assert.match(output, /wavegram\.setAttribute\('src', sourceUrl\)/);
+  assert.match(output, /function handleWavegramSeekClick\(wavegram, event\)/);
+  assert.match(output, /function getWavegramRelativeClickX\(target, event\)/);
+  assert.match(output, /event\.stopImmediatePropagation\(\)/);
+  assert.match(output, /audio\.currentTime = relativeX \* duration/);
+  assert.doesNotMatch(output, /cdn\.jsdelivr\.net\/npm\/wavesurfer\.js/);
   assert.doesNotMatch(output, /<p>\s*<div class="tmu-cs-spectrogram-player"/);
 });
 

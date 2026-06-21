@@ -1,6 +1,9 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, extname, isAbsolute, resolve } from 'node:path';
 import { escapeHtmlAttribute } from '../core/html.mjs';
+
+const require = createRequire(import.meta.url);
 
 const BOOLEAN_ATTRIBUTES = new Set([
   'autoplay',
@@ -15,6 +18,31 @@ const binaryMimeTypes = new Map([
   ['.ogg', 'audio/ogg'],
   ['.wav', 'audio/wav'],
 ]);
+
+let wavegramBundleCache;
+
+function getWavegramBundle() {
+  if (wavegramBundleCache === undefined) {
+    const bundle = readFileSync(require.resolve('wavegram'), 'utf8');
+    const standaloneBundle = bundle.replace(
+      /return typeof Worker>"u"\?Promise\.resolve\(_\(t,this\.audioBuffer\.sampleRate,r\)\):new Promise\(\(i,o\)=>\{.*?\}\)\\?\}bindAudio/s,
+      'return Promise.resolve(_(t,this.audioBuffer.sampleRate,r))}bindAudio',
+    );
+
+    if (standaloneBundle === bundle) {
+      throw new Error('Failed to adapt wavegram bundle for standalone HTML output.');
+    }
+
+    wavegramBundleCache = standaloneBundle;
+  }
+
+  return wavegramBundleCache;
+}
+
+function parsePositiveInteger(value, fallbackValue) {
+  const parsed = Number.parseInt(value || '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue;
+}
 
 function parseHtmlAttributes(input = '') {
   const attributes = {};
@@ -167,18 +195,24 @@ function createSpectrogramAudioPlayerHtml(attributes, innerHtml = '') {
   const audioAttributes = serializeHtmlAttributes(attributes, {
     skipKeys: ['controls'],
   });
+  const wavegramAttributes = {
+    'data-wavegram-player': '',
+  };
+  if (typeof attributes.src === 'string' && attributes.src !== '') {
+    wavegramAttributes.src = attributes.src;
+  }
+  if ('data-spectrogram-height' in attributes) {
+    wavegramAttributes['spectrogram-height'] = parsePositiveInteger(attributes['data-spectrogram-height'], 120);
+  }
+  if ('data-spectrogram-fft-samples' in attributes) {
+    wavegramAttributes['fft-size'] = parsePositiveInteger(attributes['data-spectrogram-fft-samples'], 1024);
+  }
+  const wavegramHtmlAttributes = serializeHtmlAttributes(wavegramAttributes);
 
   return (
-    '<div class="tmu-cs-spectrogram-player" data-wavesurfer-spectrogram-player>' +
-    '<div class="tmu-cs-spectrogram-player__toolbar">' +
-    '<button type="button" class="tmu-cs-spectrogram-player__button" data-wavesurfer-play disabled>Play</button>' +
-    '<button type="button" class="tmu-cs-spectrogram-player__button tmu-cs-spectrogram-player__button--secondary" data-wavesurfer-stop disabled>Stop</button>' +
-    '<span class="tmu-cs-spectrogram-player__time" data-wavesurfer-time>000.000s</span>' +
-    '<span class="tmu-cs-spectrogram-player__status" aria-live="polite">Loading spectrogram…</span>' +
-    '</div>' +
+    '<div class="tmu-cs-spectrogram-player" data-wavegram-spectrogram-player>' +
     `<audio${audioAttributes ? ` ${audioAttributes}` : ''}>${innerHtml}</audio>` +
-    '<div class="tmu-cs-spectrogram-player__waveform" data-wavesurfer-waveform></div>' +
-    '<div class="tmu-cs-spectrogram-player__spectrogram" data-wavesurfer-spectrogram></div>' +
+    `<wavegram-player${wavegramHtmlAttributes ? ` ${wavegramHtmlAttributes}` : ''}></wavegram-player>` +
     '</div>'
   );
 }
@@ -190,89 +224,14 @@ function unwrapBlockParagraphs(html) {
   );
 }
 
-function mediaRuntimeScript() {
-  return `<script>(() => {
+function mediaRuntimeScript({ includeWavegram = false } = {}) {
+  return `<script>${includeWavegram ? `${getWavegramBundle()}\n` : ''}
+(() => {
     if (window.__tmuCsMediaEnhancementsLoaded) return;
     window.__tmuCsMediaEnhancementsLoaded = true;
 
-    const waveSurferUrl = 'https://cdn.jsdelivr.net/npm/wavesurfer.js@7.12.6/dist/wavesurfer.min.js';
-    const spectrogramUrl = 'https://cdn.jsdelivr.net/npm/wavesurfer.js@7.12.6/dist/plugins/spectrogram.min.js';
-    let waveSurferReadyPromise;
-
     function copyDimensionStyle(el, styleText) {
       if (typeof styleText === 'string' && styleText.trim() !== '') el.style.cssText = styleText;
-    }
-
-    function loadScript(src) {
-      return new Promise((resolve, reject) => {
-        const existing = document.querySelector('script[src="' + src + '"]');
-        if (existing) {
-          if (existing.dataset.loaded === 'true') {
-            resolve();
-            return;
-          }
-
-          existing.addEventListener('load', () => resolve(), { once: true });
-          existing.addEventListener('error', () => reject(new Error('Failed to load ' + src)), { once: true });
-          return;
-        }
-
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = true;
-        script.addEventListener('load', () => {
-          script.dataset.loaded = 'true';
-          resolve();
-        }, { once: true });
-        script.addEventListener('error', () => reject(new Error('Failed to load ' + src)), { once: true });
-        document.head.appendChild(script);
-      });
-    }
-
-    function ensureWaveSurfer() {
-      if (window.WaveSurfer?.Spectrogram) return Promise.resolve(window.WaveSurfer);
-      if (!waveSurferReadyPromise) {
-        waveSurferReadyPromise = loadScript(waveSurferUrl)
-          .then(() => loadScript(spectrogramUrl))
-          .then(() => {
-            if (!window.WaveSurfer?.Spectrogram) {
-              throw new Error('wavesurfer.js did not expose the Spectrogram plugin.');
-            }
-
-            return window.WaveSurfer;
-          });
-      }
-
-      return waveSurferReadyPromise;
-    }
-
-    function parsePositiveInteger(value, fallbackValue) {
-      const parsed = Number.parseInt(value || '', 10);
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue;
-    }
-
-    function formatSeconds(value) {
-      const seconds = Number.isFinite(value) && value >= 0 ? value : 0;
-      const fixed = seconds.toFixed(3);
-      const padded = seconds < 1000 ? fixed.padStart(7, '0') : fixed;
-      return padded + 's';
-    }
-
-    function getThemeAccent(player) {
-      const themedRoot = player.closest('section') || player;
-      const styles = window.getComputedStyle(themedRoot);
-      const accent = styles.getPropertyValue('--tmu-cs-accent').trim();
-      return accent || '#006543';
-    }
-
-    function getPlayerWidth(player, fallbackWidth) {
-      const width = Math.round(player.clientWidth || fallbackWidth || 0);
-      return width > 0 ? width : 1;
-    }
-
-    function getContainerWidth(container, fallbackWidth) {
-      const width = Math.round(container?.clientWidth || fallbackWidth || 0);
-      return width > 0 ? width : 1;
     }
 
     function resolveAudioSource(audio) {
@@ -282,6 +241,10 @@ function mediaRuntimeScript() {
 
       const source = audio.querySelector('source[src]');
       return source ? source.src || source.getAttribute('src') || '' : '';
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
     }
 
     function drawPoster(player) {
@@ -350,155 +313,101 @@ function mediaRuntimeScript() {
       });
     }
 
+    function getWavegramClickTarget(wavegram, event) {
+      const root = wavegram.shadowRoot;
+      if (!root) return undefined;
+
+      const waveformPane = root.querySelector('.waveform-pane');
+      const spectrogramPane = root.querySelector('.spectrogram-pane');
+      const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+      const canvas = path.find((element) => (
+        element instanceof HTMLCanvasElement
+        && (
+          element.classList.contains('waveform')
+          || element.classList.contains('spectrogram')
+        )
+      ));
+
+      if (path.includes(waveformPane)) return { pane: waveformPane, canvas };
+      if (path.includes(spectrogramPane)) return { pane: spectrogramPane, canvas };
+
+      return undefined;
+    }
+
+    function getWavegramRelativeClickX(target, event) {
+      if (
+        target.canvas
+        && Number.isFinite(event.offsetX)
+        && target.canvas.clientWidth > 0
+      ) {
+        return clamp(event.offsetX / target.canvas.clientWidth, 0, 1);
+      }
+
+      const rect = target.pane.getBoundingClientRect();
+      return rect.width > 0 ? clamp((event.clientX - rect.left) / rect.width, 0, 1) : 0;
+    }
+
+    function dispatchWavegramTimelineEvent(wavegram, type, audio, duration) {
+      wavegram.dispatchEvent(new CustomEvent(type, {
+        detail: {
+          currentTime: audio?.currentTime ?? 0,
+          duration,
+        },
+      }));
+    }
+
+    function handleWavegramSeekClick(wavegram, event) {
+      const target = getWavegramClickTarget(wavegram, event);
+      const audio = wavegram.audio;
+      const duration = Number.isFinite(wavegram.duration) && wavegram.duration > 0
+        ? wavegram.duration
+        : audio?.duration;
+      if (!target || !audio || !Number.isFinite(duration) || duration <= 0) return false;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const relativeX = getWavegramRelativeClickX(target, event);
+      const wasPaused = audio.paused;
+
+      audio.currentTime = relativeX * duration;
+      if (typeof wavegram.updateTimeLabels === 'function') wavegram.updateTimeLabels();
+      if (typeof wavegram.drawCursors === 'function') wavegram.drawCursors();
+      dispatchWavegramTimelineEvent(wavegram, 'seek', audio, duration);
+
+      if (wasPaused) {
+        wavegram.playRequestedAt = performance.now();
+        audio.play().catch((error) => {
+          if (typeof wavegram.handleError === 'function') wavegram.handleError('Audio playback failed.', error);
+        });
+      } else {
+        audio.pause();
+      }
+
+      return true;
+    }
+
     async function initSpectrogram(player) {
-      if (!player || player.dataset.wavesurferReady) return;
+      if (!player || player.dataset.wavegramReady) return;
 
       const audio = player.querySelector('audio.wavesurfer-spectrogram');
-      const playButton = player.querySelector('[data-wavesurfer-play]');
-      const stopButton = player.querySelector('[data-wavesurfer-stop]');
-      const timeLabel = player.querySelector('[data-wavesurfer-time]');
-      const waveform = player.querySelector('[data-wavesurfer-waveform]');
-      const spectrogram = player.querySelector('[data-wavesurfer-spectrogram]');
-      const status = player.querySelector('.tmu-cs-spectrogram-player__status');
-      if (!audio || !waveform || !spectrogram || !playButton || !stopButton || !timeLabel) return;
+      const wavegram = player.querySelector('wavegram-player[data-wavegram-player]');
+      if (!audio || !wavegram) return;
 
-      player.dataset.wavesurferReady = 'pending';
+      player.dataset.wavegramReady = 'true';
+      wavegram.addEventListener('click', (event) => {
+        if (handleWavegramSeekClick(wavegram, event)) return;
+        event.stopPropagation();
+      }, { capture: true });
 
-      try {
-        const WaveSurfer = await ensureWaveSurfer();
-        const accentColor = getThemeAccent(player);
-        const spectrogramHeight = parsePositiveInteger(audio.dataset.spectrogramHeight, 100);
-        const fftSamples = parsePositiveInteger(audio.dataset.spectrogramFftSamples, 1024);
-        const maxCanvasWidth = getContainerWidth(
-          spectrogram,
-          getContainerWidth(waveform, getPlayerWidth(player, spectrogram.clientWidth || waveform.clientWidth)),
-        );
+      if (!wavegram.getAttribute('src')) {
         const sourceUrl = resolveAudioSource(audio);
-
-        if (!sourceUrl) {
-          throw new Error('No audio source was found for spectrogram rendering.');
-        }
-
-        const wavesurfer = WaveSurfer.create({
-          container: waveform,
-          media: audio,
-          height: 84,
-          waveColor: '#9cc8b5',
-          progressColor: '#006543',
-          cursorColor: '#1c2520',
-          normalize: true,
-        });
-
-        wavesurfer.registerPlugin(
-          WaveSurfer.Spectrogram.create({
-            container: spectrogram,
-            labels: true,
-            height: spectrogramHeight,
-            splitChannels: true,
-            labelsBackground: accentColor,
-            labelsColor: '#ffffff',
-            labelsHzColor: '#ffffff',
-            scale: 'linear',
-            frequencyMax: 0,
-            frequencyMin: 0,
-            fftSamples,
-            useWebWorker: true,
-            maxCanvasWidth,
-            noverlap: null,
-            colorMap: 'roseus',
-            gainDB: 20,
-            rangeDB: 80,
-            windowFunc: 'hann',
-          }),
-        );
-
-        wavesurfer.load(sourceUrl).catch((error) => {
-          player.dataset.wavesurferReady = 'error';
-          if (status) status.textContent = error instanceof Error ? error.message : String(error);
-          playButton.disabled = true;
-          stopButton.disabled = true;
-        });
-
-        player.__wavesurfer = wavesurfer;
-        if (status) status.textContent = 'Loading spectrogram…';
-        if (timeLabel) timeLabel.textContent = formatSeconds(audio.currentTime);
-
-        function updatePlaybackControls() {
-          const ready = player.dataset.wavesurferReady === 'true';
-          playButton.disabled = !ready;
-          stopButton.disabled = !ready;
-          playButton.textContent = wavesurfer.isPlaying() ? 'Pause' : 'Play';
-          timeLabel.textContent = formatSeconds(audio.currentTime);
-        }
-
-        playButton.addEventListener('click', () => {
-          wavesurfer.playPause();
-        });
-
-        stopButton.addEventListener('click', () => {
-          wavesurfer.pause();
-          wavesurfer.setTime(0);
-          updatePlaybackControls();
-          if (status) status.textContent = 'Stopped';
-        });
-
-        audio.addEventListener('timeupdate', updatePlaybackControls);
-        audio.addEventListener('seeked', updatePlaybackControls);
-        audio.addEventListener('loadedmetadata', updatePlaybackControls);
-
-        wavesurfer.on('ready', () => {
-          player.dataset.wavesurferReady = 'true';
-          if (status) status.textContent = 'Ready';
-          updatePlaybackControls();
-        });
-
-        wavesurfer.on('error', (error) => {
-          player.dataset.wavesurferReady = 'error';
-          if (status) status.textContent = error instanceof Error ? error.message : String(error);
-          playButton.disabled = true;
-          stopButton.disabled = true;
-        });
-
-        wavesurfer.on('play', () => {
-          if (status) status.textContent = 'Playing';
-          updatePlaybackControls();
-        });
-
-        wavesurfer.on('pause', () => {
-          if (player.dataset.wavesurferReady === 'true' && status) status.textContent = audio.currentTime > 0 ? 'Paused' : 'Ready';
-          updatePlaybackControls();
-        });
-
-        wavesurfer.on('finish', () => {
-          if (status) status.textContent = 'Finished';
-          updatePlaybackControls();
-        });
-
-        wavesurfer.on('spectrogram-click', (relativeX) => {
-          wavesurfer.setTime(relativeX * wavesurfer.getDuration());
-          updatePlaybackControls();
-        });
-
-        wavesurfer.on('spectrogram-ready', () => {
-          if (player.dataset.wavesurferReady === 'true' && status) status.textContent = wavesurfer.isPlaying() ? 'Playing' : 'Ready';
-        });
-
-        audio.addEventListener('error', () => {
-          player.dataset.wavesurferReady = 'error';
-          if (status) status.textContent = 'Failed to load audio.';
-          playButton.disabled = true;
-          stopButton.disabled = true;
-        }, { once: true });
-      } catch (error) {
-        player.dataset.wavesurferReady = 'error';
-        if (status) status.textContent = error instanceof Error ? error.message : String(error);
-        playButton.disabled = true;
-        stopButton.disabled = true;
+        if (sourceUrl) wavegram.setAttribute('src', sourceUrl);
       }
     }
 
     document.querySelectorAll('.tmu-cs-gif-player').forEach(init);
-    document.querySelectorAll('[data-wavesurfer-spectrogram-player]').forEach((player) => {
+    document.querySelectorAll('[data-wavegram-spectrogram-player]').forEach((player) => {
       void initSpectrogram(player);
     });
   })();</script>`;
@@ -532,5 +441,7 @@ export default function enhanceAnimatedImages(html, options = {}) {
     });
 
   const normalizedOutput = hasSpectrogramPlayer ? unwrapBlockParagraphs(output) : output;
-  return hasGifPlayer || hasSpectrogramPlayer ? `${normalizedOutput}${mediaRuntimeScript()}` : normalizedOutput;
+  return hasGifPlayer || hasSpectrogramPlayer
+    ? `${normalizedOutput}${mediaRuntimeScript({ includeWavegram: hasSpectrogramPlayer })}`
+    : normalizedOutput;
 }

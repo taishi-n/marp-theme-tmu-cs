@@ -157,9 +157,9 @@ The CSS defines the visual structure, while placement and connector drawing are 
 Media elements use the base `img`, `video`, and `audio` rules for centering. Two HTML postprocess wrappers add extra presentation behavior:
 
 - `.tmu-cs-gif-player` renders GIFs with a still poster and play button
-- `.tmu-cs-spectrogram-player` wraps `audio.wavesurfer-spectrogram` with a toolbar, time readout, status line, waveform area, and spectrogram area
+- `.tmu-cs-spectrogram-player` wraps `audio.wavesurfer-spectrogram` with the green theme frame around a wavegram waveform/spectrogram component
 
-The spectrogram wrapper hides the native `audio` controls, adds explicit play/stop controls, and styles the generated waveform and spectrogram canvases as full-width cards.
+The spectrogram wrapper hides the native `audio` controls. Playback controls, status, time display, and waveform/spectrogram rendering remain wavegram defaults.
 
 ## Implementation Map
 

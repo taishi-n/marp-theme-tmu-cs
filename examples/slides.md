@@ -129,7 +129,7 @@ It is the main reference slide for multi-column authoring.
 
 <!--
 This slide collects the supported media primitives: static images, animated GIF playback, plain audio, and spectrogram audio.
-Use it to explain the difference between standard HTML media and the theme-specific wavesurfer integration.
+Use it to explain the difference between standard HTML media and the theme-specific wavegram integration.
 -->
 
 ### Media
@@ -138,13 +138,13 @@ Use it to explain the difference between standard HTML media and the theme-speci
 
 - Image: ![h:130 Bubble Sort](https://upload.wikimedia.org/wikipedia/commons/e/ef/BubbleSort.jpg)
 - Animated GIF: ![h:130 Bubble Sort Animation](https://upload.wikimedia.org/wikipedia/commons/2/2a/Bubble_sort_with_flag.gif)
-- Plain audio: <audio controls src="https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3"></audio>
+- Plain audio: <audio controls src="https://raw.githubusercontent.com/pdx-cs-sound/wavs/main/voice.wav"></audio>
 
 </div>
 
 <div class="column">
 
-- Spectrogram audio: <audio class="wavesurfer-spectrogram" controls src="../assets/sine-stereo-440-660.wav" data-spectrogram-height="90" data-spectrogram-fft-samples="2048"></audio>
+- Spectrogram audio: <audio class="wavesurfer-spectrogram" controls src="https://raw.githubusercontent.com/pdx-cs-sound/wavs/main/voice.wav" data-spectrogram-height="90" data-spectrogram-fft-samples="2048"></audio>
 
 </div>
 

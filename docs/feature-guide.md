@@ -187,7 +187,7 @@ GIF images are wrapped by the custom engine so they do not autoplay by default i
 
 This applies to standard Markdown image syntax when the image source ends with `.gif`.
 
-Audio elements can also opt into a wavesurfer.js spectrogram view by adding the `wavesurfer-spectrogram` class.
+Audio elements can also opt into a wavegram spectrogram view by adding the `wavesurfer-spectrogram` class.
 
 ```html
 <audio
@@ -201,13 +201,12 @@ Audio elements can also opt into a wavesurfer.js spectrogram view by adding the 
 
 Behavior:
 
-- the original `audio` source remains in the slide, but native browser controls are hidden in favor of the theme toolbar
-- the engine wraps it with a toolbar, current-time display, waveform area, and spectrogram area after HTML rendering
-- wavesurfer.js and the Spectrogram plugin are loaded from CDN only when this class is present
-- defaults match the theme integration: `labels: true`, `height: 100`, `splitChannels: true`, `scale: 'linear'`, `fftSamples: 1024`, `useWebWorker: true`, `colorMap: 'roseus'`, `gainDB: 20`, `rangeDB: 80`, `windowFunc: 'hann'`
-- `data-spectrogram-height` and `data-spectrogram-fft-samples` override the default spectrogram height and FFT size
-- the plugin uses the theme accent color for `labelsBackground`, `#ffffff` for label text, `0` for `frequencyMin`, and the decoded audio sample rate / 2 for `frequencyMax`
-- `maxCanvasWidth` is derived from the rendered slide content width
+- the original `audio` source remains in the slide, but native browser controls are hidden in favor of `wavegram-player`
+- the engine wraps it with a green theme frame and a `wavegram-player` Web Component after HTML rendering
+- the wavegram runtime is embedded only when this class is present
+- playback, seeking, cursor display, waveform rendering, spectrogram rendering, ready state, and time display follow wavegram defaults
+- the theme does not set wavegram visual custom properties or add separate play/stop/status/time controls
+- `data-spectrogram-height` and `data-spectrogram-fft-samples` are passed through as `spectrogram-height` and `fft-size` when explicitly present
 - local spectrogram audio sources are converted to `data:` URLs during HTML rendering so they still work when the deck is opened directly from disk
 - remote audio sources need CORS headers that allow the browser-side analysis fetch
 
