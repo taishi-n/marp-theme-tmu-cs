@@ -57,6 +57,6 @@
     "citeproc": "^2.4.63",
     "js-yaml": "4.1.1",
     "shiki": "4.0.2",
-    "wavegram": "^0.1.0"
+    "wavegram": "^0.1.2"
   }
 }

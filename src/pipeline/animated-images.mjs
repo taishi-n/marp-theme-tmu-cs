@@ -25,8 +25,8 @@ function getWavegramBundle() {
   if (wavegramBundleCache === undefined) {
     const bundle = readFileSync(require.resolve('wavegram'), 'utf8');
     const standaloneBundle = bundle.replace(
-      /return typeof Worker>"u"\?Promise\.resolve\(_\(t,this\.audioBuffer\.sampleRate,r\)\):new Promise\(\(i,o\)=>\{.*?\}\)\\?\}bindAudio/s,
-      'return Promise.resolve(_(t,this.audioBuffer.sampleRate,r))}bindAudio',
+      /(computeSpectrogramInWorker\(\)\{[\s\S]*?return )typeof Worker>"u"\?Promise\.resolve\(([\w$]+\([^)]*\))\):new Promise\(\([^)]*\)=>\{[\s\S]*?\}\)(\}bindAudio\b)/,
+      '$1Promise.resolve($2)$3',
     );
 
     if (standaloneBundle === bundle) {
