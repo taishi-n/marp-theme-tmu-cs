@@ -250,14 +250,6 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
       image.src = src;
     }
 
-    function markStepPlayed(step, updateControls = true) {
-      const section = step?.closest?.('section.media-playback-sequential');
-      if (!section) return;
-
-      step.dataset.tmuCsMediaPlayed = 'true';
-      if (updateControls) updateNavigationButtons(section);
-    }
-
     function playGif(player) {
       const src = player.dataset.gifSrc || '';
       if (!src || player.dataset.gifPlaying === 'true') return;
@@ -279,7 +271,6 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
 
       player.appendChild(image);
       player.dataset.gifPlaying = 'true';
-      markStepPlayed(player);
     }
 
     function resetGif(player) {
@@ -324,7 +315,7 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
       }
     }
 
-    async function initSpectrogram(player) {
+    function initSpectrogram(player) {
       if (!player || player.dataset.wavegramReady) return;
 
       const audio = player.querySelector('audio.wavesurfer-spectrogram');
@@ -338,20 +329,6 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
         if (sourceUrl) wavegram.setAttribute('src', sourceUrl);
       }
 
-      wavegram.addEventListener('play', function () {
-        if (player.dataset.tmuCsMediaPlayed === 'false') {
-          resetSpectrogram(player);
-          return;
-        }
-        markStepPlayed(player);
-      });
-      for (const eventName of ['pointerdown', 'keydown']) {
-        wavegram.addEventListener(eventName, function () {
-          if (player.dataset.tmuCsMediaPlayed === 'false') {
-            player.removeAttribute('data-tmu-cs-media-played');
-          }
-        });
-      }
       wavegram.addEventListener('loaded', function () {
         if (player.dataset.tmuCsSequencePlayRequested === 'true') safePlay(wavegram.audio);
       });
@@ -362,21 +339,24 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
       if (!wavegram) return;
 
       player.dataset.tmuCsSequencePlayRequested = 'true';
-      if (wavegram.audio) {
-        safePlay(wavegram.audio);
-      } else {
-        wavegram.autoplay = true;
-      }
+      if (wavegram.audio) safePlay(wavegram.audio);
     }
 
     function resetSpectrogram(player) {
       const wavegram = player.querySelector('wavegram-player[data-wavegram-player]');
       player.dataset.tmuCsSequencePlayRequested = 'false';
-      if (wavegram) {
-        wavegram.autoplay = false;
-        resetNativeMedia(wavegram.audio);
-      }
+      if (wavegram) resetNativeMedia(wavegram.audio);
       resetNativeMedia(player.querySelector('audio.wavesurfer-spectrogram'));
+    }
+
+    const sequencePositions = new WeakMap();
+
+    function getSequencePosition(section) {
+      return sequencePositions.get(section) ?? 0;
+    }
+
+    function setSequencePosition(section, position) {
+      sequencePositions.set(section, Math.max(0, position));
     }
 
     function getPlayableSteps(section) {
@@ -405,7 +385,6 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
     }
 
     function resetStep(step) {
-      step.dataset.tmuCsMediaPlayed = 'false';
       if (step.classList.contains('tmu-cs-gif-player')) {
         resetGif(step);
       } else if (step.hasAttribute('data-wavegram-spectrogram-player')) {
@@ -416,31 +395,31 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
     }
 
     function playNextStep(section) {
-      const step = getPlayableSteps(section).find((candidate) => (
-        candidate.dataset.tmuCsMediaPlayed !== 'true'
-      ));
-      if (!step) return false;
+      const steps = getPlayableSteps(section);
+      const position = getSequencePosition(section);
+      if (position >= steps.length) return false;
 
-      markStepPlayed(step, false);
-      playStep(step);
+      setSequencePosition(section, position + 1);
+      playStep(steps[position]);
       updateNavigationButtons(section);
       return true;
     }
 
     function resetPreviousStep(section) {
-      const playedSteps = getPlayableSteps(section).filter((candidate) => (
-        candidate.dataset.tmuCsMediaPlayed === 'true'
-      ));
-      const step = playedSteps.at(-1);
-      if (!step) return false;
+      const steps = getPlayableSteps(section);
+      const position = Math.min(getSequencePosition(section), steps.length);
+      if (position === 0) return false;
 
-      resetStep(step);
+      const previousPosition = position - 1;
+      setSequencePosition(section, previousPosition);
+      resetStep(steps[previousPosition]);
       updateNavigationButtons(section);
       return true;
     }
 
     function resetSequence(section) {
       getPlayableSteps(section).forEach(resetStep);
+      sequencePositions.delete(section);
     }
 
     const navigationButtonSelectors = {
@@ -476,7 +455,7 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
       if (view === 'next' || view === 'overview') return null;
 
       const activeSlide = document.querySelector('.bespoke-marp-slide.bespoke-marp-active');
-      return activeSlide?.querySelector('section.media-playback-sequential') || null;
+      return activeSlide?.querySelector('section[data-media-playback="sequential"]') || null;
     }
 
     function updateNavigationButtons(section = getCurrentSequentialSection()) {
@@ -484,8 +463,9 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
       if (!section) return;
 
       const steps = getPlayableSteps(section);
-      const hasNextStep = steps.some((step) => step.dataset.tmuCsMediaPlayed !== 'true');
-      const hasPreviousStep = steps.some((step) => step.dataset.tmuCsMediaPlayed === 'true');
+      const position = Math.min(getSequencePosition(section), steps.length);
+      const hasNextStep = position < steps.length;
+      const hasPreviousStep = position > 0;
       document.querySelectorAll(navigationButtonSelectors.next).forEach((button) => {
         overrideNavigationButton(button, hasNextStep);
       });
@@ -494,8 +474,7 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
       });
     }
 
-    function consumeNavigation(direction) {
-      const section = getCurrentSequentialSection();
+    function consumeNavigation(direction, section = getCurrentSequentialSection()) {
       if (!section) return false;
       return direction === 'next' ? playNextStep(section) : resetPreviousStep(section);
     }
@@ -506,7 +485,10 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
     }
 
     function isInteractiveTarget(target) {
-      return target instanceof Element && Boolean(target.closest([
+      if (!(target instanceof Element)) return false;
+      if (target.isContentEditable === true) return true;
+
+      return Boolean(target.closest([
         'audio',
         'video',
         'button',
@@ -514,7 +496,6 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
         'select',
         'textarea',
         'wavegram-player',
-        '[contenteditable="true"]',
       ].join(',')));
     }
 
@@ -527,11 +508,12 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
       if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') direction = 'prev';
       if (!direction) return;
 
-      if (event.repeat && getCurrentSequentialSection()) {
+      const section = getCurrentSequentialSection();
+      if (event.repeat && getPlayableSteps(section).length > 0) {
         stopNavigationEvent(event);
         return;
       }
-      if (consumeNavigation(direction)) stopNavigationEvent(event);
+      if (consumeNavigation(direction, section)) stopNavigationEvent(event);
     }, true);
 
     document.addEventListener('click', function (event) {
@@ -547,30 +529,15 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
     }, true);
 
     document.querySelectorAll('.tmu-cs-gif-player').forEach(initGif);
-    document.querySelectorAll('[data-wavegram-spectrogram-player]').forEach((player) => {
-      void initSpectrogram(player);
-    });
-    document.querySelectorAll('audio:not(.wavesurfer-spectrogram), video').forEach((media) => {
-      media.addEventListener('play', function () {
-        if (media.dataset.tmuCsMediaPlayed === 'false') {
-          resetNativeMedia(media);
-          return;
-        }
-        markStepPlayed(media);
-      });
-      for (const eventName of ['pointerdown', 'keydown']) {
-        media.addEventListener(eventName, function () {
-          if (media.dataset.tmuCsMediaPlayed === 'false') {
-            media.removeAttribute('data-tmu-cs-media-played');
-          }
-        });
-      }
-    });
+    document.querySelectorAll('[data-wavegram-spectrogram-player]').forEach(initSpectrogram);
 
     let activeSection = null;
     function synchronizeActiveSection() {
       const nextSection = getCurrentSequentialSection();
-      if (activeSection && activeSection !== nextSection) resetSequence(activeSection);
+      if (activeSection !== nextSection) {
+        if (activeSection) resetSequence(activeSection);
+        if (nextSection) resetSequence(nextSection);
+      }
       activeSection = nextSection;
       updateNavigationButtons(nextSection);
     }
@@ -599,7 +566,7 @@ export default function enhanceAnimatedImages(html, options = {}) {
     if (!location || !Number.isInteger(location.startOffset) || !Number.isInteger(location.endOffset)) return;
 
     const nodeAttributes = attributesFromNode(node);
-    if (hasClassToken(nodeAttributes.class, 'tmu-cs-slide-class--media-playback-sequential')) {
+    if (node.tagName === 'section' && nodeAttributes['data-media-playback'] === 'sequential') {
       hasSequentialPlayback = true;
     }
 

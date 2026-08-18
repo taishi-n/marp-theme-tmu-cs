@@ -10,7 +10,7 @@ test('index exports only the minimal public surface', () => {
   );
 });
 
-test('package exports expose only top-level package entrypoints', async () => {
+test('package exports expose canonical entrypoints and compatibility aliases', async () => {
   const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 
   assert.deepEqual(

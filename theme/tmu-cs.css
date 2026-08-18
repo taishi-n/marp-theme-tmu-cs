@@ -734,10 +734,6 @@ figure {
   margin-right: auto;
 }
 
-.tmu-cs-slide-class--media-playback-sequential {
-  display: none !important;
-}
-
 .tmu-cs-gif-poster,
 .tmu-cs-gif-active {
   display: block;

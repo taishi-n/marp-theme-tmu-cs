@@ -241,6 +241,7 @@ function insertSectionPages(markdown, frontMatter) {
 
     const slideLines = slide.content.replace(/\r\n/g, '\n').split('\n');
     const producedSlides = [];
+    let pendingLeadingLines = [];
     let cursor = 0;
 
     for (const heading of headings) {
@@ -251,13 +252,20 @@ function insertSectionPages(markdown, frontMatter) {
       if (hasContentBeforeHeading || !isIgnorableMarkdownLines(beforeLines)) {
         producedSlides.push({
           ...slide,
-          content: beforeLines.join('\n'),
+          content: [...pendingLeadingLines, ...beforeLines].join('\n'),
         });
+        pendingLeadingLines = [];
+      } else if (beforeLines.join('\n').trim() !== '') {
+        pendingLeadingLines.push(...beforeLines);
       }
 
       const sectionPageLines = [buildSectionPage(sectionLevel, heading.text)];
-      if (isIgnorableMarkdownLines(afterLines) && afterLines.join('\n').trim() !== '') {
-        sectionPageLines.push('', afterLines.join('\n'));
+      if (isIgnorableMarkdownLines(afterLines)) {
+        if (pendingLeadingLines.length > 0) {
+          sectionPageLines.unshift(...pendingLeadingLines, '');
+          pendingLeadingLines = [];
+        }
+        if (afterLines.join('\n').trim() !== '') sectionPageLines.push('', afterLines.join('\n'));
         cursor = slideLines.length;
       } else {
         cursor = heading.lineIndex + 1;
@@ -270,11 +278,12 @@ function insertSectionPages(markdown, frontMatter) {
     }
 
     const remainingLines = slideLines.slice(cursor);
-    if (!isIgnorableMarkdownLines(remainingLines) || remainingLines.join('\n').trim() !== '') {
+    const remainingSlideLines = [...pendingLeadingLines, ...remainingLines];
+    if (!isIgnorableMarkdownLines(remainingSlideLines) || remainingSlideLines.join('\n').trim() !== '') {
       if (!isIgnorableMarkdownLines(remainingLines)) {
         producedSlides.push({
           ...slide,
-          content: remainingLines.join('\n'),
+          content: remainingSlideLines.join('\n'),
         });
       }
     }

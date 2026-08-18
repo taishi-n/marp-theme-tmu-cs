@@ -88,6 +88,8 @@ bibliography: references.bib
 This is a citation [@postel1981ip].
 ```
 
+A non-empty `title` generates a title slide unless `titleSlide: false` is set or the first slide is already a title slide.
+
 Build from the slide project with the wrapper CLI:
 
 ```bash
@@ -99,14 +101,18 @@ npx marp-tmu-cs --standalone slides.md -o slides.html
 
 `marp-tmu-cs` automatically supplies the bundled engine and theme CSS when they are not explicitly provided, so a project-local `marp.config.mjs` is optional.
 
-Use `--allow-local-files` only for trusted decks. It lets Marp read local media for browser-backed PDF, PPTX, and image output, and permits external code, spectrogram audio, and standalone assets to leave the directory containing the Markdown input. Without it, those engine-managed reads are confined to that input directory after resolving symbolic links.
+`--standalone` is for HTML and fails instead of producing a partially embedded file. It may fetch authored remote URLs and embed scripts from local HTML iframes. Render only trusted decks.
+
+Use `--allow-local-files` only for trusted decks. Without it, external code, spectrogram audio, and standalone local assets are confined to the Markdown input directory after symbolic links are resolved. Bibliography and CSL paths are resolved separately and do not currently use that confinement check.
 
 If you prefer to use plain `marp`, create `marp.config.mjs` in the slide project:
 
 ```js
+import { enginePath, themePath } from "marp-theme-tmu-cs";
+
 export default {
-  themeSet: ["./node_modules/marp-theme-tmu-cs/theme/tmu-cs.css"],
-  engine: "./node_modules/marp-theme-tmu-cs/engine.mjs",
+  engine: enginePath,
+  themeSet: [themePath],
 };
 ```
 
@@ -126,69 +132,16 @@ npm install --save-dev marp-theme-tmu-cs
 
 ## Public Entry Points
 
-This package intentionally exposes a small public surface:
+The canonical package entry points are:
 
 - package root: `marp-theme-tmu-cs`
 - engine path: `marp-theme-tmu-cs/engine`
 - theme CSS path: `marp-theme-tmu-cs/theme.css`
 - bundled IEEE CSL: `marp-theme-tmu-cs/csl/ieee.csl`
 
+The package also retains `engine.mjs`, `theme`, and `theme/tmu-cs.css` as compatibility aliases. The root exports `themeName`, `enginePath`, `themePath`, `defaultCslPath`, and `marpEngine`.
+
 Internal implementation files under `src/` are not part of the supported public API.
-
-## Basic Usage
-
-Recommended wrapper usage:
-
-```bash
-npx marp-tmu-cs slides.md -o slides.html
-npx marp-tmu-cs --allow-local-files --pdf slides.md -o slides.pdf
-npx marp-tmu-cs --allow-local-files --pptx slides.md -o slides.pptx
-```
-
-Equivalent plain `marp` usage:
-
-```bash
-npx marp \
-  --theme-set ./node_modules/marp-theme-tmu-cs/theme/tmu-cs.css \
-  --engine ./node_modules/marp-theme-tmu-cs/engine.mjs \
-  slides.md \
-  -o slides.html
-```
-
-For standalone HTML output, use the packaged wrapper CLI with `--standalone`:
-
-```bash
-npx marp-tmu-cs \
-  --standalone \
-  slides.md \
-  -o slides.html
-```
-
-`--standalone` is intended for HTML output only. It is strict: every referenced image, audio, video, stylesheet, font, script, supported iframe, and Kroki diagram must be embedded successfully, or the command exits with an error instead of producing a partially standalone file.
-
-Minimal front matter:
-
-```yaml
----
-marp: true
-theme: tmu-cs
-math: mathjax
-title: TMU-CS Demo
-author: Your Name
-bibliography: references.bib
----
-```
-
-Optional deck-structure and playback directives:
-
-```yaml
----
-sectionPages: true
-sectionPageLevel: 2
-tocPageMaxLevel: 2
-mediaPlayback: sequential
----
-```
 
 ## Theme-Specific Syntax
 
@@ -212,13 +165,14 @@ mediaPlayback: sequential
 - `<!-- _mediaPlayback: sequential -->`: enable ordered playback on one slide
 - `<!-- _mediaPlayback: off -->`: disable ordered playback on one slide
 
+A TOC before the first section covers the deck. A TOC within a section covers that section; with level-2 sections, use `<!-- toc level=3 -->` to include their child headings.
+
 In HTML output, section pages and TOC pages are treated as auxiliary slides:
 
 - header, footer, and pagination are hidden
 - they are excluded from the visible page-number count
-- normal slides show the current section name at the right side of the header
-  using the same visual style as the page number
-  in the footer
+- normal slides place the current section at top-left and pagination at top-right
+- the configured `header` appears at bottom-left and `footer` at bottom-right
 
 External code inclusion:
 
@@ -253,9 +207,9 @@ print(total)            # [!step 3 info]
 
 Available actions are `highlight`, `focus`, `warning`, `error`, and `info`. The syntax is `[!step <number> <action>[:N]]`, where `:N` extends the emphasis to `N` consecutive lines.
 
-Visible comments may be kept before the directive, for example `int a = 0; // loop counter [!step 1 highlight]`.
+Step states are non-cumulative. Equal step numbers are grouped, and missing numbers are allowed.
 
-As of the current version, code-block `[!annotate]` has been removed. Use ordinary code comments for explanatory text and `[!step ...]` only for staged emphasis.
+Visible comments may be kept before the directive, for example `int a = 0; // loop counter [!step 1 highlight]`.
 
 Magic-comment step expansion is available for fenced languages that use line comments supported by the theme. Current prefixes are:
 
@@ -274,8 +228,6 @@ X_k % [!math-annotate note="The k-th frequency component"]
 $$
 ```
 
-As of the current version, display-math annotations use `[!math-annotate ...]`. The old code-block `[!annotate]` directive remains removed.
-
 Citations:
 
 ```md
@@ -284,9 +236,9 @@ This is a citation [@postel1981ip].
 
 Animated GIF images are shown as a still poster by default and start playing only after the viewer presses the play button.
 
-Set `mediaPlayback: sequential` in front matter, or add `<!-- _mediaPlayback: sequential -->` to one slide, to play GIF, native audio/video, and spectrogram audio elements in document order with unmodified presentation arrows or Marp's on-screen previous/next controls. Forward navigation plays the next item before advancing; backward navigation resets the most recent item. A slide resets when it is left. Use the local value `off` to override a deck-wide setting.
+Set `mediaPlayback: sequential` in front matter, or use `<!-- _mediaPlayback: sequential -->` on one slide, to step through GIF, native audio/video, and spectrogram audio in document order. Forward selects the next step, backward resets the preceding step, and leaving the slide resets the sequence. Manual media controls do not move the arrow-controlled position.
 
-See the [sequential media playback guide](docs/media-playback.md) for supported elements, navigation precedence, complete examples, and troubleshooting.
+See the [sequential media playback guide](docs/media-playback.md) for the complete authoring and navigation contract.
 
 Audio elements with `class="wavesurfer-spectrogram"` hide the native browser controller and instead render a wavegram-based waveform/spectrogram panel in HTML output. Playback, seeking, cursor display, and waveform/spectrogram rendering follow wavegram defaults; the theme only adds the surrounding green frame. Use `data-spectrogram-height` and `data-spectrogram-fft-samples` to pass explicit spectrogram height and FFT size to wavegram. The runtime embeds the wavegram Web Component only when such an audio element exists. Local spectrogram audio sources are embedded as `data:` URLs during HTML rendering so they still work from `file://`, while remote audio sources must allow CORS for analysis.
 

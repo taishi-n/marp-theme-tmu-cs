@@ -8,6 +8,7 @@ import { createKrokiBackend } from './src/features/diagrams/kroki-backend.mjs';
 import { installMathFeature } from './src/features/math/index.mjs';
 import enhanceAnimatedImages from './src/pipeline/animated-images.mjs';
 import recalculateAuxiliaryPagination from './src/pipeline/auxiliary-pagination.mjs';
+import installMediaPlayback from './src/pipeline/media-playback.mjs';
 import inlineStandaloneAssets from './src/pipeline/standalone-assets.mjs';
 import { getMarkdownPathFromEnv, prepareMarkdownForRender, warnForPreparedMarkdown } from './src/pipeline/markdown-pipeline.mjs';
 
@@ -81,6 +82,9 @@ export default async ({ marp }) => {
   installCodeFeature(marp, { highlighter, logPrefix });
   installDiagramFeature(marp, {
     backend: createKrokiBackend(),
+  });
+  installMediaPlayback(marp, {
+    onWarning: (message) => console.warn(`${logPrefix} ${message}`),
   });
   const standaloneEnabled = process.env.TMU_CS_STANDALONE === '1';
   const standaloneOutputPath = process.env.TMU_CS_STANDALONE_OUTPUT;

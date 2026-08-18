@@ -19,11 +19,8 @@ Key groups of variables include:
 Each slide is styled through the `section` element.
 
 - top, side, and bottom padding are fixed to create a stable presentation frame
-- pagination appears in the bottom-right corner through `section::after`
-- header and footer are positioned absolutely and span the slide width
-- header uses the title/subtitle area visually, while footer shares space with pagination
-- normal content slides show the current section name at the right edge of the header
-  using the same accent-weighted small-text treatment as pagination
+- the current section appears at top-left and pagination at top-right
+- the configured Marp `header` appears at bottom-left and `footer` at bottom-right
 
 The custom engine can populate default `header` and `footer` values from front matter when those fields are omitted.
 
@@ -36,7 +33,7 @@ Slides with the `title-slide` class have their own layout rules.
 - `h1` through `h4` are resized and spaced for a title-page composition
 - the slide starts lower on the canvas than a normal content slide
 
-The engine can auto-generate this slide from front matter fields such as `title`, `subtitle`, `author`, `affiliation`, and `date`.
+The engine generates this slide when `title` is non-empty, using `subtitle`, `author`, `affiliation`, and `date` when present. Set `titleSlide: false` to opt out.
 
 ## Section Pages And Auxiliary Slides
 
@@ -60,7 +57,7 @@ The theme styles the standard Marp/Markdown block elements:
 - `mark` uses an underline-like highlight instead of a solid block highlight
 - inline code gets a muted chip-style background
 - normal blockquotes use a left accent bar and a muted note background
-- blockquotes whose first direct child is `h4` are rendered as definition cards with a colored heading band
+- blockquotes with a direct-child `h4` are rendered as definition cards with a colored heading band
 
 The base body font uses a Japanese sans-serif stack centered on Noto Sans JP.
 
@@ -78,7 +75,7 @@ Definition-card example:
 > A collection of numbers
 ```
 
-This is implemented through `blockquote:has(> h4)` in the theme, so the `h4` heading must be the first direct child inside the quote block.
+This is implemented through `blockquote:has(> h4)` in the theme, so the `h4` must be a direct child of the quote block.
 
 ## Columns
 
@@ -160,17 +157,3 @@ Media elements use the base `img`, `video`, and `audio` rules for centering. Two
 - `.tmu-cs-spectrogram-player` wraps `audio.wavesurfer-spectrogram` with the green theme frame around a wavegram waveform/spectrogram component
 
 The spectrogram wrapper hides the native `audio` controls. Playback controls, status, time display, and waveform/spectrogram rendering remain wavegram defaults.
-
-Slides with sequential playback use a hidden internal slide-class marker. Auxiliary-slide postprocessing promotes it to `section.media-playback-sequential`; the media runtime then consumes presentation arrows while playback steps remain and records played state on each media wrapper or native media element.
-
-## Implementation Map
-
-- Theme variables and layout: `theme/tmu-cs.css`
-- Header/footer/title-slide defaults: `src/pipeline/deck-defaults.mjs`
-- Section-page / TOC-page injection: `src/pipeline/section-pages.mjs`
-- Auxiliary pagination and current-section header labels: `src/pipeline/auxiliary-pagination.mjs`
-- Citation block generation: `src/features/citations/core.mjs`
-- Primary citation backend: `src/features/citations/backends/js.mjs`
-- Math annotation wrapper and runtime injection: `src/features/math/annotate-math-block.mjs`
-- GIF and spectrogram media wrappers: `src/pipeline/animated-images.mjs`
-- Sequential media directives: `src/pipeline/media-playback.mjs`

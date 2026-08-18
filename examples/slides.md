@@ -230,26 +230,13 @@ $$
 ---
 
 <!--
-This slide is the baseline code-highlighting example without external annotations.
-It shows that fenced code blocks in multiple languages inherit the same Shiki-based color theme.
+This slide demonstrates external-code expansion from a standalone Markdown link.
+The link occupies the whole line so the engine can replace it with a highlighted code block.
 -->
 
 ### External code and highlighting
 
-- [sample.cpp](cpp/sample.cpp)
-
-```cpp
-#include <iostream>
-int main() {
-    for (int i = 0; i < 5; ++i) { std::cout << i << std::endl; }
-    return 0;
-}
-```
-
-```py
-for i in range(5):
-    print(i)
-```
+[sample.cpp](cpp/sample.cpp)
 
 ---
 
@@ -262,7 +249,7 @@ It is meant to show the source file reference rather than inline code.
 
 [sample-highlight.cpp](cpp/sample-highlight.cpp)
 
-- Use `// [!step]` in C++ and `# [!step]` in Python
+- Use `// [!step 1 highlight]` in C++ and `# [!step 1 highlight]` in Python
 - Supported styles: `highlight`, `focus`, `warning`, `error`, `info`
 
 ---
@@ -279,8 +266,8 @@ It highlights that the same step model works across languages with comment-prefi
 ---
 
 <!--
-This is the first step-emphasis slide and introduces the source syntax for progressive code highlighting.
-Subsequent slides are generated automatically from the same block to reveal each emphasis state in order.
+This is the first step-emphasis slide and introduces the source syntax for staged code highlighting.
+The engine generates an unhighlighted baseline and one non-cumulative slide for each distinct step number.
 -->
 
 ### Step-based emphasis

@@ -11,7 +11,7 @@ Main entry points:
 - `README.md`: user-facing quick start
 - `docs/theme-styling.md`: user-facing theme styling reference
 - `docs/feature-guide.md`: user-facing authoring feature reference
-- `docs/media-playback.md`: sequential media playback behavior and troubleshooting
+- `docs/media-playback.md`: sequential media playback authoring and navigation contract
 - `scripts/marp-tmu-cs.mjs`: packaged wrapper CLI for external project usage
 - `engine.mjs`: orchestrator for the rendering pipeline
 - `index.mjs`: package-root public exports
@@ -22,12 +22,14 @@ Main entry points:
 - `src/shiki/*`: step directive parsing and Shiki line-wrapping helpers
 - `vendor/csl/ieee.csl`: bundled CSL data
 
-Supported package entry points are intentionally small:
+Canonical package entry points are intentionally small:
 
 - `marp-theme-tmu-cs`
 - `marp-theme-tmu-cs/engine`
 - `marp-theme-tmu-cs/theme.css`
 - `marp-theme-tmu-cs/csl/ieee.csl`
+
+`engine.mjs`, `theme`, and `theme/tmu-cs.css` remain compatibility aliases.
 
 Treat files under `src/` as internal implementation details rather than stable public import targets.
 
@@ -44,7 +46,7 @@ Most feature logic should live outside `engine.mjs`:
 - `src/pipeline/deck-defaults.mjs`: title slide generation and default `header` / `footer` injection
 - `src/pipeline/section-pages.mjs`: section page insertion and TOC command expansion
 - `src/pipeline/markdown-pipeline.mjs`: Markdown-path discovery and preprocessing order
-- `src/pipeline/media-playback.mjs`: deck and slide directives for sequential media playback
+- `src/pipeline/media-playback.mjs`: Marp directive registration for sequential media playback
 - `src/pipeline/auxiliary-pagination.mjs`: HTML postprocessing for auxiliary slides and visible pagination
 - `src/pipeline/animated-images.mjs`: HTML postprocessing and runtime for GIF, spectrogram, and sequential media playback
 - `src/features/citations/*`: citation core, Markdown postprocessing, and backend boundary
@@ -60,9 +62,8 @@ The intended render order is:
 3. section page / TOC preprocessing
 4. external code resolution
 5. step expansion
-6. media playback directive expansion
-7. Marp render
-8. HTML postprocessing
+6. Marp render, including media playback directive application
+7. HTML postprocessing
 
 Shared helpers that are reused across preprocessors and renderers should prefer `src/core/*` instead of being duplicated in feature-specific files.
 
@@ -163,20 +164,3 @@ When visually checking the sample deck, pay particular attention to:
 - The working tree may already contain unrelated user changes. Do not revert them.
 - `examples/slides.md` serves both as documentation input and as the main regression sample, so avoid incidental rewrites.
 - This repository is highly sensitive to formatting and parsing details. Small changes in preprocessors can affect many rendering paths, so prefer minimal diffs and verify behavior after changes.
-
-## Feature-To-Source Index
-
-- Theme styling: `theme/tmu-cs.css`
-- Title slide and default marginals: `src/pipeline/deck-defaults.mjs`
-- Pipeline orchestration: `engine.mjs`, `src/pipeline/markdown-pipeline.mjs`
-- Sequential media playback: `src/pipeline/media-playback.mjs`, `src/pipeline/animated-images.mjs`
-- Section-page / TOC preprocessing: `src/pipeline/section-pages.mjs`
-- Auxiliary pagination and current-section header labels: `src/pipeline/auxiliary-pagination.mjs`
-- Standalone HTML asset bundling: `scripts/marp-tmu-cs.mjs`, `src/pipeline/standalone-assets.mjs`
-- External code inclusion: `src/features/code/index.mjs`, `src/features/code/resolve-external-code.mjs`
-- Step slide expansion: `src/features/code/index.mjs`, `src/features/code/expand-step-slides.mjs`
-- Citation and bibliography processing: `src/features/citations/index.mjs`, `src/features/citations/core.mjs`
-- JS citation backend: `src/features/citations/backends/js.mjs`
-- Step directive parsing: `src/shiki/parse-step-directive.mjs`
-- Math annotation integration: `src/features/math/index.mjs`
-- Math annotation parsing and runtime: `src/features/math/annotate-math-block.mjs`

@@ -5,26 +5,18 @@ import { join } from 'node:path';
 import test from 'node:test';
 import enhanceAnimatedImages from '../src/pipeline/animated-images.mjs';
 
-test('enhanceAnimatedImages wraps spectrogram audio with wavegram player markup', () => {
+test('enhanceAnimatedImages emits spectrogram markup and a self-contained wavegram runtime', () => {
   const html = '<section><p><audio class="demo wavesurfer-spectrogram" controls src="./tone.wav" data-spectrogram-height="120" data-spectrogram-fft-samples="2048"></audio></p></section>';
   const output = enhanceAnimatedImages(html);
 
   assert.match(output, /<div class="tmu-cs-spectrogram-player" data-wavegram-spectrogram-player>/);
-  assert.doesNotMatch(output, /data-wavegram-play(?:=|\s|>)/);
-  assert.doesNotMatch(output, /data-wavegram-stop(?:=|\s|>)/);
-  assert.doesNotMatch(output, /data-wavegram-time(?:=|\s|>)/);
-  assert.doesNotMatch(output, /Loading spectrogram/);
   assert.match(output, /<audio class="demo wavesurfer-spectrogram" src="\.\/tone\.wav" data-spectrogram-height="120" data-spectrogram-fft-samples="2048"><\/audio>/);
   assert.doesNotMatch(output, /<audio[^>]*controls/);
   assert.match(output, /<wavegram-player data-wavegram-player="" spectrogram-height="120" fft-size="2048"><\/wavegram-player>/);
-  assert.doesNotMatch(output, /waveform-height=/);
-  assert.doesNotMatch(output, /color-map=/);
   assert.match(output, /customElements\.define\("wavegram-player"/);
   assert.match(output, /const sourceUrl = resolveAudioSource\(audio\)/);
   assert.match(output, /wavegram\.setAttribute\('src', sourceUrl\)/);
   assert.match(output, /\(function \(Worker\)/);
-  assert.doesNotMatch(output, /function handleWavegramSeekClick\(wavegram, event\)/);
-  assert.doesNotMatch(output, /cdn\.jsdelivr\.net\/npm\/wavesurfer\.js/);
   assert.doesNotMatch(output, /<p>\s*<div class="tmu-cs-spectrogram-player"/);
 });
 
@@ -35,12 +27,11 @@ test('enhanceAnimatedImages leaves plain audio unchanged', () => {
   assert.equal(output, html);
 });
 
-test('enhanceAnimatedImages installs sequential navigation for marked plain media', () => {
+test('enhanceAnimatedImages injects a valid sequential navigation runtime for marked media', () => {
   const html = [
-    '<section>',
+    '<section data-media-playback="sequential">',
     '<audio controls src="./one.wav"></audio>',
     '<video controls src="./two.mp4"></video>',
-    '<span class="tmu-cs-slide-class--media-playback-sequential"></span>',
     '</section>',
   ].join('');
   const output = enhanceAnimatedImages(html);

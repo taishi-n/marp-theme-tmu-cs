@@ -12,7 +12,7 @@
 
 - Engine orchestration: `engine.mjs`
 - Public exports and package entry points: `index.mjs`
-  Supported package entry points: package root, `engine`, `theme.css`, `csl/ieee.csl`
+  Canonical package entry points: package root, `engine`, `theme.css`, `csl/ieee.csl`
 - Theme CSS and slide decoration: `theme/tmu-cs.css`
 - Shared parsing utilities: `src/core/*`
 - Pipeline stages and deck defaults: `src/pipeline/*`

@@ -8,7 +8,7 @@ For day-to-day rendering from another project, the intended entrypoint is the pa
 
 The custom engine extends normal Marp rendering with document-level defaults.
 
-- it can generate a title slide from front matter
+- it generates a title slide from non-empty title metadata
 - it can add default `header` and `footer` values when they are omitted
 - it can insert automatic section pages
 - it can expand explicit TOC slides
@@ -35,7 +35,7 @@ bibliography: references.bib
 
 If `header` is not set, the engine builds one from `title / subtitle`. If `footer` is not set, the engine builds one from `author / date`.
 
-Implementation map: `engine.mjs`, `src/pipeline/deck-defaults.mjs`
+A non-empty `title` generates a title slide unless `titleSlide: false` is set, the first slide already has the `title-slide` class, or the first slide already matches the title metadata.
 
 ## Section Pages And TOC Slides
 
@@ -70,13 +70,12 @@ Behavior:
 - `sectionPages: true` inserts auxiliary section pages automatically
 - `sectionPageLevel` chooses which heading level is treated as a section boundary
 - section headings used for automatic section pages are absorbed into the section page instead of being left behind as a duplicate heading-only slide
-- `tocPageMaxLevel` sets the default maximum heading level included by `<!-- toc -->`
+- `tocPageMaxLevel` sets the maximum heading level included by `<!-- toc -->`; it defaults to `sectionPageLevel`
 - `<!-- toc level=N -->` overrides the maximum included heading level for one TOC slide
+- a TOC before the first section covers the deck, while a TOC in or after a section covers only that section
 - headings that use the `<!--fit-->` large-type pattern are excluded from generated TOCs
 - in HTML output, section pages and TOC pages hide header, footer, and pagination, and they do not increment the visible page count
-- normal slides show the current section name on the right side of the header
-
-Implementation map: `src/pipeline/section-pages.mjs`, `src/pipeline/auxiliary-pagination.mjs`
+- normal slides show the current section at top-left and pagination at top-right
 
 ## Annotated And Step-Emphasized Code
 
@@ -125,11 +124,9 @@ Rules:
 - supported actions are `highlight`, `focus`, `warning`, `error`, and `info`
 - `:N` expands the effect to multiple code lines
 - the directive must appear at the end of the comment; any comment text before it remains visible
-- the engine duplicates slides so each step becomes its own revealed state
-- as of the current version, code-block `[!annotate]` is no longer supported; use ordinary comments for explanations
+- the engine emits one unhighlighted baseline slide and one slide per distinct step number
+- step states are non-cumulative; equal step numbers are grouped, and missing numbers are allowed
 - languages without a supported line comment prefix still get Shiki syntax highlighting, but `step` directives are ignored
-
-Implementation map: `src/features/code/index.mjs`, `src/shiki/parse-step-directive.mjs`, `src/features/code/expand-step-slides.mjs`
 
 ## External Code Inclusion
 
@@ -145,11 +142,10 @@ Notes:
 - language can be inferred from the file extension
 - the engine also supports fenced blocks with `path=` or `src=` attributes
 - fenced external code blocks do not need an explicit fence language when the file extension is known
+- an external-code fence must have an empty body; body content is ignored with a warning
 - add `fit-height="true"` to a fenced block when the rendered code should be scaled to the remaining slide height
 - external paths are confined to the directory containing the Markdown input after symbolic links are resolved
 - pass Marp's `--allow-local-files` only for trusted input when an external-code path must leave that directory
-
-Implementation map: `src/features/code/index.mjs`, `src/features/code/resolve-external-code.mjs`
 
 ## Diagrams Via Kroki
 
@@ -177,8 +173,6 @@ Behavior:
 - PDF and PPTX output may work when the output pipeline can fetch the remote diagram image, but this is best-effort rather than guaranteed offline behavior
 - diagram syntax errors or Kroki availability problems surface as missing images in rendered output
 
-Implementation map: `engine.mjs`, `src/features/diagrams/index.mjs`, `src/features/diagrams/kroki-backend.mjs`
-
 ## Media Enhancements
 
 GIF images are wrapped by the custom engine so they do not autoplay by default in HTML output.
@@ -191,7 +185,7 @@ This applies to standard Markdown image syntax when the image source ends with `
 
 ### Sequential media playback
 
-Presentation navigation can turn playable media into ordered steps. Enable it for the whole deck in front matter:
+Enable ordered media steps for the deck in front matter:
 
 ```yaml
 ---
@@ -199,34 +193,15 @@ mediaPlayback: sequential
 ---
 ```
 
-Or enable it for one slide with a local directive:
+Enable or disable it on one slide with a local directive:
 
 ```md
 <!-- _mediaPlayback: sequential -->
-
-![Animated result](result.gif)
-
-<audio controls src="narration.wav"></audio>
-
-<audio class="wavesurfer-spectrogram" controls src="analysis.wav"></audio>
 ```
 
-When the deck-wide option is enabled, one slide can opt out with `<!-- _mediaPlayback: off -->`.
+Use `off` to override a deck-wide setting. In interactive HTML, unmodified forward arrows or the next button select GIF, native audio/video, and spectrogram audio in document order. Backward controls reset the preceding step. Manual media controls do not move this position, and leaving the slide resets it.
 
-In normal or presenter view, the option behaves as follows:
-
-- unmodified right and down arrow keys play the next item in document order
-- unmodified left and up arrow keys reset the most recently played item to its initial state
-- Marp's on-screen next and previous buttons follow the same behavior
-- GIF images, native `audio`, native `video`, and `audio.wavesurfer-spectrogram` are playback steps
-- navigation reaches Marp's fragment or slide change only after no matching media step remains
-- leaving a slide pauses and rewinds its audio or video, restores GIF posters, and resets its sequence
-- arrows used while an interactive media control or form control has focus retain their native behavior
-- Shift-modified arrows and other Marp navigation inputs are not intercepted
-
-Sequential playback is off by default. It affects interactive HTML presentation behavior only; static PDF and PPTX output still shows the normal initial media state.
-
-For ordering rules, interactions with manual controls and Marp navigation, portable HTML guidance, and troubleshooting, see [Sequential Media Playback](media-playback.md).
+See [Sequential Media Playback](media-playback.md) for the complete contract and an example.
 
 Audio elements can also opt into a wavegram spectrogram view by adding the `wavesurfer-spectrogram` class.
 
@@ -246,13 +221,10 @@ Behavior:
 - the engine wraps it with a green theme frame and a `wavegram-player` Web Component after HTML rendering
 - the wavegram runtime is embedded only when this class is present
 - playback, seeking, cursor display, waveform rendering, spectrogram rendering, ready state, and time display follow wavegram defaults
-- the theme does not set wavegram visual custom properties or add separate play/stop/status/time controls
 - `data-spectrogram-height` and `data-spectrogram-fft-samples` are passed through as `spectrogram-height` and `fft-size` when explicitly present
 - local spectrogram audio sources are converted to `data:` URLs during HTML rendering so they still work when the deck is opened directly from disk
 - local audio resolution is exact and relative to the Markdown file; a missing path is reported and is never replaced by a same-basename file elsewhere
 - remote audio sources need CORS headers that allow the browser-side analysis fetch
-
-Implementation map: `engine.mjs`, `src/pipeline/media-playback.mjs`, `src/pipeline/animated-images.mjs`, `theme/tmu-cs.css`
 
 ## Standalone HTML Asset Bundling
 
@@ -275,8 +247,7 @@ Behavior:
 - remote iframes and unsupported asset references are rejected because they cannot satisfy the single-file guarantee
 - a fetch, read, redirect-limit, or embedding failure makes the build exit with an error
 - `--standalone` is intended for HTML output only
-
-Implementation map: `scripts/marp-tmu-cs.mjs`, `engine.mjs`, `src/pipeline/standalone-assets.mjs`
+- standalone builds may fetch authored remote URLs and embed executable scripts from local HTML iframes; use them only with trusted decks
 
 ## Math Highlighting And Math Annotations
 
@@ -286,7 +257,7 @@ Display math can be annotated line by line using `% [!math-annotate ...]` commen
 $$
 X_k % [!math-annotate note="The k-th frequency component"]
 = \sum_{n=0}^{N-1} % [!math-annotate note="Summation over all samples"]
-x_n % [!math-annotate label="signal" note="Discrete-time signal"]
+x_n % [!math-annotate note="Discrete-time signal" color="#1f77b4"]
 $$
 ```
 
@@ -294,14 +265,9 @@ Requirements and behavior:
 
 - `math: mathjax` must be enabled in front matter
 - `note` is required
-- `label` is optional
-- `color` is optional and accepts hex-style values
-- `:N` is parsed but ignored for math annotations
+- `color` is optional and accepts three- or six-digit hexadecimal colors, with or without `#`
 - the annotation must be placed at the end of the line it describes
-- as of the current version, math uses `[!math-annotate ...]` while code-block `[!annotate]` remains removed
 - the engine wraps the math block and injects a runtime that places note boxes and connectors
-
-Implementation map: `src/features/math/index.mjs`, `src/features/math/annotate-math-block.mjs`, `engine.mjs`
 
 ## Bibliography And Citation Management
 
@@ -328,11 +294,14 @@ Behavior:
 - `csl:` is optional; otherwise the bundled IEEE CSL is used
 - cited items are rendered into a footnote-style area on each slide
 - Markdown footnotes are merged into the same visual region and share one numbering sequence with citations in first-occurrence order on each slide
+- each Markdown footnote definition must be on the same slide as its reference
 - citation-like text inside fenced code, inline code, HTML comments, links, and images is left unchanged
 - a References slide is populated in place when the slide contains a `::: {#refs}` placeholder
 - an otherwise empty `# References` slide is also populated in place
 - if no references slide is present, the engine appends one when needed
 - DOI and URL metadata are turned into links in bibliography entries
+
+Bibliography and CSL paths are resolved relative to the Markdown file but are not covered by the external-code root-confinement check. Render only trusted decks.
 
 To control the insertion point explicitly, write a references slide like this:
 
@@ -343,8 +312,4 @@ To control the insertion point explicitly, write a references slide like this:
 :::
 ```
 
-Dependency note:
-
-- no external citation tool is required
-
-Implementation map: `src/features/citations/index.mjs`, `src/features/citations/core.mjs`, `src/features/citations/backends/js.mjs`, `vendor/csl/ieee.csl`
+No external citation tool is required.

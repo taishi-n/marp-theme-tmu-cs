@@ -53,7 +53,7 @@ test('installDiagramFeature renders additional Kroki languages through the same 
   assert.match(html, /alt="plantuml diagram"/);
 });
 
-test('installDiagramFeature falls back to the previous fence renderer for non-diagram languages', () => {
+test('installDiagramFeature delegates non-diagram languages to the base fence renderer', () => {
   const marp = createMockMarp((tokens, idx) => `<pre class="default">${tokens[idx].content}</pre>`);
   installDiagramFeature(marp, {
     backend: createKrokiBackend(),

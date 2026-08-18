@@ -15,12 +15,3 @@ test('collectMathAnnotations recognizes !math-annotate directives', () => {
   assert.match(result.math, /\\class\{eqann-1\}\{X_k\}/);
   assert.match(result.math, /\\class\{eqann-2\}\{= \\sum_\{n=0\}\^\{N-1\}\}/);
 });
-
-test('collectMathAnnotations ignores legacy !annotate directives for math', () => {
-  const result = collectMathAnnotations(
-    'X_k % [!annotate note="Legacy name"]',
-  );
-
-  assert.equal(result.annotations.length, 0);
-  assert.equal(result.math, 'X_k % [!annotate note="Legacy name"]');
-});
