@@ -126,10 +126,12 @@ It is the main reference slide for multi-column authoring.
 ---
 
 <!-- _class: column-layout -->
+<!-- _mediaPlayback: sequential -->
 
 <!--
 This slide collects the supported media primitives: static images, animated GIF playback, plain audio, and spectrogram audio.
 Use it to explain the difference between standard HTML media and the theme-specific wavegram integration.
+In presentation view, use unmodified forward/back arrows to demonstrate the three playable items in order.
 -->
 
 ### Media
@@ -169,12 +171,14 @@ Use it as the quick reference for automatic section pages and table-of-contents 
 | `sectionPages` | Insert automatic section pages at the chosen heading level | `true` |
 | `sectionPageLevel` | Choose which heading level starts a new section | `2` |
 | `tocPageMaxLevel` | Limit how deep `<!-- toc -->` expands by default | `2` or `3` |
+| `mediaPlayback` | Play slide media in order before advancing | `sequential` |
 
 ```yaml
 ---
 sectionPages: true
 sectionPageLevel: 2
 tocPageMaxLevel: 2
+mediaPlayback: sequential
 ---
 ```
 

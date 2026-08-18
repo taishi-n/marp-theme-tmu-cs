@@ -161,6 +161,8 @@ Media elements use the base `img`, `video`, and `audio` rules for centering. Two
 
 The spectrogram wrapper hides the native `audio` controls. Playback controls, status, time display, and waveform/spectrogram rendering remain wavegram defaults.
 
+Slides with sequential playback use a hidden internal slide-class marker. Auxiliary-slide postprocessing promotes it to `section.media-playback-sequential`; the media runtime then consumes presentation arrows while playback steps remain and records played state on each media wrapper or native media element.
+
 ## Implementation Map
 
 - Theme variables and layout: `theme/tmu-cs.css`
@@ -171,3 +173,4 @@ The spectrogram wrapper hides the native `audio` controls. Playback controls, st
 - Primary citation backend: `src/features/citations/backends/js.mjs`
 - Math annotation wrapper and runtime injection: `src/features/math/annotate-math-block.mjs`
 - GIF and spectrogram media wrappers: `src/pipeline/animated-images.mjs`
+- Sequential media directives: `src/pipeline/media-playback.mjs`

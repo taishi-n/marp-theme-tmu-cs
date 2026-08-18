@@ -11,6 +11,7 @@ Main entry points:
 - `README.md`: user-facing quick start
 - `docs/theme-styling.md`: user-facing theme styling reference
 - `docs/feature-guide.md`: user-facing authoring feature reference
+- `docs/media-playback.md`: sequential media playback behavior and troubleshooting
 - `scripts/marp-tmu-cs.mjs`: packaged wrapper CLI for external project usage
 - `engine.mjs`: orchestrator for the rendering pipeline
 - `index.mjs`: package-root public exports
@@ -43,8 +44,9 @@ Most feature logic should live outside `engine.mjs`:
 - `src/pipeline/deck-defaults.mjs`: title slide generation and default `header` / `footer` injection
 - `src/pipeline/section-pages.mjs`: section page insertion and TOC command expansion
 - `src/pipeline/markdown-pipeline.mjs`: Markdown-path discovery and preprocessing order
+- `src/pipeline/media-playback.mjs`: deck and slide directives for sequential media playback
 - `src/pipeline/auxiliary-pagination.mjs`: HTML postprocessing for auxiliary slides and visible pagination
-- `src/pipeline/animated-images.mjs`: HTML postprocessing for GIF playback
+- `src/pipeline/animated-images.mjs`: HTML postprocessing and runtime for GIF, spectrogram, and sequential media playback
 - `src/features/citations/*`: citation core, Markdown postprocessing, and backend boundary
 - `src/features/code/*`: code preprocessing and highlighting boundary
 - `src/features/math/*`: math annotation boundary
@@ -58,8 +60,9 @@ The intended render order is:
 3. section page / TOC preprocessing
 4. external code resolution
 5. step expansion
-6. Marp render
-7. HTML postprocessing
+6. media playback directive expansion
+7. Marp render
+8. HTML postprocessing
 
 Shared helpers that are reused across preprocessors and renderers should prefer `src/core/*` instead of being duplicated in feature-specific files.
 
@@ -129,6 +132,7 @@ Use these checks based on the change:
 
 - CSS or layout changes: run `npm run build:html` and inspect the sample deck
 - engine or Markdown preprocessor changes: run `npm test` and `npm run build:html`
+- sequential media playback changes: run `npm run check`, build the sample HTML, and verify forward/back keys plus on-screen controls in a browser
 - standalone HTML bundling changes: run `npm test` and the deterministic `npm run build:html:standalone:ci`; use `npm run build:html:standalone` as a network integration check for remote sample assets
 - citation changes: run `npm run build:html` and confirm the JS citation backend still produces the expected output
 - output-format-sensitive changes: also run `npm run build:pdf` or `npm run build:pptx`
@@ -165,6 +169,7 @@ When visually checking the sample deck, pay particular attention to:
 - Theme styling: `theme/tmu-cs.css`
 - Title slide and default marginals: `src/pipeline/deck-defaults.mjs`
 - Pipeline orchestration: `engine.mjs`, `src/pipeline/markdown-pipeline.mjs`
+- Sequential media playback: `src/pipeline/media-playback.mjs`, `src/pipeline/animated-images.mjs`
 - Section-page / TOC preprocessing: `src/pipeline/section-pages.mjs`
 - Auxiliary pagination and current-section header labels: `src/pipeline/auxiliary-pagination.mjs`
 - Standalone HTML asset bundling: `scripts/marp-tmu-cs.mjs`, `src/pipeline/standalone-assets.mjs`

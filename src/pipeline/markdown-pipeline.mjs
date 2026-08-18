@@ -4,6 +4,7 @@ import { parseFrontMatter } from '../core/front-matter.mjs';
 import { preprocessCitationMarkdown } from '../features/citations/index.mjs';
 import { preprocessCodeMarkdown, warnForOverflowingCodeBlocks } from '../features/code/index.mjs';
 import applyDeckDefaults from './deck-defaults.mjs';
+import applyMediaPlayback from './media-playback.mjs';
 import applySectionPages from './section-pages.mjs';
 
 export function getMarkdownPathFromEnv(env = {}, markdown, configuredPaths = []) {
@@ -59,10 +60,14 @@ export function prepareMarkdownForRender(markdown, context) {
     markdownPath: context.markdownPath,
     onWarning: context.onWarning,
   });
+  const mediaPreparedMarkdown = applyMediaPlayback(resolvedMarkdown, {
+    defaultMode: preparedDeck.frontMatter.mediaPlayback,
+    onWarning: context.onWarning,
+  });
 
   return {
     frontMatter: preparedDeck.frontMatter,
-    markdown: resolvedMarkdown,
+    markdown: mediaPreparedMarkdown,
   };
 }
 

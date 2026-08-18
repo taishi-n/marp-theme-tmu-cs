@@ -5,6 +5,7 @@
 - Package overview and quick start: `README.md`
 - Theme styling and layout behavior: `docs/theme-styling.md`
 - Code highlighting, math annotations, citations, and authoring syntax: `docs/feature-guide.md`
+- Sequential media playback authoring and behavior: `docs/media-playback.md`
 - Developer workflow, validation rules, and maintenance notes: `docs/development.md`
 
 ## Source Index

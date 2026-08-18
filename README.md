@@ -179,13 +179,14 @@ bibliography: references.bib
 ---
 ```
 
-Optional deck-structure directives:
+Optional deck-structure and playback directives:
 
 ```yaml
 ---
 sectionPages: true
 sectionPageLevel: 2
 tocPageMaxLevel: 2
+mediaPlayback: sequential
 ---
 ```
 
@@ -198,14 +199,18 @@ Deck-level directives and inline commands:
 sectionPages: true
 sectionPageLevel: 2
 tocPageMaxLevel: 2
+mediaPlayback: sequential
 ---
 ```
 
 - `sectionPages`: insert auxiliary section pages automatically
 - `sectionPageLevel`: choose which heading level starts a section
 - `tocPageMaxLevel`: choose how deep `<!-- toc -->` expands by default
+- `mediaPlayback: sequential`: consume forward/back presentation arrows as ordered media playback steps before changing fragments or slides
 - `<!-- toc -->`: expand a TOC slide at the default depth
 - `<!-- toc level=3 -->`: override the TOC depth for one page
+- `<!-- _mediaPlayback: sequential -->`: enable ordered playback on one slide
+- `<!-- _mediaPlayback: off -->`: disable ordered playback on one slide
 
 In HTML output, section pages and TOC pages are treated as auxiliary slides:
 
@@ -279,6 +284,10 @@ This is a citation [@postel1981ip].
 
 Animated GIF images are shown as a still poster by default and start playing only after the viewer presses the play button.
 
+Set `mediaPlayback: sequential` in front matter, or add `<!-- _mediaPlayback: sequential -->` to one slide, to play GIF, native audio/video, and spectrogram audio elements in document order with unmodified presentation arrows or Marp's on-screen previous/next controls. Forward navigation plays the next item before advancing; backward navigation resets the most recent item. A slide resets when it is left. Use the local value `off` to override a deck-wide setting.
+
+See the [sequential media playback guide](docs/media-playback.md) for supported elements, navigation precedence, complete examples, and troubleshooting.
+
 Audio elements with `class="wavesurfer-spectrogram"` hide the native browser controller and instead render a wavegram-based waveform/spectrogram panel in HTML output. Playback, seeking, cursor display, and waveform/spectrogram rendering follow wavegram defaults; the theme only adds the surrounding green frame. Use `data-spectrogram-height` and `data-spectrogram-fft-samples` to pass explicit spectrogram height and FFT size to wavegram. The runtime embeds the wavegram Web Component only when such an audio element exists. Local spectrogram audio sources are embedded as `data:` URLs during HTML rendering so they still work from `file://`, while remote audio sources must allow CORS for analysis.
 
 The spectrogram feature relies on `wavegram` (MIT). Third-party
@@ -290,4 +299,5 @@ Long code lines are wrapped automatically, and wrapped segments end with `\` so 
 
 - [Theme styling](docs/theme-styling.md)
 - [Feature guide](docs/feature-guide.md)
+- [Sequential media playback](docs/media-playback.md)
 - [Development guide](docs/development.md)

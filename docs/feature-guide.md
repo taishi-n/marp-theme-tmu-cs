@@ -189,6 +189,45 @@ GIF images are wrapped by the custom engine so they do not autoplay by default i
 
 This applies to standard Markdown image syntax when the image source ends with `.gif`.
 
+### Sequential media playback
+
+Presentation navigation can turn playable media into ordered steps. Enable it for the whole deck in front matter:
+
+```yaml
+---
+mediaPlayback: sequential
+---
+```
+
+Or enable it for one slide with a local directive:
+
+```md
+<!-- _mediaPlayback: sequential -->
+
+![Animated result](result.gif)
+
+<audio controls src="narration.wav"></audio>
+
+<audio class="wavesurfer-spectrogram" controls src="analysis.wav"></audio>
+```
+
+When the deck-wide option is enabled, one slide can opt out with `<!-- _mediaPlayback: off -->`.
+
+In normal or presenter view, the option behaves as follows:
+
+- unmodified right and down arrow keys play the next item in document order
+- unmodified left and up arrow keys reset the most recently played item to its initial state
+- Marp's on-screen next and previous buttons follow the same behavior
+- GIF images, native `audio`, native `video`, and `audio.wavesurfer-spectrogram` are playback steps
+- navigation reaches Marp's fragment or slide change only after no matching media step remains
+- leaving a slide pauses and rewinds its audio or video, restores GIF posters, and resets its sequence
+- arrows used while an interactive media control or form control has focus retain their native behavior
+- Shift-modified arrows and other Marp navigation inputs are not intercepted
+
+Sequential playback is off by default. It affects interactive HTML presentation behavior only; static PDF and PPTX output still shows the normal initial media state.
+
+For ordering rules, interactions with manual controls and Marp navigation, portable HTML guidance, and troubleshooting, see [Sequential Media Playback](media-playback.md).
+
 Audio elements can also opt into a wavegram spectrogram view by adding the `wavesurfer-spectrogram` class.
 
 ```html
@@ -213,7 +252,7 @@ Behavior:
 - local audio resolution is exact and relative to the Markdown file; a missing path is reported and is never replaced by a same-basename file elsewhere
 - remote audio sources need CORS headers that allow the browser-side analysis fetch
 
-Implementation map: `engine.mjs`, `src/pipeline/animated-images.mjs`, `theme/tmu-cs.css`
+Implementation map: `engine.mjs`, `src/pipeline/media-playback.mjs`, `src/pipeline/animated-images.mjs`, `theme/tmu-cs.css`
 
 ## Standalone HTML Asset Bundling
 

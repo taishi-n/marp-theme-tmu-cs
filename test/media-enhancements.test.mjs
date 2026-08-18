@@ -35,6 +35,25 @@ test('enhanceAnimatedImages leaves plain audio unchanged', () => {
   assert.equal(output, html);
 });
 
+test('enhanceAnimatedImages installs sequential navigation for marked plain media', () => {
+  const html = [
+    '<section>',
+    '<audio controls src="./one.wav"></audio>',
+    '<video controls src="./two.mp4"></video>',
+    '<span class="tmu-cs-slide-class--media-playback-sequential"></span>',
+    '</section>',
+  ].join('');
+  const output = enhanceAnimatedImages(html);
+  const runtime = output.match(/<script>([\s\S]*)<\/script>$/u)?.[1];
+
+  assert.ok(runtime);
+  assert.match(runtime, /function playNextStep\(section\)/u);
+  assert.match(runtime, /event\.key === 'ArrowRight'/u);
+  assert.match(runtime, /data-bespoke-marp-osc="next"/u);
+  assert.match(runtime, /'audio',[\s\S]*'video'/u);
+  assert.doesNotThrow(() => Function(runtime));
+});
+
 test('enhanceAnimatedImages inlines local spectrogram audio when markdownPath is known', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-spectrogram-'));
 
