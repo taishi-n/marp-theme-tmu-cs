@@ -154,6 +154,30 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+## parse5
+
+- Project: `parse5`
+- Copyright: Copyright (c) 2013-2019 Ivan Nikulin
+- Homepage: <https://parse5.js.org>
+- Repository: <https://github.com/inikulin/parse5>
+- License: MIT
+- Usage in this package: Structure-aware HTML parsing and serialization for
+  pagination, media enhancement, and standalone asset embedding.
+
+The full MIT license text is included in the installed `parse5` package.
+
+## MathJax
+
+- Project: `mathjax-full`
+- Copyright: MathJax Consortium
+- Homepage: <https://www.mathjax.org>
+- Repository: <https://github.com/mathjax/MathJax-src>
+- License: Apache-2.0
+- Usage in this package: Server-side SVG generation for math annotations.
+
+The full Apache License 2.0 text is included in the installed `mathjax-full`
+package.
+
 ## Marp CLI
 
 - Project: `@marp-team/marp-cli`

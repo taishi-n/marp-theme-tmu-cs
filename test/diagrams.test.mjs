@@ -30,7 +30,7 @@ test('installDiagramFeature renders mermaid fences through Kroki', () => {
     content: 'graph TD;\nA-->B\n',
     info: 'mermaid',
   }];
-  const html = marp.markdown.renderer.rules.fence(tokens, 0, {}, {}, {});
+  const html = marp.markdown.renderer.rules.fence(tokens, 0);
 
   assert.match(html, /^<p><marp-auto-scaling data-downscale-only><img src="https:\/\/kroki\.io\/mermaid\/svg\//);
   assert.match(html, /alt="mermaid diagram"/);
@@ -47,7 +47,7 @@ test('installDiagramFeature renders additional Kroki languages through the same 
     content: '@startuml\nAlice -> Bob: Hello\n@enduml\n',
     info: 'plantuml',
   }];
-  const html = marp.markdown.renderer.rules.fence(tokens, 0, {}, {}, {});
+  const html = marp.markdown.renderer.rules.fence(tokens, 0);
 
   assert.match(html, /https:\/\/kroki\.io\/plantuml\/svg\//);
   assert.match(html, /alt="plantuml diagram"/);
@@ -63,7 +63,7 @@ test('installDiagramFeature falls back to the previous fence renderer for non-di
     content: 'const value = 1;\n',
     info: 'javascript',
   }];
-  const html = marp.markdown.renderer.rules.fence(tokens, 0, {}, {}, {});
+  const html = marp.markdown.renderer.rules.fence(tokens, 0);
 
   assert.equal(html, '<pre class="default">const value = 1;\n</pre>');
 });
@@ -78,7 +78,7 @@ test('installDiagramFeature passes through attribute-bearing fence info for supp
     content: 'digraph G { a -> b; }\n',
     info: 'graphviz fit-height="true"',
   }];
-  const html = marp.markdown.renderer.rules.fence(tokens, 0, {}, {}, {});
+  const html = marp.markdown.renderer.rules.fence(tokens, 0);
 
   assert.match(html, /https:\/\/kroki\.io\/graphviz\/svg\//);
 });

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
+import { resolveConstrainedFilePath, resolveInputRoot } from '../../core/local-path.mjs';
 import { isFenceClose, parseFenceStart } from '../../core/markdown.mjs';
 import {
   inferLanguageFromPath,
@@ -18,7 +19,7 @@ function parseStandaloneMarkdownLink(line) {
   const label = trimmed.slice(1, labelEnd);
   let cursor = labelEnd + 2;
 
-  let destination = '';
+  let destination;
 
   if (trimmed[cursor] === '<') {
     const destinationEnd = trimmed.indexOf('>', cursor + 1);
@@ -100,7 +101,7 @@ function isRelativeMarkdownLink(destination) {
 }
 
 function createFenceLines(source, language) {
-  const backtickRuns = String(source ?? '').match(/`+/g) ?? [];
+  const backtickRuns = Array.from(String(source ?? '').matchAll(/`+/g), (match) => match[0]);
   const longestBacktickRun = backtickRuns.reduce((max, run) => Math.max(max, run.length), 0);
   const fence = '`'.repeat(Math.max(3, longestBacktickRun + 1));
 
@@ -131,10 +132,19 @@ function readExternalSource(reference, options) {
   const resolvedPath = resolveReferencePath(reference, options.markdownPath);
 
   try {
-    return readFileSync(resolvedPath, 'utf8');
+    const inputRoot = resolveInputRoot(options.markdownPath);
+    const realPath = resolveConstrainedFilePath(resolvedPath, {
+      allowOutsideRoot: options.allowLocalFiles,
+      inputRoot,
+    });
+
+    return readFileSync(realPath, 'utf8');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`[tmu-cs] line ${options.lineNumber}: failed to read external code file "${reference}" (${resolvedPath}). ${message}`);
+    throw new Error(
+      `[tmu-cs] line ${options.lineNumber}: failed to read external code file "${reference}" (${resolvedPath}). ${message}`,
+      { cause: error },
+    );
   }
 }
 
@@ -159,6 +169,7 @@ export function resolveExternalCode(markdown, options = {}) {
 
     if (standaloneLink) {
       const resolvedLinkLines = resolveCodeLink(standaloneLink, {
+        allowLocalFiles: options.allowLocalFiles === true,
         lineNumber: openingLineNumber,
         markdownPath: options.markdownPath,
       });
@@ -209,6 +220,7 @@ export function resolveExternalCode(markdown, options = {}) {
       }
 
       const source = readExternalSource(externalPath, {
+        allowLocalFiles: options.allowLocalFiles === true,
         lineNumber: openingLineNumber,
         markdownPath: options.markdownPath,
       });

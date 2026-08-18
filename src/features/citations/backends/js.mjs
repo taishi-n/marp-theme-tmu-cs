@@ -5,11 +5,12 @@ import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import '@citation-js/plugin-bibtex';
 import '@citation-js/plugin-csl';
 import { escapeHtmlAttribute } from '../../../core/html.mjs';
-import { isFenceClose, parseFenceStart } from '../../../core/markdown.mjs';
-import { escapeHtml } from '../markdown-utils.mjs';
+import { transformMarkdownText } from '../../../core/markdown-text.mjs';
+import { collectInlineReferenceOrder, escapeHtml } from '../markdown-utils.mjs';
 
 const DEFAULT_LOCALE = 'en-US';
 const xhtmlNamespacePattern = /\s+xmlns="http:\/\/www\.w3\.org\/1999\/xhtml"/gu;
+const inlineCitationMarkerPattern = /(?<![A-Za-z0-9_])-?@[A-Za-z0-9_:.#$%&+?/<>-]+/u;
 const serializer = new XMLSerializer();
 const domParser = new DOMParser({
   onError: () => {},
@@ -20,10 +21,7 @@ function asNonEmptyString(value) {
 }
 
 function createBackendError(code, message, cause) {
-  const error = new Error(message);
-  error.code = code;
-  if (cause) error.cause = cause;
-  return error;
+  return Object.assign(new Error(message, cause ? { cause } : undefined), { code });
 }
 
 function normalizeDoi(value) {
@@ -193,7 +191,7 @@ function escapeCitationText(value) {
 
 function parseCitationItem(rawItem) {
   const source = String(rawItem ?? '');
-  const match = source.match(/^(.*?)(-?)@([A-Za-z0-9_:.#$%&+?/<>\-]+)([\s\S]*)$/u);
+  const match = source.match(/^(.*?)(?<![A-Za-z0-9_])(-?)@([A-Za-z0-9_:.#$%&+?/<>-]+)([\s\S]*)$/u);
   if (!match) return null;
 
   const prefix = match[1];
@@ -270,55 +268,28 @@ function formatCitationCluster(cite, template, items, citationHistory) {
   }
 }
 
+function applyReferenceNumbers(citationText, items, referenceNumbers) {
+  const numbers = items.map((item) => referenceNumbers.get(`citation:${item.id}`));
+  if (numbers.some((number) => !Number.isInteger(number))) return citationText;
+
+  if (/^\s*(?:\[\d+\](?:\s*[,–-]\s*\[?\d+\]?)*)\s*$/u.test(citationText)) {
+    return `[${numbers.join(', ')}]`;
+  }
+
+  return citationText;
+}
+
 function replaceInlineCitations(slideContent, cite, template, citationHistory) {
   const citedKeys = [];
   const seenKeys = new Set();
-  let fence = null;
-  let inHtmlComment = false;
-
-  const updateHtmlCommentState = (line) => {
-    let index = 0;
-    let state = inHtmlComment;
-
-    while (index < line.length) {
-      if (!state) {
-        const openIndex = line.indexOf('<!--', index);
-        if (openIndex === -1) break;
-        state = true;
-        index = openIndex + 4;
-        continue;
-      }
-
-      const closeIndex = line.indexOf('-->', index);
-      if (closeIndex === -1) break;
-      state = false;
-      index = closeIndex + 3;
-    }
-
-    inHtmlComment = state;
-  };
-
-  const content = String(slideContent ?? '')
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .map((line) => {
-      if (!fence) {
-        if (inHtmlComment) {
-          updateHtmlCommentState(line);
-          return line;
-        }
-
-        const fenceStart = parseFenceStart(line);
-        if (fenceStart) {
-          fence = fenceStart;
-          return line;
-        }
-
-        updateHtmlCommentState(line);
-        if (inHtmlComment) return line;
-
-        return line.replace(/\[((?:\\.|[^\]\\])*)\]/gu, (match, contentText) => {
-          if (!String(contentText).includes('@')) return match;
+  const referenceOrder = collectInlineReferenceOrder(slideContent);
+  const referenceNumbers = new Map(referenceOrder.map((reference, index) => [
+    reference.type === 'citation' ? `citation:${reference.key}` : `footnote:${reference.id}`,
+    index + 1,
+  ]));
+  const content = transformMarkdownText(slideContent, (text) => (
+    text.replace(/\[((?:\\.|[^\]\\])*)\]/gu, (match, contentText) => {
+          if (!inlineCitationMarkerPattern.test(String(contentText))) return match;
 
           const items = parseCitationCluster(contentText);
           for (const item of items) {
@@ -327,20 +298,20 @@ function replaceInlineCitations(slideContent, cite, template, citationHistory) {
             citedKeys.push(item.id);
           }
 
-          const citationText = formatCitationCluster(cite, template, items, citationHistory);
+          const citationText = applyReferenceNumbers(
+            formatCitationCluster(cite, template, items, citationHistory),
+            items,
+            referenceNumbers,
+          );
           citationHistory.push(createCitationStateItem(items));
           return escapeCitationText(citationText);
-        });
-      }
-
-      if (isFenceClose(line, fence)) fence = null;
-      return line;
-    })
-    .join('\n');
+        })
+  ));
 
   return {
     citedKeys,
     content,
+    referenceOrder,
   };
 }
 

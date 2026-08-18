@@ -76,7 +76,7 @@ function parseInlineMathSegments(note) {
 function renderInlineMathSvg(tex) {
   const node = noteMathDocument.convert(String(tex ?? ''), { display: false });
   const svg = mathAdaptor.firstChild(node);
-  const svgHtml = svg ? mathAdaptor.outerHTML(svg) : mathAdaptor.outerHTML(node);
+  const svgHtml = svg ? mathAdaptor.outerHTML(/** @type {any} */ (svg)) : mathAdaptor.outerHTML(node);
   return `<span class="eqann-inline-math">${svgHtml}</span>`;
 }
 
@@ -286,8 +286,8 @@ function buildAnnotatedLine(line, annotationId, options = {}) {
 }
 
 function mathAnnotationRuntime() {
-  if (window.__tmuCsMathAnnotationRuntimeLoaded) return;
-  window.__tmuCsMathAnnotationRuntimeLoaded = true;
+  if (window['__tmuCsMathAnnotationRuntimeLoaded']) return;
+  window['__tmuCsMathAnnotationRuntimeLoaded'] = true;
 
   const TAB10_COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'];
   const HIGHLIGHT_ALPHA = 0.20;
@@ -297,11 +297,11 @@ function mathAnnotationRuntime() {
   const HORIZONTAL_GAP = 10;
 
   function isDebugEnabled() {
-    if (window.__TMU_CS_MATH_DEBUG === true) return true;
+    if (window['__TMU_CS_MATH_DEBUG'] === true) return true;
 
     try {
       if (window.localStorage?.getItem('tmu-cs-math-debug') === '1') return true;
-    } catch (_error) {
+    } catch {
       // Ignore storage access failures.
     }
 
@@ -309,7 +309,7 @@ function mathAnnotationRuntime() {
       const params = new URLSearchParams(window.location.search || '');
       const value = params.get('mathDebug');
       return value === '1' || value === 'true' || value === 'yes';
-    } catch (_error) {
+    } catch {
       return false;
     }
   }
@@ -325,7 +325,7 @@ function mathAnnotationRuntime() {
 
     try {
       return JSON.stringify(value);
-    } catch (_error) {
+    } catch {
       return String(value);
     }
   }
@@ -343,9 +343,9 @@ function mathAnnotationRuntime() {
   }
 
   function createLogger(debugEl) {
-    return function () {
-      emitConsoleLog(arguments);
-      appendDebugLine(debugEl, arguments);
+    return function (...args) {
+      emitConsoleLog(args);
+      appendDebugLine(debugEl, args);
     };
   }
 

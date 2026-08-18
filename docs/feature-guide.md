@@ -146,6 +146,8 @@ Notes:
 - the engine also supports fenced blocks with `path=` or `src=` attributes
 - fenced external code blocks do not need an explicit fence language when the file extension is known
 - add `fit-height="true"` to a fenced block when the rendered code should be scaled to the remaining slide height
+- external paths are confined to the directory containing the Markdown input after symbolic links are resolved
+- pass Marp's `--allow-local-files` only for trusted input when an external-code path must leave that directory
 
 Implementation map: `src/features/code/index.mjs`, `src/features/code/resolve-external-code.mjs`
 
@@ -208,6 +210,7 @@ Behavior:
 - the theme does not set wavegram visual custom properties or add separate play/stop/status/time controls
 - `data-spectrogram-height` and `data-spectrogram-fft-samples` are passed through as `spectrogram-height` and `fft-size` when explicitly present
 - local spectrogram audio sources are converted to `data:` URLs during HTML rendering so they still work when the deck is opened directly from disk
+- local audio resolution is exact and relative to the Markdown file; a missing path is reported and is never replaced by a same-basename file elsewhere
 - remote audio sources need CORS headers that allow the browser-side analysis fetch
 
 Implementation map: `engine.mjs`, `src/pipeline/animated-images.mjs`, `theme/tmu-cs.css`
@@ -224,11 +227,14 @@ npx marp-tmu-cs --standalone slides.md -o slides.html
 
 Behavior:
 
-- local `img`, `audio`, `video`, and `source` assets are converted to `data:` URLs
+- local and remote `img`, `audio`, `video`, and `source` assets are converted to `data:` URLs
 - Kroki-hosted SVG diagram images are fetched during build and converted to `data:` URLs
 - local GIF player sources are converted to `data:` URLs after GIF wrapping
 - local HTML `iframe` sources are converted to `srcdoc`, and their local scripts, stylesheets, and media references are inlined recursively
-- remote URLs such as CDN assets are left unchanged, except for Kroki SVG diagram images
+- stylesheet `url(...)` references, including fonts, are embedded relative to the stylesheet
+- local asset reads are confined to the Markdown input directory after resolving symbolic links; trusted decks may opt out with `--allow-local-files`
+- remote iframes and unsupported asset references are rejected because they cannot satisfy the single-file guarantee
+- a fetch, read, redirect-limit, or embedding failure makes the build exit with an error
 - `--standalone` is intended for HTML output only
 
 Implementation map: `scripts/marp-tmu-cs.mjs`, `engine.mjs`, `src/pipeline/standalone-assets.mjs`
@@ -282,7 +288,8 @@ Behavior:
 - `bibliography:` is required when citation syntax is used
 - `csl:` is optional; otherwise the bundled IEEE CSL is used
 - cited items are rendered into a footnote-style area on each slide
-- Markdown footnotes are merged into the same visual region
+- Markdown footnotes are merged into the same visual region and share one numbering sequence with citations in first-occurrence order on each slide
+- citation-like text inside fenced code, inline code, HTML comments, links, and images is left unchanged
 - a References slide is populated in place when the slide contains a `::: {#refs}` placeholder
 - an otherwise empty `# References` slide is also populated in place
 - if no references slide is present, the engine appends one when needed

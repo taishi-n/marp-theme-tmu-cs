@@ -1,75 +1,12 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { basename, join, resolve as resolvePath } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve as resolvePath } from 'node:path';
 import { parseFrontMatter } from '../core/front-matter.mjs';
 import { preprocessCitationMarkdown } from '../features/citations/index.mjs';
 import { preprocessCodeMarkdown, warnForOverflowingCodeBlocks } from '../features/code/index.mjs';
 import applyDeckDefaults from './deck-defaults.mjs';
 import applySectionPages from './section-pages.mjs';
 
-function findWorkspaceFile(candidate, currentDir = process.cwd()) {
-  const normalizedCandidate = String(candidate ?? '').replaceAll('\\', '/');
-  const fileName = basename(normalizedCandidate);
-  const skippedDirectories = new Set(['.git', 'node_modules']);
-  const matches = [];
-
-  const walk = (directory, relativeDirectory = '') => {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      if (entry.isDirectory()) {
-        if (skippedDirectories.has(entry.name)) continue;
-
-        const nextRelative = relativeDirectory === '' ? entry.name : `${relativeDirectory}/${entry.name}`;
-        walk(join(directory, entry.name), nextRelative);
-        continue;
-      }
-
-      if (!entry.isFile() || entry.name !== fileName) continue;
-
-      const relativeFile = relativeDirectory === '' ? entry.name : `${relativeDirectory}/${entry.name}`;
-      if (
-        relativeFile === normalizedCandidate
-        || relativeFile.endsWith(`/${normalizedCandidate}`)
-        || entry.name === normalizedCandidate
-      ) {
-        matches.push(join(directory, entry.name));
-      }
-    }
-  };
-
-  walk(currentDir);
-  return matches.length === 1 ? matches[0] : undefined;
-}
-
-function findMarkdownFileByContent(markdown, currentDir = process.cwd()) {
-  const target = String(markdown ?? '').replace(/\r\n/g, '\n');
-  const skippedDirectories = new Set(['.git', 'node_modules']);
-  const matches = [];
-
-  const walk = (directory) => {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      if (entry.isDirectory()) {
-        if (skippedDirectories.has(entry.name)) continue;
-        walk(join(directory, entry.name));
-        continue;
-      }
-
-      if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
-
-      const filePath = join(directory, entry.name);
-
-      try {
-        const content = readFileSync(filePath, 'utf8').replace(/\r\n/g, '\n');
-        if (content === target) matches.push(filePath);
-      } catch {
-        // Ignore unreadable candidates and continue discovery.
-      }
-    }
-  };
-
-  walk(currentDir);
-  return matches.length === 1 ? matches[0] : undefined;
-}
-
-export function getMarkdownPathFromEnv(env = {}, markdown) {
+export function getMarkdownPathFromEnv(env = {}, markdown, configuredPaths = []) {
   const candidates = [env.file?.absolutePath, env.file?.relativePath, env.path]
     .filter((candidate) => typeof candidate === 'string' && candidate !== '');
 
@@ -78,12 +15,26 @@ export function getMarkdownPathFromEnv(env = {}, markdown) {
 
     const resolvedCandidate = resolvePath(candidate);
     if (existsSync(resolvedCandidate)) return resolvedCandidate;
-
-    const discoveredCandidate = findWorkspaceFile(candidate);
-    if (discoveredCandidate) return discoveredCandidate;
   }
 
-  return findMarkdownFileByContent(markdown);
+  const existingConfiguredPaths = configuredPaths.filter((candidate) => (
+    typeof candidate === 'string' && candidate !== '' && existsSync(candidate)
+  ));
+  if (existingConfiguredPaths.length === 1) return existingConfiguredPaths[0];
+
+  if (existingConfiguredPaths.length > 1 && typeof markdown === 'string') {
+    const normalizedMarkdown = markdown.replace(/\r\n/g, '\n');
+    const matches = existingConfiguredPaths.filter((candidate) => {
+      try {
+        return readFileSync(candidate, 'utf8').replace(/\r\n/g, '\n') === normalizedMarkdown;
+      } catch {
+        return false;
+      }
+    });
+    if (matches.length === 1) return matches[0];
+  }
+
+  return undefined;
 }
 
 export function prepareMarkdownForRender(markdown, context) {
@@ -103,6 +54,7 @@ export function prepareMarkdownForRender(markdown, context) {
     },
   });
   const resolvedMarkdown = preprocessCodeMarkdown(sectionedMarkdown, {
+    allowLocalFiles: context.allowLocalFiles === true,
     frontMatter: preparedDeck.frontMatter,
     markdownPath: context.markdownPath,
     onWarning: context.onWarning,

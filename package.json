@@ -37,14 +37,18 @@
     "citeproc"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "build:html": "cd examples && marp --engine ../engine.mjs slides.md -o dist/slides.html",
     "build:html:standalone": "cd examples && node ../scripts/marp-tmu-cs.mjs --standalone --engine ../engine.mjs slides.md -o dist/slides.standalone.html",
-    "build:pdf": "cd examples && marp --engine ../engine.mjs slides.md -o dist/slides.pdf",
-    "build:pptx": "cd examples && marp --engine ../engine.mjs --pptx --pptx-editable slides.md -o dist/slides.pptx",
+    "build:html:standalone:ci": "node scripts/marp-tmu-cs.mjs --standalone test/fixtures/standalone.md -o examples/dist/ci-standalone.html",
+    "build:pdf": "cd examples && marp --allow-local-files --engine ../engine.mjs slides.md -o dist/slides.pdf",
+    "build:pptx": "cd examples && marp --allow-local-files --engine ../engine.mjs --pptx --pptx-editable slides.md -o dist/slides.pptx",
+    "check": "npm run lint && npm run typecheck && npm test",
+    "lint": "eslint .",
     "test": "node --test",
+    "typecheck": "tsc --noEmit",
     "watch": "cd examples && marp --engine ../engine.mjs --watch slides.md -o dist/slides.html"
   },
   "dependencies": {
@@ -53,10 +57,19 @@
     "@citation-js/plugin-csl": "^0.7.22",
     "@marp-team/marp-cli": "4.4.0",
     "@shikijs/transformers": "4.0.2",
-    "@xmldom/xmldom": "^0.9.10",
+    "@xmldom/xmldom": "0.9.11",
     "citeproc": "^2.4.63",
-    "js-yaml": "4.1.1",
+    "js-yaml": "^4.3.1",
+    "mathjax-full": "^3.2.2",
+    "parse5": "^8.0.1",
     "shiki": "4.0.2",
     "wavegram": "^0.1.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^20.19.0",
+    "eslint": "^10.8.1",
+    "globals": "^17.11.0",
+    "typescript": "^7.0.2"
   }
 }

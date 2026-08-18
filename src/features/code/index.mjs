@@ -9,32 +9,26 @@ import {
   isShikiLanguageSupported,
   normalizeFenceLanguage,
   parseFenceInfo,
-  supportsMagicComments,
 } from './shared.mjs';
 import { createWrapLongLinesTransformer, wrapCodeSource } from '../../shiki/wrap-long-lines-transformer.mjs';
+import { codeLayoutMetrics, headingHeightsPx } from './layout-metrics.mjs';
 
-const baseFontSizePx = 16;
-const slideWidthPx = 1280;
-const slideSidePaddingPx = 72;
-const slideContentHeightPx = 720 - 84 - 86;
-const bodyLineHeightPx = baseFontSizePx * 1.35;
-const bodyBlockGapPx = baseFontSizePx;
-const defaultCodeFontSizePx = baseFontSizePx * 0.85;
-const customCodeMarginTopPx = baseFontSizePx * 0.35;
-const codePaddingYPx = baseFontSizePx * 2;
-const codePaddingXPx = baseFontSizePx * 2;
-const codeLineInsetPx = (baseFontSizePx * 0.45) + (baseFontSizePx * 0.24);
-const customCodeBorderYPx = 2;
+const {
+  bodyBlockGapPx,
+  bodyLineHeightPx,
+  codeBorderYPx,
+  codeFontSizePx,
+  codeLineHeightPx,
+  codeMarginBottomPx,
+  codePaddingXPx,
+  codePaddingYPx,
+  slideContentHeightPx,
+  slideSidePaddingPx,
+  slideWidthPx,
+} = codeLayoutMetrics;
 const codeWarningTolerancePx = 4;
-const monospaceCharWidthPx = defaultCodeFontSizePx * 0.62;
-const htmlBodyWrapScale = 0.59;
+const monospaceCharWidthPx = codeFontSizePx * 0.62;
 const fitHeightMetaKey = '__tmuCodeFitHeight';
-
-const headingHeightsPx = {
-  h1: (baseFontSizePx * 1.36 * 1.18) + (baseFontSizePx * 0.52) + (baseFontSizePx * 0.18) + (baseFontSizePx * 0.08),
-  h2: (baseFontSizePx * 0.98 * 1.18) + (baseFontSizePx * 0.42),
-  h3: (baseFontSizePx * 0.72 * 1.18) + (baseFontSizePx * 0.34),
-};
 
 function isTruthyAttribute(value) {
   const normalized = String(value ?? '').trim().toLowerCase();
@@ -57,7 +51,7 @@ function createMarkdownWarningEmitter(onWarning) {
 }
 
 function getCodeWrapOptions() {
-  const availableWidthPx = (slideWidthPx - (slideSidePaddingPx * 2) - codePaddingXPx - codeLineInsetPx) * htmlBodyWrapScale;
+  const availableWidthPx = slideWidthPx - (slideSidePaddingPx * 2) - codePaddingXPx;
   const maxColumns = Math.max(24, Math.floor(availableWidthPx / monospaceCharWidthPx));
 
   return {
@@ -105,15 +99,14 @@ function findMatchingCloseIndex(tokens, startIndex) {
   return startIndex;
 }
 
-function estimateCodeBlockHeight(token, options = {}) {
-  const language = normalizeFenceLanguage(token.info);
-  const lineHeightPx = supportsMagicComments(language) ? baseFontSizePx : defaultCodeFontSizePx;
+function estimateCodeBlockHeight(token) {
+  const wrappedSource = wrapCodeSource(token.content, getCodeWrapOptions());
 
   return (
-    (options.hasPreviousContent ? customCodeMarginTopPx : 0)
     + codePaddingYPx
-    + (supportsMagicComments(language) ? customCodeBorderYPx : 0)
-    + (countCodeLines(token.content) * lineHeightPx)
+    + codeBorderYPx
+    + (countCodeLines(wrappedSource) * codeLineHeightPx)
+    + codeMarginBottomPx
   );
 }
 
@@ -176,9 +169,7 @@ function computeFitHeightMetadata(tokens) {
     }
 
     if (token.type === 'fence') {
-      const blockHeightPx = estimateCodeBlockHeight(token, {
-        hasPreviousContent: usedHeightPx > 0,
-      });
+      const blockHeightPx = estimateCodeBlockHeight(token);
 
       if (shouldFitCodeHeight(token)) {
         const availableHeightPx = Math.max(1, slideContentHeightPx - usedHeightPx);
@@ -210,6 +201,7 @@ function computeFitHeightMetadata(tokens) {
 
 export function preprocessCodeMarkdown(markdown, options = {}) {
   const resolvedMarkdown = resolveExternalCode(markdown, {
+    allowLocalFiles: options.allowLocalFiles === true,
     markdownPath: options.markdownPath,
     onWarning: createMarkdownWarningEmitter(options.onWarning),
   });
@@ -249,9 +241,7 @@ export function warnForOverflowingCodeBlocks(markdown, marp, env = {}, options =
     }
 
     if (token.type === 'fence') {
-      const codeBlockHeightPx = estimateCodeBlockHeight(token, {
-        hasPreviousContent: usedHeightPx > 0,
-      });
+      const codeBlockHeightPx = estimateCodeBlockHeight(token);
       const availableHeightPx = slideContentHeightPx - usedHeightPx;
       const renderedHeightPx = shouldFitCodeHeight(token)
         ? Math.min(codeBlockHeightPx, Math.max(1, availableHeightPx))

@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { inflateSync } from 'node:zlib';
 import { Marp } from '@marp-team/marp-core';
 import engine from '../engine.mjs';
 import { preprocessCodeMarkdown } from '../src/features/code/index.mjs';
+import { codeLayoutMetrics } from '../src/features/code/layout-metrics.mjs';
 
 test('preprocessCodeMarkdown expands external code and step slides together', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-code-'));
@@ -142,4 +144,84 @@ test('rendered external code preserves blank lines', async () => {
   });
 
   assert.match(html, /<span class="line">\u200b<\/span>/);
+});
+
+test('external code cannot escape the markdown input root without explicit trust', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-code-root-'));
+
+  try {
+    const deckDir = join(tempDir, 'deck');
+    await mkdir(deckDir);
+    const markdownPath = join(deckDir, 'slides.md');
+    await writeFile(markdownPath, '# demo\n');
+    await writeFile(join(tempDir, 'outside.py'), 'print("outside")\n');
+    const markdown = '```python path="../outside.py"\n```\n';
+
+    assert.throws(() => preprocessCodeMarkdown(markdown, { markdownPath }), /outside the input root/);
+    assert.match(
+      preprocessCodeMarkdown(markdown, { allowLocalFiles: true, markdownPath }),
+      /print\("outside"\)/,
+    );
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
+test('external code rejects a symlink that resolves outside the input root', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-code-root-'));
+
+  try {
+    const deckDir = join(tempDir, 'deck');
+    await mkdir(deckDir);
+    const markdownPath = join(deckDir, 'slides.md');
+    await writeFile(markdownPath, '# demo\n');
+    await writeFile(join(tempDir, 'outside.py'), 'print("outside")\n');
+    await symlink(join(tempDir, 'outside.py'), join(deckDir, 'linked.py'));
+
+    assert.throws(
+      () => preprocessCodeMarkdown('```python path="./linked.py"\n```\n', { markdownPath }),
+      /outside the input root/,
+    );
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
+test('diagram source bypasses generic code wrapping in the integrated engine', async () => {
+  const marp = await engine({ marp: new Marp() });
+  const diagramSource = `graph TD\n${'A'.repeat(131)}-->B\n`;
+  const { html } = marp.render(`\`\`\`mermaid\n${diagramSource}\`\`\`\n`);
+  const encoded = html.match(/kroki\.io\/mermaid\/svg\/([^"/]+)/u)?.[1];
+
+  assert.ok(encoded);
+  assert.equal(inflateSync(Buffer.from(encoded, 'base64url')).toString('utf8'), diagramSource);
+});
+
+test('fit-height uses wrapped visual lines and actual theme dimensions', async () => {
+  const marp = await engine({ marp: new Marp() });
+  const lines = Array.from({ length: 22 }, (_, index) => `line_${index} = ${'x'.repeat(90)}`).join('\n');
+  const { html } = marp.render(`# Heading\n\n\`\`\`cpp fit-height\n${lines}\n\`\`\`\n`);
+
+  assert.match(html, /class="tmu-code-fit-height"/);
+  const scale = Number(html.match(/--tmu-code-scale:([\d.]+)/u)?.[1]);
+  assert.ok(scale > 0 && scale < 1);
+});
+
+test('code layout metrics stay synchronized with theme custom properties', async () => {
+  const css = await readFile(join(process.cwd(), 'theme', 'tmu-cs.css'), 'utf8');
+  const expectedProperties = {
+    bodyBlockGapPx: '--tmu-cs-layout-body-block-gap',
+    bodyFontSizePx: '--tmu-cs-layout-body-font-size',
+    bodyLineHeightPx: '--tmu-cs-layout-body-line-height',
+    codeFontSizePx: '--tmu-cs-layout-code-font-size',
+    codeLineHeightPx: '--tmu-cs-layout-code-line-height',
+    codeMarginBottomPx: '--tmu-cs-layout-code-margin-bottom',
+    codePaddingXPx: '--tmu-cs-layout-code-padding-x',
+    codePaddingYPx: '--tmu-cs-layout-code-padding-y',
+    slideContentHeightPx: '--tmu-cs-layout-content-height',
+  };
+
+  for (const [metric, property] of Object.entries(expectedProperties)) {
+    assert.match(css, new RegExp(`${property}:\\s*${codeLayoutMetrics[metric]}px`, 'u'));
+  }
 });

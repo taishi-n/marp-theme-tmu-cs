@@ -3,6 +3,7 @@ import { hasOwn, parseFrontMatter } from '../core/front-matter.mjs';
 import { parseMarkdownHeadings } from '../core/headings.mjs';
 import { isFenceClose, joinMarkdownSlides, parseFenceStart, splitMarkdownSlides } from '../core/markdown.mjs';
 import { splitLinesPreservingEOF } from '../core/text-lines.mjs';
+import { isReferenceHeadingText } from '../features/citations/markdown-utils.mjs';
 
 const tocCommandLinePattern = /^<!--\s*toc(?:\s+level\s*=\s*(?<level>\d+))?\s*-->$/u;
 const slideClassMarkerPattern = /<span class="([^"]*\btmu-cs-slide-class--[^\s"]+[^"]*)"><\/span>/u;
@@ -16,10 +17,6 @@ function parsePositiveInteger(value, fallback) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function normalizeHeadingKey(value) {
-  return String(value ?? '').trim().replace(/\s+/gu, ' ').toLowerCase();
-}
-
 function hasClass(classAttr, className) {
   return typeof classAttr === 'string' && classAttr.split(/\s+/u).includes(className);
 }
@@ -31,14 +28,6 @@ function extractSlideClasses(content) {
 function slideHasClassMarker(content, className) {
   const markerMatch = String(content).match(slideClassMarkerPattern);
   return typeof markerMatch?.[1] === 'string' && markerMatch[1].split(/\s+/u).includes(`tmu-cs-slide-class--${className}`);
-}
-
-function parseClasses(rawValue) {
-  return String(rawValue ?? '')
-    .replace(/^['"]|['"]$/gu, '')
-    .split(/\s+/u)
-    .map((className) => className.trim())
-    .filter(Boolean);
 }
 
 function prependSlideClassMarker(content, classNames) {
@@ -233,8 +222,6 @@ function insertSectionPages(markdown, frontMatter) {
   const sectionLevel = parsePositiveInteger(frontMatter.sectionPageLevel, 2);
   const { body, frontMatter: rawFrontMatter } = parseFrontMatter(markdown);
   const document = splitMarkdownSlides(body);
-  const excludedSectionKeys = new Set(['references']);
-
   const slides = document.slides.flatMap((slide) => {
     const classAttr = extractSlideClasses(slide.content);
     if (
@@ -247,7 +234,7 @@ function insertSectionPages(markdown, frontMatter) {
       .filter((heading) => (
         heading.level === sectionLevel
         && heading.text !== ''
-        && !excludedSectionKeys.has(normalizeHeadingKey(heading.text))
+        && !isReferenceHeadingText(heading.text)
       ));
 
     if (headings.length === 0) return [slide];

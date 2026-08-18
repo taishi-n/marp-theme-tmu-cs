@@ -29,7 +29,7 @@ function resolveWrapOptions(options = {}) {
 }
 
 function wrapPlainLine(line, options) {
-  const { continuationMarker, continuationWidth, maxColumns } = options;
+  const { continuationWidth, maxColumns } = options;
   const width = measureTextWidth(line);
 
   if (width <= maxColumns) return [line];

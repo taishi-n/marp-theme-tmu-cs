@@ -1,5 +1,7 @@
 # marp-theme-tmu-cs
 
+Node.js 20.19.0 or newer is required.
+
 `marp-theme-tmu-cs` is a Marp theme package for the Department of Computer Science, Tokyo Metropolitan University. It bundles:
 
 - the `tmu-cs` theme CSS
@@ -34,6 +36,7 @@ Other useful commands during local verification:
 
 ```bash
 npm test
+npm run check
 npm run build:html:standalone
 npm run build:pdf
 npm run build:pptx
@@ -42,7 +45,7 @@ npm run watch
 
 The sample source is `examples/slides.md`. It exercises the theme styling and the package-specific authoring features in one deck.
 
-To build a single-file HTML that inlines local images, audio, videos, GIF player sources, and local HTML iframes, use:
+To build a strict single-file HTML that embeds local and remote media, stylesheets, fonts, scripts, GIF player sources, and supported local HTML iframes, use:
 
 ```bash
 npm run build:html:standalone
@@ -89,12 +92,14 @@ Build from the slide project with the wrapper CLI:
 
 ```bash
 npx marp-tmu-cs slides.md -o slides.html
-npx marp-tmu-cs --pdf slides.md -o slides.pdf
-npx marp-tmu-cs --pptx slides.md -o slides.pptx
+npx marp-tmu-cs --allow-local-files --pdf slides.md -o slides.pdf
+npx marp-tmu-cs --allow-local-files --pptx slides.md -o slides.pptx
 npx marp-tmu-cs --standalone slides.md -o slides.html
 ```
 
 `marp-tmu-cs` automatically supplies the bundled engine and theme CSS when they are not explicitly provided, so a project-local `marp.config.mjs` is optional.
+
+Use `--allow-local-files` only for trusted decks. It lets Marp read local media for browser-backed PDF, PPTX, and image output, and permits external code, spectrogram audio, and standalone assets to leave the directory containing the Markdown input. Without it, those engine-managed reads are confined to that input directory after resolving symbolic links.
 
 If you prefer to use plain `marp`, create `marp.config.mjs` in the slide project:
 
@@ -109,8 +114,8 @@ Then build from the slide project:
 
 ```bash
 npx marp slides.md -o slides.html
-npx marp --pdf slides.md -o slides.pdf
-npx marp --pptx slides.md -o slides.pptx
+npx marp --allow-local-files --pdf slides.md -o slides.pdf
+npx marp --allow-local-files --pptx slides.md -o slides.pptx
 ```
 
 This package can also be consumed from a published package source instead of a local clone. In that case, install it directly and either keep using `marp-tmu-cs` or point plain `marp` at the package paths:
@@ -136,8 +141,8 @@ Recommended wrapper usage:
 
 ```bash
 npx marp-tmu-cs slides.md -o slides.html
-npx marp-tmu-cs --pdf slides.md -o slides.pdf
-npx marp-tmu-cs --pptx slides.md -o slides.pptx
+npx marp-tmu-cs --allow-local-files --pdf slides.md -o slides.pdf
+npx marp-tmu-cs --allow-local-files --pptx slides.md -o slides.pptx
 ```
 
 Equivalent plain `marp` usage:
@@ -159,7 +164,7 @@ npx marp-tmu-cs \
   -o slides.html
 ```
 
-`--standalone` is intended for HTML output only.
+`--standalone` is intended for HTML output only. It is strict: every referenced image, audio, video, stylesheet, font, script, supported iframe, and Kroki diagram must be embedded successfully, or the command exits with an error instead of producing a partially standalone file.
 
 Minimal front matter:
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { enginePath, themePath } from '../index.mjs';
-import { applyTmuCsDefaults } from '../scripts/marp-cli-options.mjs';
+import { applyTmuCsDefaults, detectOutputFormat } from '../scripts/marp-cli-options.mjs';
 
 test('applyTmuCsDefaults injects engine and theme-set when omitted', () => {
   assert.deepEqual(
@@ -20,4 +20,18 @@ test('applyTmuCsDefaults preserves explicit engine and theme-set values', () => 
     ]),
     ['--engine', '/tmp/custom-engine.mjs', '--theme-set=/tmp/custom-theme.css', 'slides.md'],
   );
+});
+
+test('applyTmuCsDefaults inserts defaults before the option terminator', () => {
+  assert.deepEqual(
+    applyTmuCsDefaults(['slides.md', '--', '--literal-file.md']),
+    ['slides.md', '--engine', enginePath, '--theme-set', themePath, '--', '--literal-file.md'],
+  );
+});
+
+test('detectOutputFormat recognizes flags and output extensions before the terminator', () => {
+  assert.equal(detectOutputFormat(['slides.md', '--images']), 'images');
+  assert.equal(detectOutputFormat(['slides.md', '-o', 'slides.pptx']), 'pptx');
+  assert.equal(detectOutputFormat(['slides.md', '-o', 'slides.png']), 'image');
+  assert.equal(detectOutputFormat(['slides.md', '--', '--pdf']), 'html');
 });

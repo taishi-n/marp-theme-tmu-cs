@@ -173,3 +173,106 @@ test('preprocessCitationMarkdown warns when a footnote definition is on another 
   assert.equal(warnings.length, 1);
   assert.match(warnings[0], /must be defined in the same slide as its reference/);
 });
+
+test('citation detection ignores protected Markdown regions', () => {
+  const markdown = [
+    '# Examples',
+    '',
+    '```text',
+    '[@inside-fence]',
+    '```',
+    '',
+    '`[@inline-code]`',
+    '',
+    '<!-- [@comment] -->',
+    '',
+    '[@link-label](https://example.com)',
+    '',
+  ].join('\n');
+
+  assert.equal(preprocessCitationMarkdown(markdown, { frontMatter: {} }), markdown);
+});
+
+test('citations and Markdown footnotes share first-occurrence numbering and one list', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-citations-'));
+
+  try {
+    const markdownPath = join(tempDir, 'slides.md');
+    await writeFile(join(tempDir, 'refs.bib'), `${bibliography}\n`);
+    const markdown = [
+      '# Intro',
+      '',
+      'Manual first[^manual], then citation [@demo2024].',
+      '',
+      '[^manual]: Manual footnote.',
+      '',
+    ].join('\n');
+
+    const processed = preprocessCitationMarkdown(markdown, {
+      defaultCslPath,
+      frontMatter: { bibliography: 'refs.bib' },
+      markdownPath,
+    });
+
+    assert.match(processed, /<sup class="footnote-ref">\[1\]<\/sup>/);
+    assert.match(processed, /<span class="citation-ref">\[2\]<\/span>/);
+    assert.equal((processed.match(/citation-footnotes-marker/gu) ?? []).length, 1);
+    assert.match(processed, /\[1\]<\/span> Manual footnote\.[\s\S]*\[2\]<\/span>.*Demo Citation/u);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
+test('citation detection supports prefixes without treating bracketed email text as a citation', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-citations-'));
+
+  try {
+    const markdownPath = join(tempDir, 'slides.md');
+    await writeFile(join(tempDir, 'refs.bib'), `${bibliography}\n`);
+    const markdown = [
+      '# Intro',
+      '',
+      'See [e.g. @demo2024], but keep [contact@example] unchanged.',
+      '',
+    ].join('\n');
+
+    const processed = preprocessCitationMarkdown(markdown, {
+      defaultCslPath,
+      frontMatter: { bibliography: 'refs.bib' },
+      markdownPath,
+    });
+
+    assert.match(processed, /<span class="citation-ref">/);
+    assert.match(processed, /\[contact@example\]/);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
+test('unused footnote definitions do not shift citation numbering', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-citations-'));
+
+  try {
+    const markdownPath = join(tempDir, 'slides.md');
+    await writeFile(join(tempDir, 'refs.bib'), `${bibliography}\n`);
+    const markdown = [
+      '# Intro',
+      '',
+      '[^unused]: This definition is intentionally unused.',
+      '',
+      'Citation [@demo2024].',
+      '',
+    ].join('\n');
+
+    const processed = preprocessCitationMarkdown(markdown, {
+      defaultCslPath,
+      frontMatter: { bibliography: 'refs.bib' },
+      markdownPath,
+    });
+
+    assert.match(processed, /<span class="citation-ref">\[1\]<\/span>/);
+    assert.doesNotMatch(processed, /This definition is intentionally unused/);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});

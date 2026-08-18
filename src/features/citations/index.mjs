@@ -2,7 +2,7 @@ import { preprocessCitationsWithBackend } from './core.mjs';
 import createJsCitationBackend from './backends/js.mjs';
 
 export function preprocessCitationMarkdown(markdown, options = {}) {
-  return preprocessCitationsWithBackend(markdown, createJsCitationBackend(options), options);
+  return preprocessCitationsWithBackend(markdown, createJsCitationBackend(), options);
 }
 
 export { createJsCitationBackend, preprocessCitationsWithBackend };

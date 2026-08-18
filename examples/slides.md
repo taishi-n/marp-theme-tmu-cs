@@ -437,7 +437,7 @@ This slide demonstrates the `all-text-center align-center` class combination inh
 It centers text horizontally and centers the whole slide content vertically, which is useful for credits and closing slides.
 -->
 
-![w:500](../assets/taishi.svg)
+![w:500](assets/taishi.svg)
 
 Implemented by [OpenAI Codex](https://openai.com/codex/) with prompts from [Taishi Nakashima](https://taishi.org).
 Codes are available on [GitHub](https://github.com/taishi-n/marp-theme-tmu-cs)!

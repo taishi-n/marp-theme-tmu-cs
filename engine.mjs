@@ -24,6 +24,7 @@ const highlighterPromise = createHighlighter({
 function findOutputArgument(args = []) {
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
+    if (argument === '--') break;
 
     if (argument === '-o' || argument === '--output') {
       const next = args[index + 1];
@@ -39,15 +40,19 @@ function findOutputArgument(args = []) {
 }
 
 function detectOutputFormat(args = process.argv.slice(2)) {
+  const explicitFormat = process.env.TMU_CS_OUTPUT_FORMAT;
+  if (['html', 'image', 'images', 'notes', 'pdf', 'pptx'].includes(explicitFormat)) return explicitFormat;
   const normalizedArgs = args.map((arg) => String(arg));
+  const terminatorIndex = normalizedArgs.indexOf('--');
+  const optionArgs = terminatorIndex === -1 ? normalizedArgs : normalizedArgs.slice(0, terminatorIndex);
 
-  if (normalizedArgs.some((arg) => arg === '--pdf')) return 'pdf';
-  if (normalizedArgs.some((arg) => arg === '--pptx')) return 'pptx';
-  if (normalizedArgs.some((arg) => arg === '--image' || arg.startsWith('--image='))) return 'image';
-  if (normalizedArgs.some((arg) => arg === '--images' || arg.startsWith('--images='))) return 'images';
-  if (normalizedArgs.some((arg) => arg === '--notes')) return 'notes';
+  if (optionArgs.some((arg) => arg === '--pdf')) return 'pdf';
+  if (optionArgs.some((arg) => arg === '--pptx')) return 'pptx';
+  if (optionArgs.some((arg) => arg === '--image' || arg.startsWith('--image='))) return 'image';
+  if (optionArgs.some((arg) => arg === '--images' || arg.startsWith('--images='))) return 'images';
+  if (optionArgs.some((arg) => arg === '--notes')) return 'notes';
 
-  const outputPath = findOutputArgument(normalizedArgs)?.toLowerCase();
+  const outputPath = findOutputArgument(optionArgs)?.toLowerCase();
   if (outputPath?.endsWith('.pdf')) return 'pdf';
   if (outputPath?.endsWith('.pptx')) return 'pptx';
   if (outputPath?.endsWith('.png') || outputPath?.endsWith('.jpg') || outputPath?.endsWith('.jpeg')) return 'image';
@@ -73,18 +78,28 @@ export default async ({ marp }) => {
 
   const originalRenderMarkdown = marp.renderMarkdown.bind(marp);
   const mathFeature = installMathFeature(marp, { logPrefix });
+  installCodeFeature(marp, { highlighter, logPrefix });
   installDiagramFeature(marp, {
     backend: createKrokiBackend(),
   });
-  installCodeFeature(marp, { highlighter, logPrefix });
   const standaloneEnabled = process.env.TMU_CS_STANDALONE === '1';
   const standaloneOutputPath = process.env.TMU_CS_STANDALONE_OUTPUT;
+  const allowLocalFiles = process.env.TMU_CS_ALLOW_LOCAL_FILES === '1'
+    || process.argv.slice(2).includes('--allow-local-files');
   const outputFormat = detectOutputFormat();
+  let configuredMarkdownPaths = [];
+  try {
+    const parsedPaths = JSON.parse(process.env.TMU_CS_MARKDOWN_PATHS ?? '[]');
+    if (Array.isArray(parsedPaths)) configuredMarkdownPaths = parsedPaths;
+  } catch {
+    console.warn(`${logPrefix} Ignoring invalid TMU_CS_MARKDOWN_PATHS configuration.`);
+  }
 
   marp.renderMarkdown = (markdown, env = {}) => {
     mathFeature.resetRuntimeInjection();
-    const markdownPath = getMarkdownPathFromEnv(env, markdown);
+    const markdownPath = getMarkdownPathFromEnv(env, markdown, configuredMarkdownPaths);
     const { markdown: preparedMarkdown } = prepareMarkdownForRender(markdown, {
+      allowLocalFiles,
       defaultCitationStylePath,
       markdownPath,
       onWarning: (message) => {
@@ -104,6 +119,7 @@ export default async ({ marp }) => {
     }
 
     let renderedHtml = recalculateAuxiliaryPagination(enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env), {
+      allowLocalFiles,
       markdownPath,
     }));
 
@@ -114,6 +130,7 @@ export default async ({ marp }) => {
     if (!standaloneEnabled) return renderedHtml;
 
     return inlineStandaloneAssets(renderedHtml, {
+      allowLocalFiles,
       markdownPath,
       outputPath: standaloneOutputPath,
       onWarning: (message) => {

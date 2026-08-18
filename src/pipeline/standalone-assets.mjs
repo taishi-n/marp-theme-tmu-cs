@@ -1,402 +1,452 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, extname, isAbsolute, resolve } from 'node:path';
-import { escapeHtml, escapeHtmlAttribute } from '../core/html.mjs';
+import { parse, parseFragment, serialize } from 'parse5';
+import { resolveConstrainedFilePath, resolveInputRoot } from '../core/local-path.mjs';
 
-const binaryMimeTypes = new Map([
+const mimeTypes = new Map([
+  ['.css', 'text/css'],
   ['.gif', 'image/gif'],
+  ['.htm', 'text/html'],
+  ['.html', 'text/html'],
   ['.jpeg', 'image/jpeg'],
   ['.jpg', 'image/jpeg'],
+  ['.js', 'text/javascript'],
+  ['.mjs', 'text/javascript'],
   ['.mp3', 'audio/mpeg'],
   ['.mp4', 'video/mp4'],
   ['.ogg', 'audio/ogg'],
+  ['.otf', 'font/otf'],
   ['.png', 'image/png'],
   ['.svg', 'image/svg+xml'],
+  ['.ttf', 'font/ttf'],
   ['.wav', 'audio/wav'],
   ['.webm', 'video/webm'],
   ['.webp', 'image/webp'],
+  ['.woff', 'font/woff'],
+  ['.woff2', 'font/woff2'],
 ]);
 
-const textMimeTypes = new Map([
-  ['.css', 'text/css'],
-  ['.htm', 'text/html'],
-  ['.html', 'text/html'],
-  ['.js', 'text/javascript'],
-  ['.mjs', 'text/javascript'],
-  ['.svg', 'image/svg+xml'],
-]);
-
-function parseHtmlAttributes(input = '') {
-  const attributes = {};
-
-  for (const match of String(input ?? '').matchAll(/([^\s=\/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'))?/g)) {
-    const key = match[1];
-    if (!key) continue;
-    attributes[key] = match[2] ?? match[3] ?? '';
-  }
-
-  return attributes;
+function parseHtml(html) {
+  return /<(?:!doctype\s+html|html)\b/iu.test(html) ? parse(html) : parseFragment(html);
 }
 
-function serializeAttributes(attributes = {}, options = {}) {
-  const excluded = new Set(options.exclude ?? []);
+function getAttribute(node, name) {
+  return node?.attrs?.find((attribute) => attribute.name === name)?.value;
+}
 
-  return Object.entries(attributes)
-    .filter(([key]) => !excluded.has(key))
-    .map(([key, value]) => {
-      if (value === '') return key;
-      return `${key}="${escapeHtmlAttribute(value)}"`;
-    })
-    .join(' ');
+function setAttribute(node, name, value) {
+  node.attrs ??= [];
+  const attribute = node.attrs.find((candidate) => candidate.name === name);
+  if (attribute) attribute.value = String(value);
+  else node.attrs.push({ name, value: String(value) });
+}
+
+function removeAttribute(node, name) {
+  node.attrs = (node.attrs ?? []).filter((attribute) => attribute.name !== name);
+}
+
+function hasClass(node, className) {
+  return String(getAttribute(node, 'class') ?? '').split(/\s+/u).includes(className);
+}
+
+function walk(node, visit) {
+  visit(node);
+  for (const child of [...(node?.childNodes ?? [])]) walk(child, visit);
 }
 
 function stripUrlSuffix(value = '') {
   return String(value ?? '').replace(/[?#].*$/u, '');
 }
 
-function isRemoteHttpReference(reference = '') {
+function isRemoteReference(reference) {
   return /^https?:\/\//iu.test(String(reference ?? '').trim());
 }
 
-function isLocalRelativeReference(reference = '') {
+function isLocalReference(reference) {
   const value = String(reference ?? '').trim();
-
-  if (value === '') return false;
-  if (value.startsWith('#')) return false;
-  if (value.startsWith('data:')) return false;
-  if (value.startsWith('blob:')) return false;
-  if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(value)) return false;
-  if (value.startsWith('//')) return false;
-  if (isAbsolute(value)) return false;
-
-  return true;
+  if (value === '' || value.startsWith('#') || value.startsWith('data:') || value.startsWith('blob:')) return false;
+  if (value.startsWith('//') || isAbsolute(value)) return false;
+  return !/^[A-Za-z][A-Za-z0-9+.-]*:/u.test(value);
 }
 
-function resolveLocalReference(reference, basePath) {
-  const cleanReference = stripUrlSuffix(reference);
-  const baseDir = dirname(basePath);
-  return resolve(baseDir, cleanReference);
+function detectMimeType(reference, supplied = '') {
+  if (supplied) return supplied.split(';', 1)[0];
+  return mimeTypes.get(extname(stripUrlSuffix(reference)).toLowerCase()) ?? 'application/octet-stream';
 }
 
-function detectMimeType(filePath) {
-  const extension = extname(filePath).toLowerCase();
-  return binaryMimeTypes.get(extension) ?? textMimeTypes.get(extension) ?? 'application/octet-stream';
-}
-
-function detectRemoteMimeType(reference = '', fallbackMimeType = '') {
-  const extension = extname(stripUrlSuffix(reference)).toLowerCase();
-  return fallbackMimeType || binaryMimeTypes.get(extension) || textMimeTypes.get(extension) || 'application/octet-stream';
-}
-
-function isTextAsset(filePath) {
-  return textMimeTypes.has(extname(filePath).toLowerCase());
-}
-
-function readAsset(filePath, options = {}) {
-  try {
-    return readFileSync(filePath);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    options.onWarning?.(`failed to read local asset "${filePath}". ${message}`);
-    return null;
-  }
-}
-
-function toDataUrl(filePath, options = {}) {
-  const buffer = readAsset(filePath, options);
-  if (!buffer) return null;
-
-  const mimeType = detectMimeType(filePath);
-  return `data:${mimeType};base64,${buffer.toString('base64')}`;
-}
-
-function toRemoteDataUrl(reference, fetchedAsset = {}) {
-  const buffer = Buffer.isBuffer(fetchedAsset.buffer)
-    ? fetchedAsset.buffer
-    : Buffer.from(fetchedAsset.buffer ?? '');
-  const mimeType = detectRemoteMimeType(reference, fetchedAsset.mimeType);
-  return `data:${mimeType};base64,${buffer.toString('base64')}`;
-}
-
-function isKrokiDiagramReference(reference = '') {
-  return /^https?:\/\/kroki\.io\/[^/]+\/svg\/[^/?#]+$/iu.test(String(reference ?? '').trim());
+function toDataUrl(reference, asset) {
+  const buffer = Buffer.isBuffer(asset.buffer) ? asset.buffer : Buffer.from(asset.buffer ?? '');
+  return `data:${detectMimeType(reference, asset.mimeType)};base64,${buffer.toString('base64')}`;
 }
 
 function fetchRemoteAssetSync(reference, options = {}) {
   const timeoutMs = options.timeoutMs ?? 30000;
+  const maximumRedirects = options.maximumRedirects ?? 5;
   const script = `
-    import { request as httpRequest } from 'node:http';
-    import { request as httpsRequest } from 'node:https';
+    const startUrl = process.argv[1];
+    const timeoutMs = Number(process.argv[2]);
+    const maximumRedirects = Number(process.argv[3]);
+    let currentUrl = startUrl;
 
-    const reference = process.argv[1];
-    const timeoutMs = Number.parseInt(process.argv[2] || '', 10) || 10000;
-    const target = new URL(reference);
-    const requestImpl = target.protocol === 'http:' ? httpRequest : httpsRequest;
-
-    const fail = (message) => {
-      process.stderr.write(String(message));
-      process.exit(1);
-    };
-
-    const request = requestImpl(target, {
-      headers: {
-        Accept: 'image/svg+xml,image/*;q=0.8,*/*;q=0.5',
-        'User-Agent': 'marp-theme-tmu-cs standalone fetch',
-      },
-      method: 'GET',
-      timeout: timeoutMs,
-    }, (response) => {
-      if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-        process.stdout.write(JSON.stringify({
-          redirect: response.headers.location,
-        }));
-        response.resume();
-        response.on('end', () => process.exit(0));
-        return;
-      }
-
-      if (response.statusCode !== 200) {
-        response.resume();
-        fail('status:' + String(response.statusCode ?? 0));
-        return;
-      }
-
-      const chunks = [];
-      response.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-      response.on('end', () => {
-        process.stdout.write(JSON.stringify({
-          buffer: Buffer.concat(chunks).toString('base64'),
-          mimeType: String(response.headers['content-type'] || '').split(';', 1)[0] || '',
-        }));
-        process.exit(0);
+    for (let redirects = 0; redirects <= maximumRedirects; redirects += 1) {
+      const signal = AbortSignal.timeout(timeoutMs);
+      const response = await fetch(currentUrl, {
+        headers: {
+          Accept: '*/*',
+          'User-Agent': 'marp-theme-tmu-cs standalone fetch',
+        },
+        redirect: 'manual',
+        signal,
       });
-    });
 
-    request.on('timeout', () => {
-      request.destroy(new Error('timeout'));
-    });
+      if (response.status >= 300 && response.status < 400 && response.headers.get('location')) {
+        if (redirects === maximumRedirects) throw new Error('redirect limit exceeded');
+        currentUrl = new URL(response.headers.get('location'), currentUrl).href;
+        continue;
+      }
 
-    request.on('error', (error) => {
-      fail(error instanceof Error ? error.message : String(error));
-    });
-
-    request.end();
+      if (!response.ok) throw new Error('status:' + String(response.status));
+      const buffer = Buffer.from(await response.arrayBuffer());
+      await new Promise((resolve, reject) => {
+        process.stdout.write(JSON.stringify({
+          buffer: buffer.toString('base64'),
+          mimeType: String(response.headers.get('content-type') || '').split(';', 1)[0],
+        }), (error) => error ? reject(error) : resolve());
+      });
+      break;
+    }
   `;
+  const result = spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', script, reference, String(timeoutMs), String(maximumRedirects)],
+    { encoding: 'utf8', maxBuffer: 128 * 1024 * 1024, timeout: timeoutMs + 1000 },
+  );
 
-  const result = spawnSync(process.execPath, ['--input-type=module', '-e', script, reference, String(timeoutMs)], {
-    encoding: 'utf8',
-    timeout: timeoutMs + 1000,
-  });
-
-  if (result.error) {
-    const message = result.error instanceof Error ? result.error.message : String(result.error);
-    options.onWarning?.(`failed to fetch remote asset "${reference}". ${message}`);
-    return null;
+  if (result.error || result.status !== 0) {
+    const detail = result.error?.message || String(result.stderr ?? '').trim() || `status:${result.status ?? 1}`;
+    throw new Error(`failed to fetch remote asset "${reference}". ${detail}`);
   }
 
-  if ((result.status ?? 0) !== 0) {
-    const message = String(result.stderr ?? '').trim() || `status:${result.status ?? 1}`;
-    options.onWarning?.(`failed to fetch remote asset "${reference}". ${message}`);
-    return null;
-  }
-
-  let payload;
   try {
-    payload = JSON.parse(String(result.stdout ?? '').trim());
+    const payload = JSON.parse(String(result.stdout ?? ''));
+    return {
+      buffer: Buffer.from(String(payload.buffer ?? ''), 'base64'),
+      mimeType: String(payload.mimeType ?? ''),
+    };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    options.onWarning?.(`failed to decode remote asset "${reference}". ${message}`);
-    return null;
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`failed to decode remote asset "${reference}". ${detail}`, { cause: error });
+  }
+}
+
+function resolveReference(reference, basePath) {
+  if (isRemoteReference(reference)) return { key: reference, kind: 'remote', reference };
+  if (!isLocalReference(reference)) return undefined;
+
+  if (isRemoteReference(basePath)) {
+    const remoteReference = new URL(reference, basePath).href;
+    return { key: remoteReference, kind: 'remote', reference: remoteReference };
   }
 
-  if (typeof payload.redirect === 'string' && payload.redirect !== '') {
-    return fetchRemoteAssetSync(payload.redirect, options);
-  }
-
-  return {
-    buffer: Buffer.from(String(payload.buffer ?? ''), 'base64'),
-    mimeType: String(payload.mimeType ?? ''),
-  };
+  const filePath = resolve(dirname(basePath), stripUrlSuffix(reference));
+  return { filePath, key: filePath, kind: 'local', reference };
 }
 
-function inlineLocalAttributeReference(html, spec, context) {
-  const pattern = new RegExp(`<${spec.tag}\\b([^>]*)>`, 'giu');
+function loadAsset(reference, context, basePath = context.basePath) {
+  const resolvedReference = resolveReference(reference, basePath);
+  if (!resolvedReference) return undefined;
 
-  return String(html ?? '').replace(pattern, (match, rawAttributes) => {
-    const attributes = parseHtmlAttributes(rawAttributes);
-    const source = attributes[spec.attribute] ?? '';
+  if (context.assetCache.has(resolvedReference.key)) return context.assetCache.get(resolvedReference.key);
 
-    if (!isLocalRelativeReference(source)) return match;
-
-    const resolvedPath = resolveLocalReference(source, context.basePath);
-    const dataUrl = toDataUrl(resolvedPath, context);
-    if (!dataUrl) return match;
-
-    attributes[spec.attribute] = dataUrl;
-    const serializedAttributes = serializeAttributes(attributes, { allowEmpty: true });
-    return `<${spec.tag}${serializedAttributes ? ` ${serializedAttributes}` : ''}>`;
-  });
-}
-
-function inlineStandaloneDiagramReference(html, context) {
-  return String(html ?? '').replace(/<img\b([^>]*)>/giu, (match, rawAttributes) => {
-    const attributes = parseHtmlAttributes(rawAttributes);
-    const source = attributes.src ?? '';
-
-    if (!isKrokiDiagramReference(source)) return match;
-
-    const fetchedAsset = context.fetchRemoteAsset?.(source, context);
-    if (!fetchedAsset) return match;
-
-    attributes.src = toRemoteDataUrl(source, fetchedAsset);
-    const serializedAttributes = serializeAttributes(attributes, { allowEmpty: true });
-    return `<img${serializedAttributes ? ` ${serializedAttributes}` : ''}>`;
-  });
-}
-
-function inlineGifPlayerDataSource(html, context) {
-  return String(html ?? '').replace(/<span\b([^>]*)class="tmu-cs-gif-player"([^>]*)>/giu, (match, left, right) => {
-    const attributes = parseHtmlAttributes(`${left} ${right}`);
-    const source = attributes['data-gif-src'] ?? '';
-
-    if (!isLocalRelativeReference(source)) return match;
-
-    const resolvedPath = resolveLocalReference(source, context.basePath);
-    const dataUrl = toDataUrl(resolvedPath, context);
-    if (!dataUrl) return match;
-
-    attributes['data-gif-src'] = dataUrl;
-    const serializedAttributes = serializeAttributes(attributes, { allowEmpty: true });
-    return `<span${serializedAttributes ? ` ${serializedAttributes}` : ''}>`;
-  });
-}
-
-function inlineLocalScripts(html, context) {
-  return String(html ?? '').replace(/<script\b([^>]*)src=(?:"([^"]*)"|'([^']*)')([^>]*)><\/script>/giu, (match, beforeSrc, doubleQuotedSrc, singleQuotedSrc, afterSrc) => {
-    const attributes = parseHtmlAttributes(`${beforeSrc} src="${doubleQuotedSrc ?? singleQuotedSrc ?? ''}" ${afterSrc}`);
-    const source = attributes.src ?? '';
-
-    if (!isLocalRelativeReference(source)) return match;
-
-    const resolvedPath = resolveLocalReference(source, context.basePath);
-    if (!isTextAsset(resolvedPath)) return match;
-
-    const scriptBuffer = readAsset(resolvedPath, context);
-    if (!scriptBuffer) return match;
-
-    const scriptContent = scriptBuffer.toString('utf8');
-    const serializedAttributes = serializeAttributes(attributes, {
-      allowEmpty: true,
-      exclude: ['src'],
-    });
-
-    return `<script${serializedAttributes ? ` ${serializedAttributes}` : ''}>${scriptContent}</script>`;
-  });
-}
-
-function inlineLocalStylesheets(html, context) {
-  return String(html ?? '').replace(/<link\b([^>]*)>/giu, (match, rawAttributes) => {
-    const attributes = parseHtmlAttributes(rawAttributes);
-    const relation = String(attributes.rel ?? '').toLowerCase();
-    const href = attributes.href ?? '';
-
-    if (relation !== 'stylesheet' || !isLocalRelativeReference(href)) return match;
-
-    const resolvedPath = resolveLocalReference(href, context.basePath);
-    const cssBuffer = readAsset(resolvedPath, context);
-    if (!cssBuffer) return match;
-
-    const serializedAttributes = serializeAttributes(attributes, {
-      allowEmpty: true,
-      exclude: ['href', 'rel'],
-    });
-
-    return `<style${serializedAttributes ? ` ${serializedAttributes}` : ''}>${cssBuffer.toString('utf8')}</style>`;
-  });
-}
-
-function inlineHtmlDocument(html, context) {
-  let output = String(html ?? '');
-
-  output = inlineLocalStylesheets(output, context);
-  output = inlineLocalScripts(output, context);
-
-  for (const spec of [
-    { tag: 'img', attribute: 'src' },
-    { tag: 'audio', attribute: 'src' },
-    { tag: 'video', attribute: 'src' },
-    { tag: 'source', attribute: 'src' },
-  ]) {
-    output = inlineLocalAttributeReference(output, spec, context);
-  }
-
-  output = inlineStandaloneDiagramReference(output, context);
-  output = inlineGifPlayerDataSource(output, context);
-  output = inlineLocalIframes(output, context);
-
-  return output;
-}
-
-function inlineIframeSource(resolvedPath, context) {
-  const normalizedPath = resolve(resolvedPath);
-
-  if (context.visitedHtml.has(normalizedPath)) {
-    context.onWarning?.(`skipping recursive iframe asset "${normalizedPath}".`);
-    return null;
-  }
-
-  const htmlBuffer = readAsset(normalizedPath, context);
-  if (!htmlBuffer) return null;
-
-  context.visitedHtml.add(normalizedPath);
-
+  let asset;
   try {
-    return inlineHtmlDocument(htmlBuffer.toString('utf8'), {
-      ...context,
-      basePath: normalizedPath,
-    });
+    if (resolvedReference.kind === 'remote') {
+      asset = context.fetchRemoteAsset(resolvedReference.reference, context);
+      if (!asset) throw new Error('the fetcher returned no asset');
+    } else {
+      const filePath = resolveConstrainedFilePath(resolvedReference.filePath, {
+        allowOutsideRoot: context.allowLocalFiles,
+        inputRoot: context.inputRoot,
+      });
+      asset = {
+        buffer: readFileSync(filePath),
+        mimeType: detectMimeType(filePath),
+      };
+    }
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`[tmu-cs] standalone mode could not embed "${reference}". ${detail}`, { cause: error });
+  }
+
+  context.assetCache.set(resolvedReference.key, asset);
+  return asset;
+}
+
+function resolveNestedBase(reference, basePath) {
+  if (isRemoteReference(reference)) return reference;
+  if (isRemoteReference(basePath)) return new URL(reference, basePath).href;
+  return resolve(dirname(basePath), stripUrlSuffix(reference));
+}
+
+function inlineCssReferences(css, context, basePath) {
+  return String(css ?? '').replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/giu, (match, _quote, reference) => {
+    const trimmed = reference.trim();
+    const asset = loadAsset(trimmed, context, basePath);
+    return asset ? `url("${toDataUrl(trimmed, asset)}")` : match;
+  });
+}
+
+function setTextContent(node, value) {
+  const textNode = {
+    nodeName: '#text',
+    parentNode: node,
+    value: String(value),
+  };
+  node.childNodes = [textNode];
+}
+
+function inlineStylesheet(node, context, basePath) {
+  const href = getAttribute(node, 'href');
+  const asset = loadAsset(href, context, basePath);
+  if (!asset) return;
+
+  node.nodeName = 'style';
+  node.tagName = 'style';
+  removeAttribute(node, 'href');
+  removeAttribute(node, 'rel');
+  setTextContent(node, inlineCssReferences(asset.buffer.toString('utf8'), context, resolveNestedBase(href, basePath)));
+}
+
+function inlineScript(node, context, basePath) {
+  const source = getAttribute(node, 'src');
+  const asset = loadAsset(source, context, basePath);
+  if (!asset) return;
+  removeAttribute(node, 'src');
+  setTextContent(node, asset.buffer.toString('utf8'));
+}
+
+function inlineIframe(node, context, basePath) {
+  const source = getAttribute(node, 'src');
+  if (!source) return;
+  if (isRemoteReference(source) || isRemoteReference(basePath)) {
+    throw new Error(`[tmu-cs] standalone mode cannot embed remote iframe "${source}".`);
+  }
+  if (!isLocalReference(source) || !/\.html?$/iu.test(stripUrlSuffix(source))) {
+    throw new Error(`[tmu-cs] standalone mode supports only local HTML iframe sources. Received "${source}".`);
+  }
+
+  const iframePath = resolveConstrainedFilePath(resolveNestedBase(source, basePath), {
+    allowOutsideRoot: context.allowLocalFiles,
+    inputRoot: context.inputRoot,
+  });
+  if (context.visitedHtml.has(iframePath)) {
+    throw new Error(`[tmu-cs] standalone mode detected a recursive iframe at "${iframePath}".`);
+  }
+
+  let iframeHtml;
+  try {
+    iframeHtml = readFileSync(iframePath, 'utf8');
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`[tmu-cs] standalone mode could not embed iframe "${source}". ${detail}`, { cause: error });
+  }
+
+  context.visitedHtml.add(iframePath);
+  try {
+    removeAttribute(node, 'src');
+    setAttribute(node, 'srcdoc', inlineHtmlDocument(iframeHtml, context, iframePath));
   } finally {
-    context.visitedHtml.delete(normalizedPath);
+    context.visitedHtml.delete(iframePath);
   }
 }
 
-function inlineLocalIframes(html, context) {
-  return String(html ?? '').replace(/<iframe\b([^>]*)><\/iframe>/giu, (match, rawAttributes) => {
-    const attributes = parseHtmlAttributes(rawAttributes);
-    const source = attributes.src ?? '';
+function inlineUrlAttribute(node, attributeName, context, basePath) {
+  const reference = getAttribute(node, attributeName);
+  if (!reference) return;
+  const asset = loadAsset(reference, context, basePath);
+  if (asset) setAttribute(node, attributeName, toDataUrl(reference, asset));
+}
 
-    if (!isLocalRelativeReference(source)) return match;
+function parseSrcsetCandidates(srcset) {
+  const source = String(srcset ?? '');
+  const candidates = [];
+  let cursor = 0;
 
-    const resolvedPath = resolveLocalReference(source, context.basePath);
-    const extension = extname(stripUrlSuffix(source)).toLowerCase();
-    if (!['.html', '.htm'].includes(extension)) {
-      context.onWarning?.(`standalone mode left iframe "${source}" unchanged because only local HTML iframes are supported.`);
-      return match;
+  while (cursor < source.length) {
+    while (cursor < source.length && /[\s,]/u.test(source[cursor])) cursor += 1;
+    if (cursor >= source.length) break;
+
+    const urlStart = cursor;
+    while (cursor < source.length && !/\s/u.test(source[cursor])) cursor += 1;
+    let url = source.slice(urlStart, cursor);
+
+    if (url.endsWith(',')) {
+      url = url.replace(/,+$/u, '');
+      if (url) candidates.push({ descriptor: '', url });
+      continue;
     }
 
-    const srcdoc = inlineIframeSource(resolvedPath, context);
-    if (!srcdoc) return match;
+    while (cursor < source.length && /\s/u.test(source[cursor])) cursor += 1;
+    const descriptorStart = cursor;
+    let parenthesisDepth = 0;
 
-    delete attributes.src;
-    attributes.srcdoc = srcdoc;
+    while (cursor < source.length) {
+      const character = source[cursor];
+      if (character === '(') parenthesisDepth += 1;
+      if (character === ')') parenthesisDepth = Math.max(0, parenthesisDepth - 1);
+      if (character === ',' && parenthesisDepth === 0) break;
+      cursor += 1;
+    }
 
-    const serializedAttributes = serializeAttributes(attributes, { allowEmpty: true });
-    return `<iframe${serializedAttributes ? ` ${serializedAttributes}` : ''}></iframe>`;
+    const descriptor = source.slice(descriptorStart, cursor).trim();
+    if (cursor < source.length && source[cursor] === ',') cursor += 1;
+    candidates.push({ descriptor, url });
+  }
+
+  return candidates;
+}
+
+function inlineSrcset(node, context, basePath) {
+  const srcset = getAttribute(node, 'srcset');
+  if (!srcset) return;
+
+  const embedded = parseSrcsetCandidates(srcset).map(({ descriptor, url }) => {
+    const asset = loadAsset(url, context, basePath);
+    const embeddedUrl = asset ? toDataUrl(url, asset) : url;
+    return `${embeddedUrl}${descriptor ? ` ${descriptor}` : ''}`;
   });
+  setAttribute(node, 'srcset', embedded.join(', '));
+}
+
+function isEmbeddedReference(value) {
+  return /^(?:data:|#)/u.test(String(value ?? '').trim());
+}
+
+function assertStandaloneDocument(document) {
+  const unresolved = [];
+  const attributeSpecs = {
+    audio: ['src'],
+    embed: ['src'],
+    image: ['href', 'xlink:href'],
+    img: ['src'],
+    input: ['src'],
+    object: ['data'],
+    source: ['src'],
+    video: ['src', 'poster'],
+  };
+
+  walk(document, (node) => {
+    if (!node?.tagName) return;
+    const scriptSource = getAttribute(node, 'src');
+    if (node.tagName === 'script' && scriptSource && !isEmbeddedReference(scriptSource)) {
+      unresolved.push(`script src="${scriptSource}"`);
+    }
+    const iframeSource = getAttribute(node, 'src');
+    if (node.tagName === 'iframe' && iframeSource && !isEmbeddedReference(iframeSource)) {
+      unresolved.push(`iframe src="${iframeSource}"`);
+    }
+    const linkTarget = getAttribute(node, 'href');
+    if (node.tagName === 'link' && linkTarget && !isEmbeddedReference(linkTarget)) {
+      unresolved.push(`link href="${linkTarget}"`);
+    }
+    const srcset = getAttribute(node, 'srcset');
+    for (const { url } of parseSrcsetCandidates(srcset)) {
+      if (!isEmbeddedReference(url)) unresolved.push(`${node.tagName} srcset="${url}"`);
+    }
+
+    for (const attributeName of attributeSpecs[node.tagName] ?? []) {
+      const value = getAttribute(node, attributeName);
+      if (value && !isEmbeddedReference(value)) {
+        unresolved.push(`${node.tagName} ${attributeName}="${value}"`);
+      }
+    }
+
+    const style = node.tagName === 'style'
+      ? (node.childNodes ?? []).map((child) => child.value ?? '').join('')
+      : getAttribute(node, 'style');
+    for (const match of String(style ?? '').matchAll(/url\(\s*(['"]?)([^'")]+)\1\s*\)/giu)) {
+      const value = match[2].trim();
+      if (!isEmbeddedReference(value)) unresolved.push(`${node.tagName} style url("${value}")`);
+    }
+    for (const match of String(style ?? '').matchAll(/@import\s+(['"])([^'"]+)\1/giu)) {
+      unresolved.push(`${node.tagName} style @import "${match[2]}"`);
+    }
+  });
+
+  if (unresolved.length > 0) {
+    throw new Error(`[tmu-cs] standalone mode left embeddable references unresolved: ${unresolved.join(', ')}`);
+  }
+}
+
+function inlineHtmlDocument(html, context, basePath = context.basePath) {
+  const document = parseHtml(String(html ?? ''));
+
+  walk(document, (node) => {
+    if (!node?.tagName) return;
+
+    if (node.tagName === 'link' && String(getAttribute(node, 'rel') ?? '').toLowerCase() === 'stylesheet') {
+      inlineStylesheet(node, context, basePath);
+      return;
+    }
+    if (node.tagName === 'link' && getAttribute(node, 'href')) {
+      inlineUrlAttribute(node, 'href', context, basePath);
+      return;
+    }
+    if (node.tagName === 'script' && getAttribute(node, 'src')) {
+      inlineScript(node, context, basePath);
+      return;
+    }
+    if (node.tagName === 'style') {
+      const css = (node.childNodes ?? []).map((child) => child.value ?? '').join('');
+      setTextContent(node, inlineCssReferences(css, context, basePath));
+      return;
+    }
+    if (node.tagName === 'iframe' && getAttribute(node, 'src')) {
+      inlineIframe(node, context, basePath);
+      return;
+    }
+
+    const attributeSpecs = {
+      audio: ['src'],
+      embed: ['src'],
+      image: ['href', 'xlink:href'],
+      img: ['src'],
+      input: ['src'],
+      object: ['data'],
+      source: ['src'],
+      video: ['src', 'poster'],
+    };
+    for (const attributeName of attributeSpecs[node.tagName] ?? []) {
+      inlineUrlAttribute(node, attributeName, context, basePath);
+    }
+    if (getAttribute(node, 'srcset')) inlineSrcset(node, context, basePath);
+
+    if (node.tagName === 'span' && hasClass(node, 'tmu-cs-gif-player')) {
+      inlineUrlAttribute(node, 'data-gif-src', context, basePath);
+    }
+
+    const style = getAttribute(node, 'style');
+    if (style) setAttribute(node, 'style', inlineCssReferences(style, context, basePath));
+  });
+
+  assertStandaloneDocument(document);
+  return serialize(document);
 }
 
 export default function inlineStandaloneAssets(html, options = {}) {
-  const basePath = options.outputPath ?? options.markdownPath;
-  if (typeof basePath !== 'string' || basePath === '') return String(html ?? '');
+  const basePath = options.markdownPath ?? resolve(process.cwd(), 'slides.md');
+  if (typeof basePath !== 'string' || basePath === '') {
+    throw new Error('[tmu-cs] standalone mode requires the markdown or output path to resolve local assets.');
+  }
 
   const context = {
+    allowLocalFiles: options.allowLocalFiles === true,
+    assetCache: new Map(),
     basePath,
-    fetchRemoteAsset: options.fetchRemoteAsset ?? ((reference, fetchContext) => {
-      if (!isRemoteHttpReference(reference)) return null;
-      return fetchRemoteAssetSync(reference, fetchContext);
-    }),
-    onWarning: options.onWarning,
-    visitedHtml: new Set(),
+    fetchRemoteAsset: options.fetchRemoteAsset ?? ((reference) => fetchRemoteAssetSync(reference, options)),
+    inputRoot: resolveInputRoot(basePath),
+    visitedHtml: new Set([resolve(basePath)]),
   };
 
   return inlineHtmlDocument(html, context);

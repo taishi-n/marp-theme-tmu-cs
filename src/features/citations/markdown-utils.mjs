@@ -1,11 +1,17 @@
 import { escapeHtml } from '../../core/html.mjs';
 import { isFenceClose, parseFenceStart } from '../../core/markdown.mjs';
-import { joinLines, splitLinesPreservingEOF } from '../../core/text-lines.mjs';
+import { splitLinesPreservingEOF } from '../../core/text-lines.mjs';
+import { markdownTextMatches, transformMarkdownText } from '../../core/markdown-text.mjs';
 
 export { escapeHtml };
 
 const referencePlaceholderPattern = /^(:{3,})\s+\{#refs\b/;
-const referenceHeadingPattern = /^(#{1,6})\s+(references?|bibliography|works cited|参考文献)\s*$/iu;
+const referenceHeadingTextPattern = /^(references?|bibliography|works cited|参考文献)$/iu;
+export const referenceHeadingPattern = /^(#{1,6})\s+(references?|bibliography|works cited|参考文献)\s*$/iu;
+
+export function isReferenceHeadingText(value) {
+  return referenceHeadingTextPattern.test(String(value ?? '').trim());
+}
 
 function updateHtmlCommentState(line, inHtmlComment) {
   const source = String(line ?? '');
@@ -31,11 +37,45 @@ function updateHtmlCommentState(line, inHtmlComment) {
 }
 
 export function containsCitationSyntax(markdown) {
-  return /\[@[^\]]+\]/u.test(String(markdown ?? ''));
+  return collectInlineReferenceOrder(markdown).some((reference) => reference.type === 'citation');
 }
 
 export function containsMarkdownFootnoteSyntax(markdown) {
-  return /\[\^[^\]]+\]/u.test(String(markdown ?? ''));
+  return markdownTextMatches(markdown, /\[\^[^\]]+\]/u);
+}
+
+export function collectInlineReferenceOrder(markdown) {
+  const references = [];
+  const seen = new Set();
+
+  transformMarkdownText(markdown, (text, context) => {
+    const pattern = /\[\^([^\]]+)\](?!:)|\[((?:\\.|[^\]\\])*)\]/gu;
+
+    for (const match of text.matchAll(pattern)) {
+      if (match[1] !== undefined) {
+        const id = match[1].trim();
+        const identity = `footnote:${id}`;
+        if (id !== '' && !seen.has(identity)) {
+          seen.add(identity);
+          references.push({ id, offset: context.offset + match.index, type: 'footnote' });
+        }
+        continue;
+      }
+
+      for (const citation of match[2].matchAll(/(?<![A-Za-z0-9_])-?@([A-Za-z0-9_:.#$%&+?/<>-]+)/gu)) {
+        const key = citation[1].trim();
+        const identity = `citation:${key}`;
+        if (key !== '' && !seen.has(identity)) {
+          seen.add(identity);
+          references.push({ key, offset: context.offset + match.index, type: 'citation' });
+        }
+      }
+    }
+
+    return text;
+  });
+
+  return references.sort((left, right) => left.offset - right.offset);
 }
 
 export function normalizeBibliographyReferences(frontMatter = {}) {
@@ -195,33 +235,11 @@ export function extractMarkdownFootnotes(markdown) {
   };
 }
 
-export function replaceMarkdownFootnoteReferences(markdown, definitions, onWarning) {
-  const { lines, hasTrailingNewline } = splitLinesPreservingEOF(markdown);
+export function replaceMarkdownFootnoteReferences(markdown, definitions, onWarning, numberById = new Map()) {
   const citedIds = [];
   const seenIds = new Set();
-  let fence = null;
-  let inHtmlComment = false;
-
-  const content = joinLines(lines.map((line) => {
-    if (!fence) {
-      if (inHtmlComment) {
-        inHtmlComment = updateHtmlCommentState(line, inHtmlComment);
-        return line;
-      }
-
-      const fenceStart = parseFenceStart(line);
-      if (fenceStart) {
-        fence = fenceStart;
-        return line;
-      }
-
-      const nextHtmlCommentState = updateHtmlCommentState(line, inHtmlComment);
-      if (nextHtmlCommentState) {
-        inHtmlComment = nextHtmlCommentState;
-        return line;
-      }
-
-      return line.replace(/\[\^([^\]]+)\]/gu, (_match, rawId) => {
+  const content = transformMarkdownText(markdown, (text) => (
+    text.replace(/\[\^([^\]]+)\]/gu, (_match, rawId) => {
         const id = String(rawId).trim();
         if (!seenIds.has(id)) {
           seenIds.add(id);
@@ -231,19 +249,16 @@ export function replaceMarkdownFootnoteReferences(markdown, definitions, onWarni
           }
         }
 
-        const number = citedIds.indexOf(id) + 1;
+        const number = numberById.get(id) ?? (citedIds.indexOf(id) + 1);
         return `<sup class="footnote-ref">[${number}]</sup>`;
-      });
-    }
-
-    if (isFenceClose(line, fence)) fence = null;
-    return line;
-  }), hasTrailingNewline);
+      })
+  ));
 
   const footnotes = citedIds
     .filter((id) => definitions.has(id))
     .map((id, index) => ({
-      label: `[${index + 1}]`,
+      id,
+      label: `[${numberById.get(id) ?? (index + 1)}]`,
       bodyHtml: definitions.get(id),
     }));
 

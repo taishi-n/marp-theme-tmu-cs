@@ -148,7 +148,7 @@ test('applySectionPages allows overriding toc max level per command', () => {
 
   const processed = applySectionPages(markdown);
 
-  assert.match(processed, /- \[Basic usage\]\(#basic-usage\)\n  - \[Lists\]\(#lists\)\n- \[Theme-specific syntax\]\(#theme-specific-syntax\)\n  - \[Code\]\(#code\)/);
+  assert.match(processed, /- \[Basic usage\]\(#basic-usage\)\n {2}- \[Lists\]\(#lists\)\n- \[Theme-specific syntax\]\(#theme-specific-syntax\)\n {2}- \[Code\]\(#code\)/);
 });
 
 test('applySectionPages excludes fit headings from toc output', () => {
@@ -267,4 +267,31 @@ test('recalculateAuxiliaryPagination excludes auxiliary pages from visible total
   assert.match(output, /id="3" data-marpit-pagination="2" data-marpit-pagination-total="2"/);
   assert.match(output, /<section(?=[^>]*id="3")[^>]*><header data-section-name="Basics">Deck<\/header><\/section>/);
   assert.match(output, /<section(?=[^>]*id="4")(?=[^>]*class="toc-page auxiliary-page")(?=[^>]*data-marpit-pagination="")(?=[^>]*data-marpit-pagination-total="")(?=[^>]*data-paginate="false")[^>]*>/);
+});
+
+test('applySectionPages recognizes all supported reference headings', () => {
+  for (const heading of ['Reference', 'References', 'Bibliography', 'Works Cited', '参考文献']) {
+    const markdown = [
+      '---',
+      'sectionPages: true',
+      'sectionPageLevel: 2',
+      '---',
+      '',
+      `## ${heading}`,
+      '',
+    ].join('\n');
+    assert.doesNotMatch(applySectionPages(markdown), /tmu-cs-slide-class--section-page/);
+  }
+});
+
+test('recalculateAuxiliaryPagination ignores nested section elements inside slides', () => {
+  const html = [
+    '<section id="1"><header>Deck</header><section class="embedded"><p>Nested</p></section></section>',
+    '<section id="2"><header>Deck</header></section>',
+  ].join('');
+  const output = recalculateAuxiliaryPagination(html);
+
+  assert.match(output, /id="1" data-marpit-pagination-total="2" data-marpit-pagination="1"/);
+  assert.match(output, /id="2" data-marpit-pagination-total="2" data-marpit-pagination="2"/);
+  assert.match(output, /<section class="embedded"><p>Nested<\/p><\/section>/);
 });

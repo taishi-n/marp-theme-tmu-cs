@@ -1,131 +1,148 @@
-function escapeRegExp(value) {
-  return String(value ?? '').replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+import { parse, parseFragment, serializeOuter } from 'parse5';
+
+function parseHtml(html) {
+  const options = { sourceCodeLocationInfo: true };
+  return /<(?:!doctype\s+html|html)\b/iu.test(html)
+    ? parse(html, options)
+    : parseFragment(html, options);
 }
 
-function escapeHtmlAttribute(value) {
-  return String(value ?? '')
-    .replace(/&/gu, '&amp;')
-    .replace(/"/gu, '&quot;')
-    .replace(/</gu, '&lt;')
-    .replace(/>/gu, '&gt;');
+function walk(node, visit, sectionAncestor = false) {
+  const isSection = node?.tagName === 'section';
+  visit(node, { outerSection: isSection && !sectionAncestor });
+
+  for (const child of node?.childNodes ?? []) {
+    walk(child, visit, sectionAncestor || isSection);
+  }
 }
 
-function hasClass(sectionHtml, className) {
-  const match = sectionHtml.match(/\bclass="([^"]*)"/u);
-  return typeof match?.[1] === 'string' && match[1].split(/\s+/u).includes(className);
+function getAttribute(node, name) {
+  return node?.attrs?.find((attribute) => attribute.name === name)?.value;
 }
 
-function mergeClasses(rawValue, classNames) {
-  const merged = new Set(
-    String(rawValue ?? '')
-      .split(/\s+/u)
-      .map((className) => className.trim())
-      .filter(Boolean),
-  );
-
-  for (const className of classNames) merged.add(className);
-  return Array.from(merged).join(' ');
+function setAttribute(node, name, value) {
+  node.attrs ??= [];
+  const existing = node.attrs.find((attribute) => attribute.name === name);
+  if (existing) existing.value = String(value);
+  else node.attrs.push({ name, value: String(value) });
 }
 
-function updateAttribute(tag, name, value) {
-  const pattern = new RegExp(`\\s${escapeRegExp(name)}="[^"]*"`, 'u');
-  if (pattern.test(tag)) {
-    return tag.replace(pattern, ` ${name}="${value}"`);
+function classTokens(node) {
+  return String(getAttribute(node, 'class') ?? '').split(/\s+/u).filter(Boolean);
+}
+
+function hasClass(node, className) {
+  return classTokens(node).includes(className);
+}
+
+function mergeClasses(node, names) {
+  const merged = new Set([...classTokens(node), ...names].filter(Boolean));
+  setAttribute(node, 'class', Array.from(merged).join(' '));
+}
+
+function textContent(node) {
+  if (node?.nodeName === '#text') return node.value ?? '';
+  return (node?.childNodes ?? []).map(textContent).join('');
+}
+
+function findFirst(node, predicate) {
+  if (predicate(node)) return node;
+  for (const child of node?.childNodes ?? []) {
+    const found = findFirst(child, predicate);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function removeNode(node) {
+  const siblings = node?.parentNode?.childNodes;
+  const index = siblings?.indexOf(node) ?? -1;
+  if (index >= 0) siblings.splice(index, 1);
+}
+
+function promoteMarkedSlideClasses(section) {
+  const markers = [];
+  walk(section, (node) => {
+    if (node?.tagName !== 'span') return;
+    const markerClasses = classTokens(node).filter((name) => name.startsWith('tmu-cs-slide-class--'));
+    if (markerClasses.length > 0) markers.push({ markerClasses, node });
+  });
+
+  const promoted = markers.flatMap(({ markerClasses }) => (
+    markerClasses.map((name) => name.slice('tmu-cs-slide-class--'.length)).filter(Boolean)
+  ));
+
+  if (promoted.length > 0) {
+    mergeClasses(section, promoted);
+    const dataClasses = new Set([
+      ...String(getAttribute(section, 'data-class') ?? '').split(/\s+/u).filter(Boolean),
+      ...promoted,
+    ]);
+    setAttribute(section, 'data-class', Array.from(dataClasses).join(' '));
   }
 
-  return tag.replace(/^<section\b/u, `<section ${name}="${value}"`);
+  for (const { node } of markers) removeNode(node);
+
+  walk(section, (node) => {
+    const id = getAttribute(node, 'id');
+    if (id) setAttribute(node, 'id', id.replace(/-span-classtmu-cs-slide-class--.*$/u, ''));
+  });
 }
 
-function markerClassesToSlideClasses(classAttr) {
-  return String(classAttr ?? '')
-    .split(/\s+/u)
-    .filter((className) => className.startsWith('tmu-cs-slide-class--'))
-    .map((className) => className.slice('tmu-cs-slide-class--'.length))
-    .filter(Boolean);
+function firstHeadingText(section) {
+  const heading = findFirst(section, (node) => /^h[1-6]$/u.test(node?.tagName ?? ''));
+  return textContent(heading).replace(/\s+/gu, ' ').trim();
 }
 
-function promoteMarkedSlideClasses(sectionHtml) {
-  const markerPattern = /<span class="([^"]*\btmu-cs-slide-class--[^\s"]+[^"]*)"><\/span>\s*/gu;
-  const markerMatches = Array.from(sectionHtml.matchAll(markerPattern));
-  if (markerMatches.length === 0) return sectionHtml;
-
-  const classNames = markerMatches.flatMap((match) => markerClassesToSlideClasses(match[1]));
-  const openingTagMatch = sectionHtml.match(/^<section\b[^>]*>/u);
-  if (!openingTagMatch) return sectionHtml;
-
-  let openingTag = openingTagMatch[0];
-  const existingClassMatch = openingTag.match(/\bclass="([^"]*)"/u);
-  openingTag = updateAttribute(openingTag, 'class', mergeClasses(existingClassMatch?.[1], classNames));
-  openingTag = updateAttribute(openingTag, 'data-class', mergeClasses(openingTag.match(/\bdata-class="([^"]*)"/u)?.[1], classNames));
-
-  return sectionHtml
-    .replace(openingTagMatch[0], openingTag)
-    .replace(markerPattern, '')
-    .replace(/id="([^"]+)-span-classtmu-cs-slide-class--[^"]*"/gu, 'id="$1"');
+function updateHeaderSectionName(section, sectionName) {
+  if (!sectionName) return;
+  const header = findFirst(section, (node) => node?.tagName === 'header');
+  if (header) setAttribute(header, 'data-section-name', sectionName);
 }
 
-function extractFirstHeadingText(sectionHtml) {
-  const match = sectionHtml.match(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/u);
-  if (!match) return '';
+function replaceOuterSections(html, sections) {
+  const replacements = sections
+    .map((section) => ({
+      end: section.sourceCodeLocation?.endOffset,
+      replacement: serializeOuter(section),
+      start: section.sourceCodeLocation?.startOffset,
+    }))
+    .filter(({ end, start }) => Number.isInteger(start) && Number.isInteger(end))
+    .sort((left, right) => right.start - left.start);
 
-  return match[1]
-    .replace(/<[^>]+>/gu, '')
-    .replace(/\s+/gu, ' ')
-    .trim();
-}
-
-function updateHeaderSectionName(sectionHtml, sectionName) {
-  if (!sectionName) return sectionHtml;
-
-  const headerMatch = sectionHtml.match(/<header\b[^>]*>/u);
-  if (!headerMatch) return sectionHtml;
-
-  const nextHeaderTag = headerMatch[0].includes('data-section-name=')
-    ? headerMatch[0].replace(/\sdata-section-name="[^"]*"/u, ` data-section-name="${escapeHtmlAttribute(sectionName)}"`)
-    : headerMatch[0].replace(/^<header\b/u, `<header data-section-name="${escapeHtmlAttribute(sectionName)}"`);
-
-  return sectionHtml.replace(headerMatch[0], nextHeaderTag);
+  return replacements.reduce((output, replacement) => (
+    `${output.slice(0, replacement.start)}${replacement.replacement}${output.slice(replacement.end)}`
+  ), html);
 }
 
 export default function recalculateAuxiliaryPagination(html) {
-  const promotedHtml = String(html ?? '').replace(
-    /<section\b[\s\S]*?<\/section>/gu,
-    (sectionHtml) => promoteMarkedSlideClasses(sectionHtml),
-  );
-  const sections = Array.from(promotedHtml.matchAll(/<section\b[\s\S]*?<\/section>/gu));
-  if (sections.length === 0) return html;
+  const source = String(html ?? '');
+  const document = parseHtml(source);
+  const sections = [];
 
-  const visibleSections = sections.filter(([sectionHtml]) => !hasClass(sectionHtml, 'auxiliary-page'));
-  const total = String(visibleSections.length);
+  walk(document, (node, context) => {
+    if (context.outerSection) sections.push(node);
+  });
+  if (sections.length === 0) return source;
+
+  for (const section of sections) promoteMarkedSlideClasses(section);
+
+  const visibleTotal = sections.filter((section) => !hasClass(section, 'auxiliary-page')).length;
   let currentPage = 0;
   let currentSectionName = '';
 
-  return sections.reduce((output, match) => {
-    const [sectionHtml] = match;
-    const openingTagMatch = sectionHtml.match(/^<section\b[^>]*>/u);
-    if (!openingTagMatch) return output;
-
-    const openingTag = openingTagMatch[0];
-    const auxiliary = hasClass(sectionHtml, 'auxiliary-page');
-    const sectionPage = hasClass(sectionHtml, 'section-page');
-    if (sectionPage) currentSectionName = extractFirstHeadingText(sectionHtml);
+  for (const section of sections) {
+    const auxiliary = hasClass(section, 'auxiliary-page');
+    if (hasClass(section, 'section-page')) currentSectionName = firstHeadingText(section);
     if (!auxiliary) currentPage += 1;
 
-    let nextOpeningTag = updateAttribute(
-      updateAttribute(openingTag, 'data-marpit-pagination-total', auxiliary ? '' : total),
-      'data-marpit-pagination',
-      auxiliary ? '' : String(currentPage),
-    );
-
-    if (auxiliary) {
-      nextOpeningTag = updateAttribute(nextOpeningTag, 'data-paginate', 'false');
+    setAttribute(section, 'data-marpit-pagination-total', auxiliary ? '' : String(visibleTotal));
+    setAttribute(section, 'data-marpit-pagination', auxiliary ? '' : String(currentPage));
+    if (auxiliary) setAttribute(section, 'data-paginate', 'false');
+    if (!auxiliary && !hasClass(section, 'title-slide')) {
+      updateHeaderSectionName(section, currentSectionName);
     }
+  }
 
-    let nextSectionHtml = output.replace(openingTag, nextOpeningTag);
-    if (!auxiliary && !hasClass(sectionHtml, 'title-slide')) {
-      nextSectionHtml = nextSectionHtml.replace(sectionHtml.replace(openingTag, nextOpeningTag), updateHeaderSectionName(sectionHtml.replace(openingTag, nextOpeningTag), currentSectionName));
-    }
-
-    return nextSectionHtml;
-  }, promotedHtml);
+  return replaceOuterSections(source, sections);
 }

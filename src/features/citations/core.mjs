@@ -1,6 +1,7 @@
 import { joinMarkdownSlides, splitMarkdownSlides } from '../../core/markdown.mjs';
 import {
   appendBlock,
+  collectInlineReferenceOrder,
   containsCitationSyntax,
   containsMarkdownFootnoteSyntax,
   extractMarkdownFootnotes,
@@ -54,6 +55,7 @@ export function applyCitationRenderResult(renderResult, options = {}) {
       hadRefsBlock: strippedRefs.hadRefsBlock,
       slideWithoutMarkdownFootnoteDefs: extractedFootnotes.content,
       markdownFootnoteDefinitions: extractedFootnotes.definitions,
+      referenceOrder: slide.referenceOrder ?? collectInlineReferenceOrder(slide.content),
     };
   });
   const crossSlideFootnoteDefinitions = new Map();
@@ -71,7 +73,12 @@ export function applyCitationRenderResult(renderResult, options = {}) {
       hadRefsBlock,
       markdownFootnoteDefinitions,
       slideWithoutMarkdownFootnoteDefs,
+      referenceOrder,
     } = slide;
+    const referenceNumbers = new Map(referenceOrder.map((reference, index) => [
+      reference.type === 'footnote' ? reference.id : `citation:${reference.key}`,
+      index + 1,
+    ]));
     const { content: slideWithMarkdownFootnotes, footnotes: markdownFootnotes } = replaceMarkdownFootnoteReferences(
       slideWithoutMarkdownFootnoteDefs,
       markdownFootnoteDefinitions,
@@ -86,10 +93,20 @@ export function applyCitationRenderResult(renderResult, options = {}) {
 
         onWarning(message);
       },
+      new Map(referenceOrder
+        .filter((reference) => reference.type === 'footnote')
+        .map((reference) => [reference.id, referenceNumbers.get(reference.id)])),
     );
-    const slideFootnotes = (slide.citedKeys ?? [])
-      .map((key) => renderResult.entriesByKey.get(key))
-      .filter(Boolean);
+    const markdownFootnotesById = new Map(markdownFootnotes.map((footnote) => [footnote.id, footnote]));
+    const slideFootnotes = referenceOrder.map((reference, index) => {
+      if (reference.type === 'citation') {
+        const entry = renderResult.entriesByKey.get(reference.key);
+        return entry ? { ...entry, label: `[${index + 1}]` } : undefined;
+      }
+
+      const footnote = markdownFootnotesById.get(reference.id);
+      return footnote ? { ...footnote, label: `[${index + 1}]` } : undefined;
+    }).filter(Boolean);
 
     let content = slideWithMarkdownFootnotes;
 
@@ -97,13 +114,6 @@ export function applyCitationRenderResult(renderResult, options = {}) {
       content = appendBlock(
         content,
         renderCitationListBlock(slideFootnotes, 'citation-footnotes-marker', 'citation-footnote-label'),
-      );
-    }
-
-    if (markdownFootnotes.length > 0) {
-      content = appendBlock(
-        content,
-        renderCitationListBlock(markdownFootnotes, 'citation-footnotes-marker', 'citation-footnote-label'),
       );
     }
 
@@ -157,6 +167,7 @@ export function preprocessCitationsWithBackend(markdown, backend, options = {}) 
       slides: splitMarkdown.slides.map((slide) => ({
         ...slide,
         citedKeys: [],
+        referenceOrder: collectInlineReferenceOrder(slide.content),
       })),
       entriesByKey: new Map(),
       allEntries: [],
