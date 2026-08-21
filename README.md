@@ -159,7 +159,7 @@ mediaPlayback: sequential
 - `sectionPages`: insert auxiliary section pages automatically
 - `sectionPageLevel`: choose which heading level starts a section
 - `tocPageMaxLevel`: choose how deep `<!-- toc -->` expands by default
-- `mediaPlayback: sequential`: consume forward/back presentation arrows as ordered media playback steps before changing fragments or slides
+- `mediaPlayback: sequential`: use Left/Right and Marp's previous/next buttons for ordered media steps; Up/Down bypass media and retain normal Marp navigation
 - `<!-- toc -->`: expand a TOC slide at the default depth
 - `<!-- toc level=3 -->`: override the TOC depth for one page
 - `<!-- _mediaPlayback: sequential -->`: enable ordered playback on one slide
@@ -236,7 +236,7 @@ This is a citation [@postel1981ip].
 
 Animated GIF images are shown as a still poster by default and start playing only after the viewer presses the play button.
 
-Set `mediaPlayback: sequential` in front matter, or use `<!-- _mediaPlayback: sequential -->` on one slide, to step through GIF, native audio/video, and spectrogram audio in document order. Forward selects the next step, backward resets the preceding step, and leaving the slide resets the sequence. Manual media controls do not move the arrow-controlled position.
+Set `mediaPlayback: sequential` in front matter, or use `<!-- _mediaPlayback: sequential -->` on one slide, to step through GIF, native audio/video, and spectrogram audio in document order. Right or the next button pauses any media already playing on the slide before selecting the next step. Left or the previous button resets the preceding step. Up and Down pass directly to Marp without consuming a media step or changing the sequence position. Leaving the slide resets the sequence and all media on it. Manual media controls do not move the sequence position.
 
 See the [sequential media playback guide](docs/media-playback.md) for the complete authoring and navigation contract.
 

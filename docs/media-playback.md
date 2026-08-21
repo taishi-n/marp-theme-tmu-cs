@@ -43,18 +43,23 @@ Playback steps follow rendered document order. Supported steps are:
 
 Static images are not steps. A spectrogram and its hidden native audio count as one step.
 
-In normal and presenter views:
+In normal and presenter views, navigation follows this mapping:
 
-- Right, Down, or the on-screen next button plays the step at the current position.
-- Left, Up, or the on-screen previous button moves back one position and resets that step.
-- When no step remains in that direction, Marp handles navigation normally.
-- Leaving or entering the slide resets the position and all media on that slide.
+| Input | Sequential playback behavior |
+| :---- | :--------------------------- |
+| Right or the on-screen next button | Pause media already playing on the slide, then play the step at the current position. When no step remains, pass the action to Marp. |
+| Left or the on-screen previous button | Move back one position and reset that step. When no step remains, pass the action to Marp. |
+| Up or Down | Never consume a media step. Pass the action directly to Marp. |
+
+Up and Down do not change the media sequence position or pause media by themselves. Marp may reveal or hide a fragment before changing slides; sequential playback does not override that normal order. If Marp leaves the slide, the slide-change reset pauses and rewinds its audio and video, cancels pending spectrogram playback, restores GIF posters, and clears the sequence position.
+
+Before a Right or on-screen next action starts its selected step, native audio and video keep the position at which they are paused. An animated GIF returns to its poster because browsers cannot pause an image animation in place.
 
 Resetting pauses and rewinds audio or video and restores a GIF poster. A failed media load still consumes its step so navigation cannot become stuck.
 
-Manual play controls remain available, but they do not move the arrow-controlled position. This keeps arrow behavior independent of out-of-order manual playback.
+Manual play controls remain available, but they do not move the arrow-controlled position. A later Right or on-screen next action still pauses manually started media before it plays the selected sequence step.
 
-Only unmodified arrow keys and Marp's previous/next buttons participate. Other navigation inputs keep their normal Marp behavior. Arrow keys are also left to a focused media control, button, form field, wavegram player, or editable element.
+Only unmodified Left and Right keys and Marp's previous/next buttons participate in sequential playback. Up, Down, and other navigation inputs keep their normal Marp behavior. Arrow keys are also left to a focused media control, button, form field, wavegram player, or editable element.
 
 ## Example
 
@@ -78,7 +83,7 @@ mediaPlayback: sequential
 <video controls src="video/demo.mp4"></video>
 ```
 
-Four forward actions select the GIF, plain audio, spectrogram audio, and video. The next forward action reaches the next Marp fragment or slide.
+Four Right or on-screen next actions select the GIF, plain audio, spectrogram audio, and video. The following Right or on-screen next action reaches the next Marp fragment or slide.
 
 ## Spectrogram And Standalone HTML
 

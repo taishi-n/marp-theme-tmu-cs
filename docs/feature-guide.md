@@ -199,7 +199,13 @@ Enable or disable it on one slide with a local directive:
 <!-- _mediaPlayback: sequential -->
 ```
 
-Use `off` to override a deck-wide setting. In interactive HTML, unmodified forward arrows or the next button select GIF, native audio/video, and spectrogram audio in document order. Backward controls reset the preceding step. Manual media controls do not move this position, and leaving the slide resets it.
+Use `off` to override a deck-wide setting. In interactive HTML, controls behave as follows:
+
+- Right or the next button pauses media already playing on the slide, then selects the next GIF, native audio/video, or spectrogram audio in document order.
+- Left or the previous button resets the preceding media step.
+- Up and Down bypass media steps and retain Marp's normal fragment and slide navigation.
+
+Manual media controls and Up/Down navigation do not move the sequence position. Leaving the slide resets the position and all media on that slide.
 
 See [Sequential Media Playback](media-playback.md) for the complete contract and an example.
 

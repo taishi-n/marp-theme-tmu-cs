@@ -3,7 +3,101 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { runInNewContext } from 'node:vm';
 import enhanceAnimatedImages from '../src/pipeline/animated-images.mjs';
+
+function createSequentialPlaybackHarness(runtime) {
+  const events = [];
+  const listeners = new Map();
+
+  class FakeElement {
+    constructor(name) {
+      this.classList = { contains: () => false };
+      this.currentTime = 0;
+      this.dataset = {};
+      this.name = name;
+      this.paused = true;
+    }
+
+    closest() {
+      return null;
+    }
+
+    hasAttribute() {
+      return false;
+    }
+
+    matches() {
+      return false;
+    }
+
+    pause() {
+      events.push(`pause:${this.name}`);
+      this.paused = true;
+    }
+
+    play() {
+      events.push(`play:${this.name}`);
+      this.paused = false;
+      return Promise.resolve();
+    }
+  }
+
+  const steps = [new FakeElement('first'), new FakeElement('second')];
+  const section = {
+    querySelectorAll: () => steps,
+  };
+  const activeSlide = {
+    querySelector: () => section,
+  };
+  const document = {
+    addEventListener: (type, listener) => listeners.set(type, listener),
+    body: { dataset: {} },
+    documentElement: {},
+    querySelector: (selector) => (
+      selector === '.bespoke-marp-slide.bespoke-marp-active' ? activeSlide : null
+    ),
+    querySelectorAll: () => [],
+  };
+  const window = {
+    addEventListener: () => {},
+  };
+
+  runInNewContext(runtime, {
+    document,
+    Element: FakeElement,
+    MutationObserver: class {
+      observe() {}
+    },
+    setTimeout: (callback) => callback(),
+    window,
+  });
+
+  events.length = 0;
+  const target = new FakeElement('target');
+  const pressKey = (key) => {
+    let defaultPrevented = false;
+    let propagationStopped = false;
+    listeners.get('keydown')({
+      altKey: false,
+      ctrlKey: false,
+      key,
+      metaKey: false,
+      preventDefault: () => {
+        defaultPrevented = true;
+      },
+      repeat: false,
+      shiftKey: false,
+      stopImmediatePropagation: () => {
+        propagationStopped = true;
+      },
+      target,
+    });
+    return { defaultPrevented, propagationStopped };
+  };
+
+  return { events, pressKey, steps };
+}
 
 test('enhanceAnimatedImages emits spectrogram markup and a self-contained wavegram runtime', () => {
   const html = '<section><p><audio class="demo wavesurfer-spectrogram" controls src="./tone.wav" data-spectrogram-height="120" data-spectrogram-fft-samples="2048"></audio></p></section>';
@@ -39,10 +133,63 @@ test('enhanceAnimatedImages injects a valid sequential navigation runtime for ma
 
   assert.ok(runtime);
   assert.match(runtime, /function playNextStep\(section\)/u);
+  assert.match(runtime, /pausePlayingSteps\(section\);[\s\S]*playStep\(steps\[position\]\);/u);
   assert.match(runtime, /event\.key === 'ArrowRight'/u);
   assert.match(runtime, /data-bespoke-marp-osc="next"/u);
   assert.match(runtime, /'audio',[\s\S]*'video'/u);
   assert.doesNotThrow(() => Function(runtime));
+});
+
+test('sequential navigation pauses current media before playing the next step', () => {
+  const html = [
+    '<section data-media-playback="sequential">',
+    '<audio controls src="./one.wav"></audio>',
+    '<video controls src="./two.mp4"></video>',
+    '</section>',
+  ].join('');
+  const output = enhanceAnimatedImages(html);
+  const runtime = output.match(/<script>([\s\S]*)<\/script>$/u)?.[1];
+
+  assert.ok(runtime);
+  const { events, pressKey, steps } = createSequentialPlaybackHarness(runtime);
+
+  steps[1].play();
+  events.length = 0;
+  pressKey('ArrowRight');
+  assert.deepEqual(events, ['pause:second', 'play:first']);
+
+  steps[0].currentTime = 4;
+  events.length = 0;
+  pressKey('ArrowRight');
+
+  assert.deepEqual(events, ['pause:first', 'play:second']);
+  assert.equal(steps[0].paused, true);
+  assert.equal(steps[0].currentTime, 4);
+  assert.equal(steps[1].paused, false);
+});
+
+test('vertical arrows bypass sequential media playback', () => {
+  const html = [
+    '<section data-media-playback="sequential">',
+    '<audio controls src="./one.wav"></audio>',
+    '<video controls src="./two.mp4"></video>',
+    '</section>',
+  ].join('');
+  const output = enhanceAnimatedImages(html);
+  const runtime = output.match(/<script>([\s\S]*)<\/script>$/u)?.[1];
+
+  assert.ok(runtime);
+  for (const key of ['ArrowDown', 'ArrowUp']) {
+    const { events, pressKey, steps } = createSequentialPlaybackHarness(runtime);
+    const eventState = pressKey(key);
+
+    assert.deepEqual(events, []);
+    assert.deepEqual(eventState, { defaultPrevented: false, propagationStopped: false });
+    assert.equal(steps[0].paused, true);
+
+    pressKey('ArrowRight');
+    assert.equal(steps[0].paused, false);
+  }
 });
 
 test('enhanceAnimatedImages inlines local spectrogram audio when markdownPath is known', async () => {

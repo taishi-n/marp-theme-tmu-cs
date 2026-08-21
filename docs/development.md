@@ -133,7 +133,7 @@ Use these checks based on the change:
 
 - CSS or layout changes: run `npm run build:html` and inspect the sample deck
 - engine or Markdown preprocessor changes: run `npm test` and `npm run build:html`
-- sequential media playback changes: run `npm run check`, build the sample HTML, and verify forward/back keys plus on-screen controls in a browser
+- sequential media playback changes: run `npm run check`, build the sample HTML, and verify Left/Right media steps, Up/Down page navigation, and on-screen controls in a browser
 - standalone HTML bundling changes: run `npm test` and the deterministic `npm run build:html:standalone:ci`; use `npm run build:html:standalone` as a network integration check for remote sample assets
 - citation changes: run `npm run build:html` and confirm the JS citation backend still produces the expected output
 - output-format-sensitive changes: also run `npm run build:pdf` or `npm run build:pptx`
