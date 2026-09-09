@@ -17,6 +17,8 @@ export default function installMediaPlayback(marp, options = {}) {
     return { mediaPlayback: mode };
   };
 
+  // Marpit snapshots directive names when its engine is constructed. This
+  // directive is registered later, so the built-in dataset pass cannot emit it.
   marp.markdown.core.ruler.after(
     'marpit_directives_apply',
     'tmu_cs_media_playback',

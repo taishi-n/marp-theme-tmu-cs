@@ -15,6 +15,17 @@ test('normalizeMediaPlaybackMode normalizes supported modes and rejects aliases'
   assert.equal(normalizeMediaPlaybackMode('unexpected'), undefined);
 });
 
+test('late-registered playback directives need the attribute integration rule', () => {
+  const source = '<!-- mediaPlayback: sequential -->\n# Media';
+  const bare = new Marp();
+  bare.customDirectives.local.mediaPlayback = (value) => ({ mediaPlayback: value });
+  assert.doesNotMatch(bare.render(source).html, /data-media-playback/u);
+
+  const integrated = new Marp();
+  installMediaPlayback(integrated);
+  assert.match(integrated.render(source).html, /data-media-playback="sequential"/u);
+});
+
 test('engine enables deck-wide playback with a slide-local opt-out', async () => {
   const marp = await engine({ marp: new Marp() });
   const markdown = [

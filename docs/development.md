@@ -67,6 +67,8 @@ The intended render order is:
 
 Auxiliary slides set the built-in `paginate` directive to `skip` before Marpit applies directives. Normal slides retain authored `false`, `skip`, and `hold` behavior. Title slides remain counted unless explicitly skipped.
 
+`mediaPlayback` still needs its attribute integration rule: Marpit snapshots attribute-producing directive names during construction, before this engine registers the custom directive.
+
 Shared helpers that are reused across preprocessors and renderers should prefer `src/core/*` instead of being duplicated in feature-specific files.
 
 Citation handling is split into:
