@@ -62,14 +62,21 @@ function detectOutputFormat(args = process.argv.slice(2)) {
   return 'html';
 }
 
-function renderNativeEmojiHtml(html) {
-  return String(html ?? '').replace(
-    /<img class="emoji"[^>]*\balt="([^"]*)"[^>]*\bdata-marp-twemoji=""[^>]*\/>/gu,
-    (_, alt) => alt,
-  );
-}
-
-export default async ({ marp }) => {
+export default async (options) => {
+  const outputFormat = detectOutputFormat();
+  // CLI's getter constructs Core from this options object on first access.
+  // Configure emoji before initialization, while preserving the selected Core.
+  const nativeEmoji = { shortcode: true, unicode: false };
+  const lazyMarp = Object.getOwnPropertyDescriptor(options, 'marp')?.get;
+  if (outputFormat === 'html' && lazyMarp) {
+    options.emoji = { ...options.emoji, ...nativeEmoji };
+  }
+  let marp = options.marp;
+  if (outputFormat === 'html' && !lazyMarp) {
+    // Programmatic callers may supply a fresh instance instead of CLI's getter.
+    const Core = marp.constructor;
+    marp = new Core({ ...marp.options, emoji: { ...marp.options.emoji, ...nativeEmoji } });
+  }
   const [highlighter, themeCss] = await Promise.all([
     highlighterPromise,
     readFile(themeCssUrl, 'utf8'),
@@ -91,7 +98,6 @@ export default async ({ marp }) => {
   const standaloneOutputPath = process.env.TMU_CS_STANDALONE_OUTPUT;
   const allowLocalFiles = process.env.TMU_CS_ALLOW_LOCAL_FILES === '1'
     || process.argv.slice(2).includes('--allow-local-files');
-  const outputFormat = detectOutputFormat();
   let configuredMarkdownPaths = [];
   try {
     const parsedPaths = JSON.parse(process.env.TMU_CS_MARKDOWN_PATHS ?? '[]');
@@ -123,14 +129,10 @@ export default async ({ marp }) => {
       console.warn(`${logPrefix} Failed to estimate code block overflow. ${message}`);
     }
 
-    let renderedHtml = decorateAuxiliarySlides(enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env), {
+    const renderedHtml = decorateAuxiliarySlides(enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env), {
       allowLocalFiles,
       markdownPath,
     }));
-
-    if (outputFormat === 'html') {
-      renderedHtml = renderNativeEmojiHtml(renderedHtml);
-    }
 
     if (!standaloneEnabled) return renderedHtml;
 
