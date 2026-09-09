@@ -115,7 +115,28 @@ function replaceOuterSections(html, sections) {
   ), html);
 }
 
-export default function recalculateAuxiliaryPagination(html) {
+// Set the built-in directive before Marpit computes page numbers and totals.
+export function installSlideMetadata(marp) {
+  marp.markdown.core.ruler.before('marpit_directives_apply', 'tmu_cs_auxiliary_pagination', (state) => {
+    if (state.inlineMode) return;
+    let slide;
+    for (const token of state.tokens) {
+      if (token.type === 'marpit_slide_open') {
+        slide = token;
+        if (String(slide.meta.marpitDirectives.class ?? '').split(/\s+/u).includes('auxiliary-page')) {
+          slide.meta.marpitDirectives.paginate = 'skip';
+        }
+      } else if (token.type === 'marpit_slide_close') {
+        slide = undefined;
+      } else if (slide && (token.type === 'inline' || token.type === 'html_block')
+        && /<span class="[^"\n]*\btmu-cs-slide-class--auxiliary-page\b[^"\n]*"><\/span>/u.test(token.content)) {
+        slide.meta.marpitDirectives.paginate = 'skip';
+      }
+    }
+  });
+}
+
+export default function decorateAuxiliarySlides(html) {
   const source = String(html ?? '');
   const document = parseHtml(source);
   const sections = [];
@@ -127,18 +148,11 @@ export default function recalculateAuxiliaryPagination(html) {
 
   for (const section of sections) promoteMarkedSlideClasses(section);
 
-  const visibleTotal = sections.filter((section) => !hasClass(section, 'auxiliary-page')).length;
-  let currentPage = 0;
   let currentSectionName = '';
 
   for (const section of sections) {
     const auxiliary = hasClass(section, 'auxiliary-page');
     if (hasClass(section, 'section-page')) currentSectionName = firstHeadingText(section);
-    if (!auxiliary) currentPage += 1;
-
-    setAttribute(section, 'data-marpit-pagination-total', auxiliary ? '' : String(visibleTotal));
-    setAttribute(section, 'data-marpit-pagination', auxiliary ? '' : String(currentPage));
-    if (auxiliary) setAttribute(section, 'data-paginate', 'false');
     if (!auxiliary && !hasClass(section, 'title-slide')) {
       updateHeaderSectionName(section, currentSectionName);
     }

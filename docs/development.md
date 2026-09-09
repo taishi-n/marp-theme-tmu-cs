@@ -47,7 +47,7 @@ Most feature logic should live outside `engine.mjs`:
 - `src/pipeline/section-pages.mjs`: section page insertion and TOC command expansion
 - `src/pipeline/markdown-pipeline.mjs`: Markdown-path discovery and preprocessing order
 - `src/pipeline/media-playback.mjs`: Marp directive registration for sequential media playback
-- `src/pipeline/auxiliary-pagination.mjs`: HTML postprocessing for auxiliary slides and visible pagination
+- `src/pipeline/slide-metadata.mjs`: built-in auxiliary pagination and HTML slide decoration
 - `src/pipeline/animated-images.mjs`: HTML postprocessing and runtime for GIF, spectrogram, and sequential media playback
 - `src/features/citations/*`: citation core, Markdown postprocessing, and backend boundary
 - `src/features/code/*`: code preprocessing and highlighting boundary
@@ -62,8 +62,10 @@ The intended render order is:
 3. section page / TOC preprocessing
 4. external code resolution
 5. step expansion
-6. Marp render, including media playback directive application
+6. Marp render, including auxiliary pagination and media playback directive application
 7. HTML postprocessing
+
+Auxiliary slides set the built-in `paginate` directive to `skip` before Marpit applies directives. Normal slides retain authored `false`, `skip`, and `hold` behavior. Title slides remain counted unless explicitly skipped.
 
 Shared helpers that are reused across preprocessors and renderers should prefer `src/core/*` instead of being duplicated in feature-specific files.
 

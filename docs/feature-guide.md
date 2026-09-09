@@ -74,8 +74,10 @@ Behavior:
 - `<!-- toc level=N -->` overrides the maximum included heading level for one TOC slide
 - a TOC before the first section covers the deck, while a TOC in or after a section covers only that section
 - headings that use the `<!--fit-->` large-type pattern are excluded from generated TOCs
-- in HTML output, section pages and TOC pages hide header, footer, and pagination, and they do not increment the visible page count
+- section pages and TOC pages hide header, footer, and pagination; Marpit’s `paginate: skip` excludes them from the page count
 - normal slides show the current section at top-left and pagination at top-right
+
+Normal slides respect Marp’s `paginate: false`, `skip`, and `hold` directives. The generated title slide hides its number but remains counted by default.
 
 ## Annotated And Step-Emphasized Code
 

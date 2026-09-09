@@ -167,7 +167,7 @@ mediaPlayback: sequential
 
 A TOC before the first section covers the deck. A TOC within a section covers that section; with level-2 sections, use `<!-- toc level=3 -->` to include their child headings.
 
-In HTML output, section pages and TOC pages are treated as auxiliary slides:
+Section pages and TOC pages are treated as auxiliary slides:
 
 - header, footer, and pagination are hidden
 - they are excluded from the visible page-number count

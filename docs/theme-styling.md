@@ -42,7 +42,7 @@ Slides with `section-page`, `toc-page`, or `auxiliary-page` have dedicated behav
 - `section-page` centers the section heading and uses the same large heading size as the title slide title
 - `toc-page` is used for explicit `<!-- toc -->` slides
 - `auxiliary-page` hides header, footer, and visible pagination
-- in HTML output, auxiliary pages are removed from the visible page-number count by postprocessing
+- auxiliary pages use Marpit’s `paginate: skip` behavior to hide page numbers and exclude them from the count
 
 These classes are attached by the custom engine rather than written directly into the final HTML source.
 

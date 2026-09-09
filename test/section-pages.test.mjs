@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { Marp } from '@marp-team/marp-core';
+import engine from '../engine.mjs';
 import applySectionPages from '../src/pipeline/section-pages.mjs';
-import recalculateAuxiliaryPagination from '../src/pipeline/auxiliary-pagination.mjs';
+import decorateAuxiliarySlides from '../src/pipeline/slide-metadata.mjs';
 
 test('applySectionPages inserts auxiliary section pages before section headings', () => {
   const markdown = [
@@ -252,21 +254,30 @@ test('applySectionPages preserves front matter directives such as theme', () => 
   assert.match(processed, /^---\nmarp: true\ntheme: tmu-cs\nsectionPages: true\nsectionPageLevel: 2\n---/);
 });
 
-test('recalculateAuxiliaryPagination excludes auxiliary pages from visible totals', () => {
-  const html = [
-    '<section id="1" class="title-slide" data-marpit-pagination="1" data-marpit-pagination-total="4"><header>Deck</header></section>',
-    '<section id="2" class="section-page auxiliary-page" data-marpit-pagination="2" data-marpit-pagination-total="4"><header>Deck</header><h1>Basics</h1></section>',
-    '<section id="3" data-marpit-pagination="3" data-marpit-pagination-total="4"><header>Deck</header></section>',
-    '<section id="4" class="toc-page auxiliary-page" data-marpit-pagination="4" data-marpit-pagination-total="4"></section>',
-  ].join('');
+test('engine excludes auxiliary pages and respects authored pagination directives', async () => {
+  const marp = await engine({ marp: new Marp() });
+  const { html } = marp.render([
+    '---', 'paginate: true', 'title: Deck', 'sectionPages: true', '---',
+    '# Agenda', '<!-- toc -->', '---', '## Basics', '---',
+    '### First', '---', '<!-- _paginate: hold -->', '### Held', '---',
+    '<!-- _paginate: skip -->', '### Skipped', '---',
+    '<!-- _paginate: false -->', '### Hidden', '---', '### Last',
+  ].join('\n'));
+  const sections = html.match(/<section\b[^>]*>/gu);
+  assert.equal(sections.length, 8);
+  assert.match(sections[0], /data-marpit-pagination="1"/u);
+  for (const index of [1, 2, 5, 6]) assert.doesNotMatch(sections[index], /data-marpit-pagination=/u);
+  assert.match(sections[3], /data-marpit-pagination="2"/u);
+  assert.match(sections[4], /data-marpit-pagination="2"/u);
+  assert.match(sections[7], /data-marpit-pagination="4"/u);
+  for (const index of [0, 3, 4, 7]) assert.match(sections[index], /data-marpit-pagination-total="4"/u);
+  assert.match(html, /<header data-section-name="Basics">Deck<\/header>/u);
+});
 
-  const output = recalculateAuxiliaryPagination(html);
-
-  assert.match(output, /id="1" class="title-slide" data-marpit-pagination="1" data-marpit-pagination-total="2"/);
-  assert.match(output, /<section(?=[^>]*id="2")(?=[^>]*class="section-page auxiliary-page")(?=[^>]*data-marpit-pagination="")(?=[^>]*data-marpit-pagination-total="")(?=[^>]*data-paginate="false")[^>]*>/);
-  assert.match(output, /id="3" data-marpit-pagination="2" data-marpit-pagination-total="2"/);
-  assert.match(output, /<section(?=[^>]*id="3")[^>]*><header data-section-name="Basics">Deck<\/header><\/section>/);
-  assert.match(output, /<section(?=[^>]*id="4")(?=[^>]*class="toc-page auxiliary-page")(?=[^>]*data-marpit-pagination="")(?=[^>]*data-marpit-pagination-total="")(?=[^>]*data-paginate="false")[^>]*>/);
+test('auxiliary pagination does not enable pagination on an unpaginated deck', async () => {
+  const marp = await engine({ marp: new Marp() });
+  const { html } = marp.render('<!-- _class: auxiliary-page -->\n# Auxiliary\n\n---\n# Content');
+  assert.doesNotMatch(html, /data-marpit-pagination=/u);
 });
 
 test('applySectionPages recognizes all supported reference headings', () => {
@@ -284,14 +295,13 @@ test('applySectionPages recognizes all supported reference headings', () => {
   }
 });
 
-test('recalculateAuxiliaryPagination ignores nested section elements inside slides', () => {
+test('decorateAuxiliarySlides preserves nested section elements inside slides', () => {
   const html = [
     '<section id="1"><header>Deck</header><section class="embedded"><p>Nested</p></section></section>',
     '<section id="2"><header>Deck</header></section>',
   ].join('');
-  const output = recalculateAuxiliaryPagination(html);
+  const output = decorateAuxiliarySlides(html);
 
-  assert.match(output, /id="1" data-marpit-pagination-total="2" data-marpit-pagination="1"/);
-  assert.match(output, /id="2" data-marpit-pagination-total="2" data-marpit-pagination="2"/);
+  assert.doesNotMatch(output, /data-marpit-pagination/u);
   assert.match(output, /<section class="embedded"><p>Nested<\/p><\/section>/);
 });

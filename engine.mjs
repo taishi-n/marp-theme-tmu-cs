@@ -7,7 +7,7 @@ import { installDiagramFeature } from './src/features/diagrams/index.mjs';
 import { createKrokiBackend } from './src/features/diagrams/kroki-backend.mjs';
 import { installMathFeature } from './src/features/math/index.mjs';
 import enhanceAnimatedImages from './src/pipeline/animated-images.mjs';
-import recalculateAuxiliaryPagination from './src/pipeline/auxiliary-pagination.mjs';
+import decorateAuxiliarySlides, { installSlideMetadata } from './src/pipeline/slide-metadata.mjs';
 import installMediaPlayback from './src/pipeline/media-playback.mjs';
 import inlineStandaloneAssets from './src/pipeline/standalone-assets.mjs';
 import { getMarkdownPathFromEnv, prepareMarkdownForRender, warnForPreparedMarkdown } from './src/pipeline/markdown-pipeline.mjs';
@@ -83,6 +83,7 @@ export default async ({ marp }) => {
   installDiagramFeature(marp, {
     backend: createKrokiBackend(),
   });
+  installSlideMetadata(marp);
   installMediaPlayback(marp, {
     onWarning: (message) => console.warn(`${logPrefix} ${message}`),
   });
@@ -122,7 +123,7 @@ export default async ({ marp }) => {
       console.warn(`${logPrefix} Failed to estimate code block overflow. ${message}`);
     }
 
-    let renderedHtml = recalculateAuxiliaryPagination(enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env), {
+    let renderedHtml = decorateAuxiliarySlides(enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env), {
       allowLocalFiles,
       markdownPath,
     }));
