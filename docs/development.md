@@ -47,7 +47,7 @@ Most feature logic should live outside `engine.mjs`:
 - `src/pipeline/section-pages.mjs`: section page insertion and TOC command expansion
 - `src/pipeline/markdown-pipeline.mjs`: Markdown-path discovery and preprocessing order
 - `src/pipeline/media-playback.mjs`: Marp directive registration for sequential media playback
-- `src/pipeline/slide-metadata.mjs`: built-in auxiliary pagination and HTML slide decoration
+- `src/pipeline/slide-metadata.mjs`: slide-class token metadata, built-in auxiliary pagination, TOC link resolution, and section-name decoration
 - `src/pipeline/animated-images.mjs`: HTML postprocessing and runtime for GIF, spectrogram, and sequential media playback
 - `src/features/citations/*`: citation core, Markdown postprocessing, and backend boundary
 - `src/features/code/*`: code preprocessing and highlighting boundary
@@ -62,10 +62,12 @@ The intended render order is:
 3. section page / TOC preprocessing
 4. external code resolution
 5. step expansion
-6. Marp render, including auxiliary pagination and media playback directive application
+6. Marp render, including slide metadata and media playback directive application; resolve TOC links after Core assigns heading IDs
 7. HTML postprocessing
 
 Auxiliary slides set the built-in `paginate` directive to `skip` before Marpit applies directives. Normal slides retain authored `false`, `skip`, and `hold` behavior. Title slides remain counted unless explicitly skipped.
+
+TOC preprocessing assigns temporary target references, which travel with headings through section-page and code-step expansion. The token integration removes marker elements before Core assigns heading IDs and resolves links to those IDs afterward. Repeated code-step headings link to the first state. Do not independently calculate heading slugs or repair them in rendered HTML.
 
 `mediaPlayback` still needs its attribute integration rule: Marpit snapshots attribute-producing directive names during construction, before this engine registers the custom directive.
 

@@ -35,11 +35,6 @@ function hasClass(node, className) {
   return classTokens(node).includes(className);
 }
 
-function mergeClasses(node, names) {
-  const merged = new Set([...classTokens(node), ...names].filter(Boolean));
-  setAttribute(node, 'class', Array.from(merged).join(' '));
-}
-
 function textContent(node) {
   if (node?.nodeName === '#text') return node.value ?? '';
   return (node?.childNodes ?? []).map(textContent).join('');
@@ -52,41 +47,6 @@ function findFirst(node, predicate) {
     if (found) return found;
   }
   return undefined;
-}
-
-function removeNode(node) {
-  const siblings = node?.parentNode?.childNodes;
-  const index = siblings?.indexOf(node) ?? -1;
-  if (index >= 0) siblings.splice(index, 1);
-}
-
-function promoteMarkedSlideClasses(section) {
-  const markers = [];
-  walk(section, (node) => {
-    if (node?.tagName !== 'span') return;
-    const markerClasses = classTokens(node).filter((name) => name.startsWith('tmu-cs-slide-class--'));
-    if (markerClasses.length > 0) markers.push({ markerClasses, node });
-  });
-
-  const promoted = markers.flatMap(({ markerClasses }) => (
-    markerClasses.map((name) => name.slice('tmu-cs-slide-class--'.length)).filter(Boolean)
-  ));
-
-  if (promoted.length > 0) {
-    mergeClasses(section, promoted);
-    const dataClasses = new Set([
-      ...String(getAttribute(section, 'data-class') ?? '').split(/\s+/u).filter(Boolean),
-      ...promoted,
-    ]);
-    setAttribute(section, 'data-class', Array.from(dataClasses).join(' '));
-  }
-
-  for (const { node } of markers) removeNode(node);
-
-  walk(section, (node) => {
-    const id = getAttribute(node, 'id');
-    if (id) setAttribute(node, 'id', id.replace(/-span-classtmu-cs-slide-class--.*$/u, ''));
-  });
 }
 
 function firstHeadingText(section) {
@@ -115,22 +75,65 @@ function replaceOuterSections(html, sections) {
   ), html);
 }
 
-// Set the built-in directive before Marpit computes page numbers and totals.
+// Consume generated markers before Core derives heading IDs. Keep these as
+// token metadata so neither the markers nor their class names affect the slug.
 export function installSlideMetadata(marp) {
-  marp.markdown.core.ruler.before('marpit_directives_apply', 'tmu_cs_auxiliary_pagination', (state) => {
+  marp.markdown.core.ruler.before('marpit_directives_apply', 'tmu_cs_slide_metadata', (state) => {
     if (state.inlineMode) return;
     let slide;
+    let heading;
     for (const token of state.tokens) {
-      if (token.type === 'marpit_slide_open') {
-        slide = token;
+      if (token.type === 'marpit_slide_open') slide = token;
+      if (token.type === 'heading_open') heading = token;
+      if (slide && token.type === 'inline') {
+        const children = token.children ?? [];
+        token.children = children.filter((child, index) => {
+          if (child.type !== 'html_inline') return true;
+          const previous = children[index - 1];
+          if (child.content === '</span>' && previous?.meta?.tmuMarker) return false;
+          if (children[index + 1]?.content !== '</span>') return true;
+          const classes = child.content.match(/^<span class="(tmu-cs-slide-class--[^"<>]+)">$/u);
+          const target = child.content.match(/^<span data-tmu-cs-heading="(\d+)">$/u);
+          if (!classes && !(target && heading)) return true;
+          child.meta = { ...child.meta, tmuMarker: true };
+          if (classes) {
+            const directives = slide.meta.marpitDirectives;
+            directives.class = [...new Set([
+              ...String(directives.class ?? '').split(/\s+/u).filter(Boolean),
+              ...classes[1].split(/\s+/u).map((name) => name.replace(/^tmu-cs-slide-class--/u, '')),
+            ])].join(' ');
+          }
+          if (target && heading) heading.meta = { ...heading.meta, tmuTocTarget: target[1] };
+          return false;
+        });
+      }
+      if (token.type === 'heading_close') heading = undefined;
+      if (token.type === 'marpit_slide_close') {
         if (String(slide.meta.marpitDirectives.class ?? '').split(/\s+/u).includes('auxiliary-page')) {
           slide.meta.marpitDirectives.paginate = 'skip';
         }
-      } else if (token.type === 'marpit_slide_close') {
         slide = undefined;
-      } else if (slide && (token.type === 'inline' || token.type === 'html_block')
-        && /<span class="[^"\n]*\btmu-cs-slide-class--auxiliary-page\b[^"\n]*"><\/span>/u.test(token.content)) {
-        slide.meta.marpitDirectives.paginate = 'skip';
+      }
+    }
+  });
+
+  marp.markdown.core.ruler.after('marp_slug', 'tmu_cs_toc_links', (state) => {
+    if (state.inlineMode) return;
+    const targets = new Map();
+    let slideId;
+    for (const token of state.tokens) {
+      if (token.type === 'marpit_slide_open') slideId = token.attrGet('id');
+      const target = token.meta?.tmuTocTarget;
+      // A step-expanded heading can occur repeatedly. Link to its first state.
+      if (target !== undefined && !targets.has(target)) {
+        targets.set(target, token.attrGet('id') ?? slideId);
+      }
+    }
+    for (const token of state.tokens) {
+      for (const child of token.children ?? []) {
+        if (child.type !== 'link_open') continue;
+        const target = child.attrGet('href')?.match(/^#tmu-cs-toc-(\d+)$/u)?.[1];
+        if (target !== undefined && targets.get(target)) child.attrSet('href', `#${targets.get(target)}`);
       }
     }
   });
@@ -145,8 +148,6 @@ export default function decorateAuxiliarySlides(html) {
     if (context.outerSection) sections.push(node);
   });
   if (sections.length === 0) return source;
-
-  for (const section of sections) promoteMarkedSlideClasses(section);
 
   let currentSectionName = '';
 

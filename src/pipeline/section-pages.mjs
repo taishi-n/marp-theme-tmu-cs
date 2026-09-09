@@ -1,4 +1,3 @@
-import { createGitHubHeadingSlugger } from '../core/github-heading-slug.mjs';
 import { hasOwn, parseFrontMatter } from '../core/front-matter.mjs';
 import { parseMarkdownHeadings } from '../core/headings.mjs';
 import { isFenceClose, joinMarkdownSlides, parseFenceStart, splitMarkdownSlides } from '../core/markdown.mjs';
@@ -64,7 +63,7 @@ function buildTocList(items, baseLevel = null) {
     .map((item) => {
       const depth = Math.max(0, item.level - effectiveBaseLevel);
       const indent = '  '.repeat(depth);
-      return `${indent}- [${item.text}](#${item.slug})`;
+      return `${indent}- [${item.text}](#tmu-cs-toc-${item.target})`;
     })
     .join('\n');
 }
@@ -172,13 +171,13 @@ function isIgnorableMarkdownLines(lines) {
 }
 
 function collectHeadingRecords(slides) {
-  const slugger = createGitHubHeadingSlugger();
   const headingRecords = [];
 
   slides.forEach((slide, slideIndex) => {
     const classAttr = extractSlideClasses(slide.content);
     if (
       hasClass(classAttr, 'title-slide')
+      || findStandaloneTocCommand(slide.content)
       || hasClass(classAttr, 'auxiliary-page')
       || slideHasClassMarker(slide.content, 'auxiliary-page')
     ) return;
@@ -187,7 +186,7 @@ function collectHeadingRecords(slides) {
       headingRecords.push({
         ...heading,
         slideIndex,
-        slug: slugger.slug(heading.rawText),
+        target: String(headingRecords.length),
       });
     });
   });
@@ -302,6 +301,7 @@ function expandTocCommands(markdown, frontMatter, options = {}) {
   const sectionLevel = parsePositiveInteger(frontMatter.sectionPageLevel, 2);
   const defaultTocMaxLevel = resolveTocMaxLevel(frontMatter, sectionLevel);
   const document = splitMarkdownSlides(markdown);
+  if (!document.slides.some((slide) => findStandaloneTocCommand(slide.content))) return markdown;
   const headingRecords = collectHeadingRecords(document.slides);
   if (headingRecords.length === 0) return markdown;
   const sections = collectSections(headingRecords, sectionLevel);
@@ -317,7 +317,13 @@ function expandTocCommands(markdown, frontMatter, options = {}) {
 
   const slides = document.slides.map((slide, slideIndex) => {
     const commandMatch = findStandaloneTocCommand(slide.content);
-    if (!commandMatch) return slide;
+    if (!commandMatch) {
+      const lines = slide.content.split('\n');
+      for (const heading of headingRecords.filter((item) => item.slideIndex === slideIndex)) {
+        lines[heading.lineIndex] = `${'#'.repeat(heading.level)} ${heading.text} <span data-tmu-cs-heading="${heading.target}"></span>`;
+      }
+      return { ...slide, content: lines.join('\n') };
+    }
     const tocMaxLevel = parsePositiveInteger(commandMatch.level, defaultTocMaxLevel);
 
     const section = sectionBySlideIndex.get(slideIndex);

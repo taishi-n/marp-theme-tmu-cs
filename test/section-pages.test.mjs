@@ -83,7 +83,7 @@ test('applySectionPages expands toc command for the current section when level i
   const processed = applySectionPages(markdown);
 
   assert.match(processed, /<span class="tmu-cs-slide-class--toc-page tmu-cs-slide-class--auxiliary-page"><\/span>/);
-  assert.match(processed, /# Agenda <span class="tmu-cs-slide-class--toc-page tmu-cs-slide-class--auxiliary-page"><\/span>\n\n- \[Lists\]\(#lists\)\n- \[Tables\]\(#tables\)/);
+  assert.match(processed, /# Agenda <span class="tmu-cs-slide-class--toc-page tmu-cs-slide-class--auxiliary-page"><\/span>\n\n- \[Lists\]\(#tmu-cs-toc-\d+\)\n- \[Tables\]\(#tmu-cs-toc-\d+\)/);
 });
 
 test('applySectionPages expands a deck-level toc before the first section and skips references section pages', () => {
@@ -117,9 +117,9 @@ test('applySectionPages expands a deck-level toc before the first section and sk
 
   const processed = applySectionPages(markdown);
 
-  assert.match(processed, /# Agenda <span class="tmu-cs-slide-class--toc-page tmu-cs-slide-class--auxiliary-page"><\/span>\n\n- \[Basic usage\]\(#basic-usage\)\n- \[Theme-specific syntax\]\(#theme-specific-syntax\)\n- \[References\]\(#references\)/);
-  assert.match(processed, /# Basic usage <span class="tmu-cs-slide-class--section-page tmu-cs-slide-class--auxiliary-page"><\/span>/);
-  assert.match(processed, /# Theme-specific syntax <span class="tmu-cs-slide-class--section-page tmu-cs-slide-class--auxiliary-page"><\/span>/);
+  assert.match(processed, /# Agenda <span class="tmu-cs-slide-class--toc-page tmu-cs-slide-class--auxiliary-page"><\/span>\n\n- \[Basic usage\]\(#tmu-cs-toc-\d+\)\n- \[Theme-specific syntax\]\(#tmu-cs-toc-\d+\)\n- \[References\]\(#tmu-cs-toc-\d+\)/);
+  assert.match(processed, /# Basic usage(?: <span data-tmu-cs-heading="\d+"><\/span>)? <span class="tmu-cs-slide-class--section-page tmu-cs-slide-class--auxiliary-page"><\/span>/);
+  assert.match(processed, /# Theme-specific syntax(?: <span data-tmu-cs-heading="\d+"><\/span>)? <span class="tmu-cs-slide-class--section-page tmu-cs-slide-class--auxiliary-page"><\/span>/);
   assert.doesNotMatch(processed, /# References <span class="tmu-cs-slide-class--section-page tmu-cs-slide-class--auxiliary-page"><\/span>/);
 });
 
@@ -150,7 +150,7 @@ test('applySectionPages allows overriding toc max level per command', () => {
 
   const processed = applySectionPages(markdown);
 
-  assert.match(processed, /- \[Basic usage\]\(#basic-usage\)\n {2}- \[Lists\]\(#lists\)\n- \[Theme-specific syntax\]\(#theme-specific-syntax\)\n {2}- \[Code\]\(#code\)/);
+  assert.match(processed, /- \[Basic usage\]\(#tmu-cs-toc-\d+\)\n {2}- \[Lists\]\(#tmu-cs-toc-\d+\)\n- \[Theme-specific syntax\]\(#tmu-cs-toc-\d+\)\n {2}- \[Code\]\(#tmu-cs-toc-\d+\)/);
 });
 
 test('applySectionPages excludes fit headings from toc output', () => {
@@ -172,7 +172,7 @@ test('applySectionPages excludes fit headings from toc output', () => {
   const processed = applySectionPages(markdown);
 
   assert.doesNotMatch(processed, /\[<!--fit--> Huge<br \/>Words\]\(#hugewords\)/);
-  assert.match(processed, /- \[Normal heading\]\(#normal-heading\)/);
+  assert.match(processed, /- \[Normal heading\]\(#tmu-cs-toc-\d+\)/);
 });
 
 test('applySectionPages ignores inline toc syntax examples in prose and tables', () => {
@@ -213,7 +213,7 @@ test('applySectionPages ignores inline toc syntax examples in prose and tables',
   assert.doesNotMatch(processed, /<span class="tmu-cs-slide-class--toc-page tmu-cs-slide-class--auxiliary-page"><\/span>/);
 });
 
-test('applySectionPages generates GitHub-style unique heading anchors in toc links', () => {
+test('applySectionPages assigns distinct target references to repeated headings', () => {
   const markdown = [
     '# Agenda',
     '',
@@ -231,7 +231,7 @@ test('applySectionPages generates GitHub-style unique heading anchors in toc lin
 
   const processed = applySectionPages(markdown);
 
-  assert.match(processed, /- \[Duplicate\]\(#duplicate\)\n- \[Duplicate\]\(#duplicate-1\)/);
+  assert.match(processed, /- \[Duplicate\]\(#tmu-cs-toc-\d+\)\n- \[Duplicate\]\(#tmu-cs-toc-\d+\)/);
 });
 
 test('applySectionPages preserves front matter directives such as theme', () => {
@@ -304,4 +304,32 @@ test('decorateAuxiliarySlides preserves nested section elements inside slides', 
 
   assert.doesNotMatch(output, /data-marpit-pagination/u);
   assert.match(output, /<section class="embedded"><p>Nested<\/p><\/section>/);
+});
+
+test('TOC links use rendered heading IDs across title collisions, code steps and Unicode', async () => {
+  const marp = await engine({ marp: new Marp() });
+  const source = [
+    '---', 'title: Duplicate', 'sectionPages: true', '---',
+    '# Agenda', '<!-- toc level=3 -->', '---',
+    '## Duplicate', '---', '### `foo_bar`', '---',
+    '### 日本語', '---', '### 1', '---',
+    '### Step', '```js', 'let x = 1; // [!step 1 highlight]', '```', '---',
+    '### Step', '---', '# Another agenda', '<!-- toc level=3 -->',
+  ].join('\n');
+  const { html } = marp.render(source);
+  const ids = [...html.matchAll(/<h[1-6]\b[^>]*\bid="([^"]+)"/gu)].map((match) => match[1]);
+  const links = [...html.matchAll(/<a href="#([^"]+)">/gu)].map((match) => match[1]);
+  assert.deepEqual(links.slice(0, 6), ['duplicate-1', 'foo_bar', encodeURI('日本語'), '1-1', 'step', 'step-2']);
+  for (const link of links) assert.ok(ids.includes(link), `Missing heading for ${link}`);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.doesNotMatch(html, /data-tmu-cs-heading|tmu-cs-toc-|tmu-cs-slide-class--/u);
+  assert.equal(marp.render(source).html, html);
+});
+
+test('TOC respects custom Core slug options and falls back to slide anchors without slugs', async () => {
+  for (const slug of [(text) => `custom-${text.trim().toLowerCase()}`, false]) {
+    const marp = await engine({ marp: new Marp({ slug }) });
+    const { html } = marp.render('# Agenda\n<!-- toc -->\n---\n## Destination');
+    assert.match(html, slug ? /href="#custom-destination"/u : /href="#2"/u);
+  }
 });
