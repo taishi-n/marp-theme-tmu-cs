@@ -1,6 +1,6 @@
 {
   "name": "marp-theme-tmu-cs",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "TMU-CS Marp theme with JS citation processing, step-based code highlighting, math annotations, and external code inclusion.",
   "license": "MIT",
   "type": "module",
