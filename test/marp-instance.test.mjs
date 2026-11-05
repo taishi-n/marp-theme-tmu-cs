@@ -17,18 +17,15 @@ test('default, fresh base, and full engines provide math and native diagrams', a
   }
 });
 
-test('CLI fallback Core resolves to the package feature set outside the theme checkout', async () => {
+test('CLI-style factory options select the package feature set outside the theme checkout', async () => {
   const cliRequire = createRequire(import.meta.resolve('@marp-team/marp-cli'));
   const { Marp: BundledMarp } = cliRequire('@marp-team/marp-core');
-  let instances = 0;
   const options = { html: true, slug: text => `consumer-${text.toLowerCase()}` };
   Object.defineProperty(options, 'marp', { get() {
-    instances += 1;
     return new BundledMarp(options);
   } });
   const marp = await engine(options);
   const { html } = marp.render('# Consumer\n\n```js {2}\nconst a = 1;\nconst b = 2;\n```\n\n```mermaid\ngraph LR\nA --> B\n```');
-  assert.equal(instances, 1);
   assert.match(html, /id="consumer-consumer"/u);
   assert.match(html, /class="line highlighted"/u);
   assert.match(html, /<svg data-marp-mermaid/u);

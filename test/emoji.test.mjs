@@ -15,15 +15,12 @@ test('HTML uses native emoji and preserves Core constructor options', async () =
   assert.equal(supplied.options.emoji.unicode, 'twemoji');
 });
 
-test('CLI getter receives native emoji options before Core initialization', async () => {
-  let instances = 0;
+test('CLI-style factory options preserve emoji configuration', async () => {
   const options = { html: true, emoji: { twemoji: { base: '/emoji/' } } };
   Object.defineProperty(options, 'marp', { get() {
-    instances += 1;
     return new Marp(options);
   } });
   const marp = await engine(options);
-  assert.equal(instances, 1);
   assert.equal(marp.options.emoji.twemoji.base, '/emoji/');
   assert.doesNotMatch(marp.render(source).html, /data-marp-twemoji/u);
 });

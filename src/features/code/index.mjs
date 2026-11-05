@@ -113,25 +113,10 @@ function formatPixels(value) {
   return `${Math.max(0, Math.round(value))}px`;
 }
 
-function stripCodeBlockAutoScaling(html) {
-  return String(html ?? '').replace(/\sdata-auto-scaling="[^"]*"/g, '');
-}
-
-function normalizeShikiPreTag(html) {
-  return stripCodeBlockAutoScaling(html).replace(/^<pre\b([^>]*)>/, (_match, attrs) => {
-    let normalizedAttrs = String(attrs ?? '').replace(/\sstyle="[^"]*"/, '').replace(/\sis="[^"]*"/, '');
-    const classMatch = normalizedAttrs.match(/\sclass="([^"]*)"/);
-
-    if (classMatch) {
-      const classes = classMatch[1].split(/\s+/).filter(Boolean);
-      if (!classes.includes('marp-code')) classes.push('marp-code');
-      normalizedAttrs = normalizedAttrs.replace(/\sclass="[^"]*"/, ` class="${classes.join(' ')}"`);
-    } else {
-      normalizedAttrs += ' class="marp-code"';
-    }
-
-    return `<pre is="marp-pre"${normalizedAttrs}>`;
-  });
+function normalizeCodeScaling(html) {
+  return String(html ?? '').replace(/^<pre\b([^>]*)>/u, (_match, attrs) => (
+    `<pre is="marp-pre"${attrs.replace(/\s(?:is|data-auto-scaling)="[^"]*"/gu, '')}>`
+  ));
 }
 
 function wrapFittedCodeBlock(html, fit) {
@@ -225,7 +210,16 @@ export function installCodeFeature(marp, options = {}) {
   const defaultFence = marp.markdown.renderer.rules.fence;
   const coreHighlighter = marp.highlighter.bind(marp);
   const codeWrapOptions = getCodeWrapOptions();
+  /** @type {import('shiki').ShikiTransformer} */
+  const themeCodeTransformer = {
+    name: 'tmu-cs:code-theme',
+    pre(node) {
+      this.addClassToHast(node, 'marp-code');
+      delete node.properties.style;
+    },
+  };
   marp.shikiTransformers.push(
+    themeCodeTransformer,
     transformerNotationHighlight({ classActiveLine: 'is-highlighted', classActivePre: 'has-highlighted' }),
     transformerNotationFocus({ classActiveLine: 'is-focused', classActivePre: 'has-focused' }),
     transformerNotationErrorLevel({
@@ -249,6 +243,6 @@ export function installCodeFeature(marp, options = {}) {
     const fitHeight = token.meta?.[fitHeightMetaKey];
 
     const html = defaultFence.call(self, tokens, idx, renderOptions, env, self);
-    return wrapFittedCodeBlock(normalizeShikiPreTag(html), fitHeight);
+    return wrapFittedCodeBlock(normalizeCodeScaling(html), fitHeight);
   };
 }

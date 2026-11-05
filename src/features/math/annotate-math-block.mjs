@@ -856,4 +856,3 @@ export function renderAnnotatedMathBlock(renderedMathHtml, annotationData, optio
     `</div>`
   );
 }
-

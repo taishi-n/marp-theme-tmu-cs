@@ -198,4 +198,3 @@ export function createWrapLongLinesTransformer(options = {}) {
     },
   };
 }
-
