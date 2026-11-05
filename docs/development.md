@@ -146,6 +146,20 @@ The regression sample deck is `examples/slides.md`. Build outputs are written to
 
 ## Validation Guidance
 
+The packaged `marp-tmu-cs-check` command checks a built HTML deck without opening
+a browser:
+
+```sh
+npx marp-tmu-cs --standalone --slide-index dist/slide-index.json slide.md -o dist/slide.html
+npx marp-tmu-cs-check dist/slide.html --index dist/slide-index.json --output dist/validation.json --standalone
+```
+
+The JSON report records static diagnostics with slide IDs and source lines,
+embedded and external assets, and `visualReview: "not-performed"`. A nonzero exit
+status means static checks failed. Scientific values, provenance hashes, and
+research-specific assertions remain the consumer project's responsibility.
+Use the user's direct review for layout, clipping, and media playback.
+
 The repository includes a lightweight `node:test` suite for preprocessing and public-surface regressions, plus sample-driven build checks.
 
 Use these checks based on the change:

@@ -23,6 +23,7 @@ test('package exposes the standalone wrapper binary', async () => {
   const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 
   assert.equal(packageJson.bin['marp-tmu-cs'], 'scripts/marp-tmu-cs.mjs');
+  assert.equal(packageJson.bin['marp-tmu-cs-check'], 'scripts/check-deck.mjs');
 });
 
 test('package includes user-facing documentation', async () => {

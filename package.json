@@ -17,7 +17,8 @@
     "vendor/csl/ieee.csl"
   ],
   "bin": {
-    "marp-tmu-cs": "scripts/marp-tmu-cs.mjs"
+    "marp-tmu-cs": "scripts/marp-tmu-cs.mjs",
+    "marp-tmu-cs-check": "scripts/check-deck.mjs"
   },
   "exports": {
     ".": "./index.mjs",

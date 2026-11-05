@@ -153,6 +153,14 @@ slide. Use `--edit-labels` to show the IDs during HTML review and
 `--slide-index dist/slide-index.json` to export source lines and rendered page
 numbers, including generated chapter pages and code steps.
 
+Check the slide index, resources, unresolved citations, and rendered math errors:
+
+```sh
+npx marp-tmu-cs-check dist/slides.html --index dist/slide-index.json --output dist/validation.json --standalone
+```
+
+This static check does not launch a browser or verify visual layout.
+
 ## Theme-Specific Syntax
 
 Deck-level directives and inline commands:

@@ -269,7 +269,7 @@ function inlineUrlAttribute(node, attributeName, context, basePath) {
   if (asset) setAttribute(node, attributeName, toDataUrl(reference, asset));
 }
 
-function parseSrcsetCandidates(srcset) {
+export function parseSrcsetCandidates(srcset) {
   const source = String(srcset ?? '');
   const candidates = [];
   let cursor = 0;
