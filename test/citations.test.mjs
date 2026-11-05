@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -15,6 +15,26 @@ const bibliography = `
   doi = {10.1000/demo}
 }
 `.trim();
+
+test('CSL styles remain distinct across paths and refresh when their contents change', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-csl-'));
+  const style = (label) => `<?xml version="1.0"?><style xmlns="http://purl.org/net/xbiblio/csl" version="1.0"><info><title>${label}</title><id>https://example.org/${label}</id></info><citation><layout><text value="${label}"/></layout></citation><bibliography><layout><text variable="title"/></layout></bibliography></style>`;
+  try {
+    await mkdir(join(tempDir, 'a'));
+    await mkdir(join(tempDir, 'b'));
+    await writeFile(join(tempDir, 'refs.bib'), bibliography);
+    for (const [path, label] of [['a/style.csl', 'FIRST'], ['b/style.csl', 'SECOND'], ['a/style.csl', 'THIRD']]) {
+      await writeFile(join(tempDir, path), style(label));
+      const processed = preprocessCitationMarkdown('# Citation\n[@demo2024]', {
+        frontMatter: { bibliography: 'refs.bib', csl: path },
+        markdownPath: join(tempDir, 'slides.md'),
+      });
+      assert.match(processed, new RegExp(`citation-ref">${label}</span>`));
+    }
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
 
 test('citationDisplay selects citation footnotes, a bibliography, or both while preserving authored footnotes', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-citation-display-'));

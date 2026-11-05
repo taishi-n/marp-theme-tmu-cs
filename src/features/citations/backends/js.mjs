@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { basename, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { resolve } from 'node:path';
 import { Cite, plugins } from '@citation-js/core';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import '@citation-js/plugin-bibtex';
@@ -113,13 +114,13 @@ function loadBibliographyEntries(bibliographyPaths) {
   }
 }
 
-function ensureTemplateRegistered(templatePath, templateXml) {
+function ensureTemplateRegistered(templateXml) {
   const templateConfig = plugins.config.get('@csl')?.templates;
   if (!templateConfig) {
     throw createBackendError('JS_CITATION_TEMPLATE_CONFIG_MISSING', 'Citation.js CSL template registry is unavailable.');
   }
 
-  const templateName = `tmu-cs-${basename(templatePath).replace(/[^A-Za-z0-9_-]/g, '-')}`;
+  const templateName = `tmu-cs-${createHash('sha256').update(templateXml).digest('hex')}`;
   if (!templateConfig.has(templateName)) templateConfig.add(templateName, templateXml);
   return templateName;
 }
@@ -133,12 +134,12 @@ function resolveTemplate(context = {}) {
   if (explicitCslPath) {
     const resolvedCslPath = resolve(basePath, explicitCslPath);
     const cslXml = readFileSync(resolvedCslPath, 'utf8');
-    return ensureTemplateRegistered(resolvedCslPath, cslXml);
+    return ensureTemplateRegistered(cslXml);
   }
 
   if (defaultCslPath) {
     const cslXml = readFileSync(defaultCslPath, 'utf8');
-    return ensureTemplateRegistered(defaultCslPath, cslXml);
+    return ensureTemplateRegistered(cslXml);
   }
 
   return 'apa';
