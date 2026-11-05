@@ -56,7 +56,6 @@ export function prepareMarkdownForRender(markdown, context) {
   });
   const resolvedMarkdown = preprocessCodeMarkdown(sectionedMarkdown, {
     allowLocalFiles: context.allowLocalFiles === true,
-    frontMatter: preparedDeck.frontMatter,
     markdownPath: context.markdownPath,
     onWarning: context.onWarning,
   });

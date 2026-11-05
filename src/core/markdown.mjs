@@ -19,10 +19,6 @@ export function isFenceClose(line, fence) {
   return Boolean(match && match[1][0] === fence.marker && match[1].length >= fence.length);
 }
 
-export function isHorizontalRule(line) {
-  return /^ {0,3}(?:(?:-\s*){3,}|(?:_\s*){3,}|(?:\*\s*){3,})$/.test(String(line ?? ''));
-}
-
 function normalizeSlides(slides = []) {
   if (slides.length === 0) return [''];
   return slides.map((slide) => (typeof slide === 'string' ? slide : slide.content));

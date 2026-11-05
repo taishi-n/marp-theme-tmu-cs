@@ -6,8 +6,3 @@ export function preprocessCitationMarkdown(markdown, options = {}) {
 }
 
 export { createJsCitationBackend, preprocessCitationsWithBackend };
-
-export default {
-  createJsCitationBackend,
-  preprocessMarkdown: preprocessCitationMarkdown,
-};

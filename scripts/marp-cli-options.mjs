@@ -1,4 +1,4 @@
-import { enginePath, themePath } from '../index.mjs';
+import { enginePath, themePath } from '../src/core/package-paths.mjs';
 
 function hasOption(args, optionName) {
   return args.some((arg) => (

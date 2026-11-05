@@ -199,4 +199,3 @@ export function createWrapLongLinesTransformer(options = {}) {
   };
 }
 
-export default createWrapLongLinesTransformer;

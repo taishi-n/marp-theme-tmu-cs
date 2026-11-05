@@ -6,7 +6,6 @@ import {
 import expandStepSlides from './expand-step-slides.mjs';
 import resolveExternalCode from './resolve-external-code.mjs';
 import {
-  normalizeCodeLanguage,
   parseFenceInfo,
 } from './shared.mjs';
 import { createWrapLongLinesTransformer, wrapCodeSource } from '../../shiki/wrap-long-lines-transformer.mjs';
@@ -180,7 +179,6 @@ function computeCodeLayout(tokens, options) {
         renderedHeightPx = blockHeightPx * scale;
         token.meta ??= {};
         token.meta[fitHeightMetaKey] = {
-          enabled: true,
           scale,
           fittedHeightPx: renderedHeightPx,
         };
@@ -238,7 +236,7 @@ export function installCodeFeature(marp, options = {}) {
   );
   marp.highlighter = (source, language, attrs) => {
     try {
-      const rendered = coreHighlighter(source, normalizeCodeLanguage(language) || 'text', attrs);
+      const rendered = coreHighlighter(source, String(language ?? '').trim().toLowerCase() || 'text', attrs);
       if (rendered) return rendered;
     } catch (error) {
       console.warn(`${options.logPrefix} Failed to highlight ${language}; rendering as plain text. ${error}`);
@@ -254,8 +252,3 @@ export function installCodeFeature(marp, options = {}) {
     return wrapFittedCodeBlock(normalizeShikiPreTag(html), fitHeight);
   };
 }
-
-export default {
-  install: installCodeFeature,
-  preprocessMarkdown: preprocessCodeMarkdown,
-};

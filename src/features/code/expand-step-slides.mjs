@@ -22,7 +22,7 @@ function appendNotation(line, notations, commentPrefix) {
 function collectStepMetadata(source, options = {}) {
   const { lines, hasTrailingNewline } = splitLinesPreservingEOF(source);
   const strippedLines = [];
-  const actualCodeSourceLines = [];
+  let previousActualCodeLine = null;
   const pendingDirectives = [];
   const commentPrefix = options.commentPrefix ?? null;
 
@@ -33,22 +33,20 @@ function collectStepMetadata(source, options = {}) {
     });
   };
 
-  const findPreviousActualCodeLine = () => actualCodeSourceLines.at(-1) ?? null;
-
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     const directiveComment = extractStepComment(line, commentPrefix);
 
     if (!directiveComment) {
       strippedLines.push(line);
-      if (isActualCodeLine(line, commentPrefix)) actualCodeSourceLines.push(strippedLines.length);
+      if (isActualCodeLine(line, commentPrefix)) previousActualCodeLine = strippedLines.length;
       continue;
     }
 
     if (directiveComment.hasTrailingContent) {
       warn(index + 1, 'step directive must appear at the end of the comment.');
       strippedLines.push(line);
-      if (isActualCodeLine(line, commentPrefix)) actualCodeSourceLines.push(strippedLines.length);
+      if (isActualCodeLine(line, commentPrefix)) previousActualCodeLine = strippedLines.length;
       continue;
     }
 
@@ -59,7 +57,7 @@ function collectStepMetadata(source, options = {}) {
       strippedLines.push(sanitizedLine);
       currentSourceLine = strippedLines.length;
 
-      if (isActualCodeLine(sanitizedLine, commentPrefix)) actualCodeSourceLines.push(currentSourceLine);
+      if (isActualCodeLine(sanitizedLine, commentPrefix)) previousActualCodeLine = currentSourceLine;
     }
 
     const directive = parseStepDirective(directiveComment.comment, {
@@ -71,7 +69,7 @@ function collectStepMetadata(source, options = {}) {
 
     const anchorSourceLine = currentSourceLine && isActualCodeLine(sanitizedLine ?? '', commentPrefix)
       ? currentSourceLine
-      : findPreviousActualCodeLine();
+      : previousActualCodeLine;
 
     if (!anchorSourceLine) {
       warn(index + 1, 'step directive has no preceding actual code line to attach to.');
@@ -81,24 +79,10 @@ function collectStepMetadata(source, options = {}) {
     pendingDirectives.push({
       ...directive,
       anchorSourceLine,
-      lineNumber: index + 1,
     });
   }
 
-  const directives = pendingDirectives.flatMap((directive) => {
-    const anchorPosition = actualCodeSourceLines.indexOf(directive.anchorSourceLine);
-    const targetSourceLines = actualCodeSourceLines.slice(anchorPosition, anchorPosition + directive.range);
-
-    if (targetSourceLines.length === 0) {
-      warn(directive.lineNumber, 'step directive resolved to an empty target range.');
-      return [];
-    }
-
-    return [{
-      ...directive,
-      sourceLines: targetSourceLines,
-    }];
-  });
+  const directives = pendingDirectives;
 
   return {
     code: joinLines(strippedLines, hasTrailingNewline),

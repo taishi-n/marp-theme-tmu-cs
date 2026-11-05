@@ -1,7 +1,6 @@
 // Static geometry estimates for code wrapping and fit-height in the TMU-CS theme.
 export const codeLayoutMetrics = Object.freeze({
   bodyBlockGapPx: 28,
-  bodyFontSizePx: 28,
   bodyLineHeightPx: 37.8,
   codeBorderYPx: 2,
   codeFontSizePx: 23.8,

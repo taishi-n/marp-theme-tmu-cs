@@ -36,7 +36,6 @@
   --tmu-cs-border: #bfd3ca;
   --tmu-cs-accent: #006543;
   --tmu-cs-accent-soft: #e6f2ed;
-  --tmu-cs-highlight: #edf7f3;
   --tmu-cs-focus: #dfeee7;
   --tmu-cs-warning: #fff4d6;
   --tmu-cs-error: #fde8e8;
@@ -452,16 +451,14 @@ section.column-layout > div.column > :last-child {
   white-space: nowrap;
 }
 
-.citation-footnotes-marker,
-.citation-bibliography-marker {
+.citation-footnotes-marker {
   display: block;
   height: 0;
   overflow: hidden;
   visibility: hidden;
 }
 
-.citation-footnotes-marker + ul,
-.citation-bibliography-marker + ul {
+.citation-footnotes-marker + ul {
   margin: 0.42rem 0 0;
   padding: 0.45rem 0 0;
   border-top: 1px solid rgba(0, 101, 67, 0.18);
@@ -477,11 +474,6 @@ section.column-layout > div.column > :last-child {
   margin: 0;
   font-size: 16px;
   line-height: 1.22;
-}
-
-.citation-bibliography-marker + ul {
-  font-size: 16px;
-  line-height: 1.28;
 }
 
 .citation-footnotes-marker + ul li {
@@ -585,7 +577,7 @@ pre,
   width: calc(100% / var(--tmu-code-scale, 1));
 }
 
-:is(pre, marp-pre) {
+pre {
   margin: 0 0 var(--base-size-16);
   padding: var(--base-size-16);
   border: 1px solid var(--tmu-cs-border);
@@ -926,7 +918,7 @@ section.tmu-cs-comparison > .tmu-cs-figure {
 }
 
 section.tmu-cs-comparison > .tmu-cs-takeaway { grid-row: 3; }
-section.tmu-cs-comparison > :is(.citation-footnotes-marker, .citation-bibliography-marker) { position: absolute; }
+section.tmu-cs-comparison > .citation-footnotes-marker { position: absolute; }
 
 .tmu-cs-takeaway {
   position: relative;

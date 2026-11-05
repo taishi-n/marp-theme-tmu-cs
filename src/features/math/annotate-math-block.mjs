@@ -221,9 +221,7 @@ function parseAnnotateDirective(input, options = {}) {
 
   return {
     note: attributes.note,
-    label: attributes.label ?? '',
     color: attributes.color ?? '',
-    attrs: attributes,
   };
 }
 
@@ -266,7 +264,6 @@ function buildAnnotatedLine(line, annotationId, options = {}) {
     annotation: {
       id: annotationId,
       note: directive.note,
-      label: directive.label,
       color,
     },
     line: `${leadingWhitespace}\\class{eqann-${annotationId}}{${body}}`,
@@ -448,7 +445,7 @@ function mathAnnotationRuntime() {
   }
 
   function setWarning(warningEl, log, message) {
-    log('warning', message);
+    log?.('warning', message);
     if (!warningEl) return;
     warningEl.hidden = false;
     warningEl.textContent = message;
@@ -610,19 +607,19 @@ function mathAnnotationRuntime() {
       const parsed = JSON.parse(dataEl.textContent || '[]');
       return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
-      emitConsoleLog(['annotations:parse error', String(error)]);
+      console.warn('[tmu-cs math] Cannot parse annotations.', error);
       return [];
     }
   }
 
-  async function renderStage(stage) {
+  function renderStage(stage) {
     const math = stage.querySelector('.eqann-math');
     const backOverlay = stage.querySelector('.eqann-overlay-back');
     const frontOverlay = stage.querySelector('.eqann-overlay-front');
     const warningEl = stage.parentElement ? stage.parentElement.querySelector('.eqann-warning') : null;
     const debugEnabled = isDebugEnabled();
     const debugEl = stage.parentElement ? stage.parentElement.querySelector('.eqann-debug') : null;
-    const log = createLogger(debugEnabled ? debugEl : null);
+    const log = debugEnabled ? createLogger(debugEl) : null;
 
     if (!math || !backOverlay || !frontOverlay) return;
     if (stage.clientWidth <= 0 || stage.clientHeight <= 0) return;
@@ -632,13 +629,13 @@ function mathAnnotationRuntime() {
     const annotations = parseAnnotations(stage);
     if (!annotations.length) return;
 
-    log('preprocess:start');
-    log('preprocess:annotations', annotations);
+    log?.('preprocess:start');
+    log?.('preprocess:annotations', annotations);
 
     const measurementMetrics = getStageMetrics(stage, frontOverlay);
-    log('stage:metrics:measure', describeMetrics(measurementMetrics));
+    log?.('stage:metrics:measure', describeMetrics(measurementMetrics));
 
-    const measured = await Promise.all(annotations.map(async function (annotation, index) {
+    const measured = annotations.map(function (annotation, index) {
       const theme = buildTheme(annotation.color || TAB10_COLORS[index % TAB10_COLORS.length]);
       return {
         ann: annotation,
@@ -646,7 +643,7 @@ function mathAnnotationRuntime() {
         side: index % 2 === 0 ? 'top' : 'bottom',
         size: measureBox(stage, annotation.note || '', annotation.noteHtml || '', theme, measurementMetrics),
       };
-    }));
+    });
 
     const topBandHeight = measured
       .filter(function (item) { return item.side === 'top'; })
@@ -658,16 +655,14 @@ function mathAnnotationRuntime() {
     stage.style.setProperty('--eqann-top-band', Math.max(0, topBandHeight + BAND_MARGIN) + 'px');
     stage.style.setProperty('--eqann-bottom-band', Math.max(0, bottomBandHeight + BAND_MARGIN) + 'px');
 
-    log('mathjax:before typeset');
     const metrics = getStageMetrics(stage, frontOverlay);
     const stageWidth = metrics.localWidth;
     updateOverlaySize(backOverlay, metrics);
     updateOverlaySize(frontOverlay, metrics);
-    log('mathjax:after typeset');
-    log('stage:metrics', describeMetrics(metrics));
+    log?.('stage:metrics', describeMetrics(metrics));
 
     const mathRect = computeMathBounds(stage, math, metrics);
-    log('overlay:math rect', simplifyLocalRect(mathRect));
+    log?.('overlay:math rect', simplifyLocalRect(mathRect));
 
     if (!mathRect || mathRect.w <= 0 || mathRect.h <= 0) return;
 
@@ -682,13 +677,13 @@ function mathAnnotationRuntime() {
     for (const item of measured) {
       const targetEl = math.querySelector('.eqann-' + item.ann.id);
       if (!targetEl) {
-        log('overlay:target missing', item.ann);
+        log?.('overlay:target missing', item.ann);
         continue;
       }
 
       const targetViewportRect = targetEl.getBoundingClientRect();
       const targetRect = rectToStageCoords(targetViewportRect, metrics);
-      log('overlay:target rect', {
+      log?.('overlay:target rect', {
         id: item.ann.id,
         raw: simplifyViewportRect(targetViewportRect),
         rect: simplifyLocalRect(targetRect),
@@ -723,7 +718,7 @@ function mathAnnotationRuntime() {
       pos.y = boxRect.y;
       pos.w = boxRect.w;
       pos.h = boxRect.h;
-      log('overlay:box rect', {
+      log?.('overlay:box rect', {
         id: item.ann.id,
         raw: simplifyViewportRect(boxViewportRect),
         rect: simplifyLocalRect(boxRect),
@@ -756,18 +751,16 @@ function mathAnnotationRuntime() {
   let scheduled = false;
   let initialized = false;
 
-  async function renderAll() {
+  function renderAll() {
     scheduled = false;
-    await Promise.all(Array.prototype.map.call(document.querySelectorAll('.eqann-stage'), function (stage) {
-      return renderStage(stage);
-    }));
+    document.querySelectorAll('.eqann-stage').forEach(renderStage);
   }
 
   function scheduleRenderAll() {
     if (scheduled) return;
     scheduled = true;
     window.requestAnimationFrame(function () {
-      void renderAll();
+      renderAll();
     });
   }
 
@@ -864,4 +857,3 @@ export function renderAnnotatedMathBlock(renderedMathHtml, annotationData, optio
   );
 }
 
-export default collectMathAnnotations;

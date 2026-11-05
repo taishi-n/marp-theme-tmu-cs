@@ -38,7 +38,3 @@ export function installDiagramFeature(marp, options = {}) {
     return fallbackFence.call(self, tokens, idx, renderOptions, env, self);
   };
 }
-
-export default {
-  install: installDiagramFeature,
-};
