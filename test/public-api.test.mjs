@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import test from 'node:test';
 import * as pkg from 'marp-theme-tmu-cs';
 
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
+const runFile = promisify(execFile);
 const entrypoints = ['engine', 'engine.mjs', 'theme', 'theme.css', 'theme/tmu-cs.css', 'csl/ieee.csl'];
 
 test('the package root provides the engine and bundled asset paths', () => {
@@ -37,10 +39,9 @@ test('the npm package includes public entrypoints, documentation, assets and wor
   const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-package-'));
   try {
-    const pack = spawnSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', [
+    const pack = await runFile(process.platform === 'win32' ? 'npm.cmd' : 'npm', [
       'pack', '--offline', '--json', '--ignore-scripts', '--pack-destination', tempDir, '--cache', join(tempDir, 'cache'),
     ], { cwd: packageRoot, encoding: 'utf8', timeout: 30000 });
-    assert.equal(pack.status, 0, pack.error?.message || pack.stderr);
     const [manifest] = JSON.parse(pack.stdout);
     const files = new Set(manifest.files.map(file => file.path));
     const publicPaths = ['', ...entrypoints.map(entrypoint => `/${entrypoint}`)]
@@ -55,10 +56,9 @@ test('the npm package includes public entrypoints, documentation, assets and wor
       assert.equal(typeof target, 'string');
       assert.ok(files.has(target), `Missing binary ${name}: ${target}`);
       assert.match(await readFile(join(packageRoot, target), 'utf8'), /^#!\/usr\/bin\/env node\b/u);
-      const help = spawnSync(process.execPath, [join(packageRoot, target), '--help'], {
+      const help = await runFile(process.execPath, [join(packageRoot, target), '--help'], {
         cwd: tempDir, encoding: 'utf8', timeout: 30000,
       });
-      assert.equal(help.status, 0, help.stderr);
       assert.match(help.stdout, /Usage:/iu);
     }
   } finally {
