@@ -279,11 +279,11 @@ function applyReferenceNumbers(citationText, items, referenceNumbers) {
   return citationText;
 }
 
-function replaceInlineCitations(slideContent, cite, template, citationHistory) {
+function replaceInlineCitations(slideContent, cite, template, citationHistory, bibliographyNumbers) {
   const citedKeys = [];
   const seenKeys = new Set();
   const referenceOrder = collectInlineReferenceOrder(slideContent);
-  const referenceNumbers = new Map(referenceOrder.map((reference, index) => [
+  const referenceNumbers = bibliographyNumbers ?? new Map(referenceOrder.map((reference, index) => [
     reference.type === 'citation' ? `citation:${reference.key}` : `footnote:${reference.id}`,
     index + 1,
   ]));
@@ -298,11 +298,14 @@ function replaceInlineCitations(slideContent, cite, template, citationHistory) {
             citedKeys.push(item.id);
           }
 
-          const citationText = applyReferenceNumbers(
-            formatCitationCluster(cite, template, items, citationHistory),
-            items,
-            referenceNumbers,
-          );
+          const citationText = bibliographyNumbers
+            ? items.map((item) => formatCitationCluster(cite, template, [item], citationHistory)
+              .replace(/\[\d+(?=[,\]])/u, `[${bibliographyNumbers.get(`citation:${item.id}`)}`)).join(', ')
+            : applyReferenceNumbers(
+              formatCitationCluster(cite, template, items, citationHistory),
+              items,
+              referenceNumbers,
+            );
           citationHistory.push(createCitationStateItem(items));
           return escapeCitationText(citationText);
         })
@@ -327,6 +330,9 @@ export function createJsCitationBackend() {
       const template = resolveTemplate(context);
       const { allEntries, entriesByKey } = createEntriesByKey(cite, template);
       const citationHistory = [];
+      const bibliographyNumbers = context.frontMatter?.citationDisplay === 'bibliography'
+        ? new Map(allEntries.map((entry, index) => [`citation:${entry.key}`, index + 1]))
+        : undefined;
 
       return {
         allEntries,
@@ -335,7 +341,7 @@ export function createJsCitationBackend() {
           backend: 'js',
           template,
         },
-        slides: slides.map((slide) => replaceInlineCitations(slide.content ?? slide, cite, template, citationHistory)),
+        slides: slides.map((slide) => replaceInlineCitations(slide.content ?? slide, cite, template, citationHistory, bibliographyNumbers)),
       };
     },
   };

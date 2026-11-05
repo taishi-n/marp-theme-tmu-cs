@@ -27,8 +27,13 @@ function createWarningRelay(onWarning) {
 
 export function normalizeCitationOptions(options = {}) {
   const frontMatter = options.frontMatter ?? {};
+  const citationDisplay = frontMatter.citationDisplay ?? 'both';
+  if (!['footnotes', 'bibliography', 'both'].includes(citationDisplay)) {
+    throw new Error('[tmu-cs] citationDisplay must be footnotes, bibliography, or both.');
+  }
 
   return {
+    citationDisplay,
     defaultCslPath: options.defaultCslPath,
     frontMatter,
     markdownPath: options.markdownPath,
@@ -37,6 +42,9 @@ export function normalizeCitationOptions(options = {}) {
 }
 
 export function applyCitationRenderResult(renderResult, options = {}) {
+  const { citationDisplay } = normalizeCitationOptions(options);
+  const showCitationFootnotes = citationDisplay !== 'bibliography';
+  const showBibliography = citationDisplay !== 'footnotes';
   const onWarning = createWarningRelay(options.onWarning);
   const transformedSlides = [];
   const bibliographyBlock = renderCitationOrderedListBlock(
@@ -75,7 +83,8 @@ export function applyCitationRenderResult(renderResult, options = {}) {
       slideWithoutMarkdownFootnoteDefs,
       referenceOrder,
     } = slide;
-    const referenceNumbers = new Map(referenceOrder.map((reference, index) => [
+    const footnoteOrder = showCitationFootnotes ? referenceOrder : referenceOrder.filter((reference) => reference.type === 'footnote');
+    const referenceNumbers = new Map(footnoteOrder.map((reference, index) => [
       reference.type === 'footnote' ? reference.id : `citation:${reference.key}`,
       index + 1,
     ]));
@@ -93,12 +102,12 @@ export function applyCitationRenderResult(renderResult, options = {}) {
 
         onWarning(message);
       },
-      new Map(referenceOrder
+      new Map(footnoteOrder
         .filter((reference) => reference.type === 'footnote')
         .map((reference) => [reference.id, referenceNumbers.get(reference.id)])),
     );
     const markdownFootnotesById = new Map(markdownFootnotes.map((footnote) => [footnote.id, footnote]));
-    const slideFootnotes = referenceOrder.map((reference, index) => {
+    const slideFootnotes = footnoteOrder.map((reference, index) => {
       if (reference.type === 'citation') {
         const entry = renderResult.entriesByKey.get(reference.key);
         return entry ? { ...entry, label: `[${index + 1}]` } : undefined;
@@ -117,7 +126,9 @@ export function applyCitationRenderResult(renderResult, options = {}) {
       );
     }
 
-    if (hadRefsBlock) {
+    if (!showBibliography && (slideIsReferenceHeadingOnly(content) || (hadRefsBlock && isEffectivelyEmpty(content)))) continue;
+
+    if (showBibliography && hadRefsBlock) {
       referencesWereRequested = true;
 
       if (isEffectivelyEmpty(content)) {
@@ -129,7 +140,7 @@ export function applyCitationRenderResult(renderResult, options = {}) {
       }
     }
 
-    if (!hadRefsBlock && slideIsReferenceHeadingOnly(content) && bibliographyBlock !== '') {
+    if (showBibliography && !hadRefsBlock && slideIsReferenceHeadingOnly(content) && bibliographyBlock !== '') {
       referencesWereRequested = true;
       content = appendBlock(content, bibliographyBlock);
       referencesInserted = true;
@@ -138,7 +149,7 @@ export function applyCitationRenderResult(renderResult, options = {}) {
     transformedSlides.push(content);
   }
 
-  if (bibliographyBlock !== '' && (!referencesWereRequested || !referencesInserted)) {
+  if (showBibliography && bibliographyBlock !== '' && (!referencesWereRequested || !referencesInserted)) {
     transformedSlides.push(appendBlock('# References', bibliographyBlock));
   }
 

@@ -16,6 +16,55 @@ const bibliography = `
 }
 `.trim();
 
+test('citationDisplay selects citation footnotes, a bibliography, or both while preserving authored footnotes', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-citation-display-'));
+  try {
+    await writeFile(join(tempDir, 'refs.bib'), bibliography);
+    for (const citationDisplay of ['footnotes', 'bibliography', 'both']) {
+      const processed = preprocessCitationMarkdown('# Intro\nA citation [@demo2024] and a note[^detail].\n\n[^detail]: Authored explanation\n\n---\n\n# References\n\n::: {#refs}\n:::\n', {
+        defaultCslPath,
+        frontMatter: { bibliography: 'refs.bib', citationDisplay },
+        markdownPath: join(tempDir, 'slides.md'),
+      });
+      const beforeReferences = processed.split('# References')[0];
+      assert.match(beforeReferences, /Authored explanation/);
+      assert.equal(beforeReferences.includes('Demo Citation'), citationDisplay !== 'bibliography');
+      assert.equal(processed.includes('citation-bibliography-list'), citationDisplay !== 'footnotes');
+      assert.equal(processed.includes('# References'), citationDisplay !== 'footnotes');
+      if (citationDisplay === 'bibliography') assert.match(beforeReferences, /footnote-ref">\[1\]/);
+    }
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
+test('bibliography-only citation numbers refer to the same entries across slides', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-citation-numbers-'));
+  try {
+    await writeFile(join(tempDir, 'refs.bib'), bibliography + '\n@article{other2025, author={Roe, John}, title={Other Citation}, journal={Tests}, year={2025}}\n');
+    const processed = preprocessCitationMarkdown('# First\nOther [@other2025].\n\n---\n\n# Second\nDemo [@demo2024], other [@other2025]. Locator [see @other2025, p. 12].\n', {
+      defaultCslPath,
+      frontMatter: { bibliography: 'refs.bib', citationDisplay: 'bibliography' },
+      markdownPath: join(tempDir, 'slides.md'),
+    });
+    const entries = [...processed.matchAll(/<li class="citation-bibliography-item">([\s\S]*?)<\/li>/g)].map((match) => match[1]);
+    const otherNumber = entries.findIndex((entry) => entry.includes('Other Citation')) + 1;
+    assert.ok(otherNumber > 0);
+    assert.equal((processed.match(new RegExp('citation-ref">\\[' + otherNumber + '\\]','g')) ?? []).length, 2);
+    const locatorCitation = processed.match(/Locator <span class="citation-ref">([^<]+)<\/span>/)?.[1] ?? '';
+    assert.match(locatorCitation, /see /);
+    assert.match(locatorCitation, new RegExp('\\[' + otherNumber + '\\]'));
+    assert.match(locatorCitation, /p\. 12/);
+    assert.doesNotMatch(processed, /citation-footnotes-marker/);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
+test('citationDisplay rejects unknown modes instead of silently dropping references', () => {
+  assert.throws(() => preprocessCitationMarkdown('# Slide', { frontMatter: { citationDisplay: 'unknown' } }), /citationDisplay must be/);
+});
+
 test('preprocessCitationMarkdown fills an explicit references placeholder', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-citations-'));
 

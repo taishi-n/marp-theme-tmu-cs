@@ -234,6 +234,10 @@ Citations:
 This is a citation [@postel1981ip].
 ```
 
+Use `citationDisplay: footnotes`, `bibliography`, or `both` (the default) in
+front matter to choose per-slide citation footnotes, a final bibliography, or
+both. Ordinary Markdown footnotes are preserved in all modes.
+
 Animated GIF images are shown as a still poster by default and start playing only after the viewer presses the play button.
 
 Set `mediaPlayback: sequential` in front matter, or use `<!-- _mediaPlayback: sequential -->` on one slide, to step through GIF, native audio/video, and spectrogram audio in document order. Right or the next button pauses any media already playing on the slide before selecting the next step. Left or the previous button resets the preceding step. Up and Down pass directly to Marp without consuming a media step or changing the sequence position. Leaving the slide resets the sequence and all media on it. Manual media controls do not move the sequence position.

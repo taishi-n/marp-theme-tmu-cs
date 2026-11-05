@@ -300,6 +300,7 @@ Front matter:
 ---
 bibliography: references.bib
 # csl: path/to/style.csl
+citationDisplay: both
 ---
 ```
 
@@ -315,6 +316,20 @@ Behavior:
 - an otherwise empty `# References` slide is also populated in place
 - if no references slide is present, the engine appends one when needed
 - DOI and URL metadata are turned into links in bibliography entries
+
+`citationDisplay` selects where citation entries appear:
+
+| Value | Per-slide citation footnotes | Final bibliography |
+| --- | --- | --- |
+| `footnotes` | Yes | No |
+| `bibliography` | No | Yes |
+| `both` (default) | Yes | Yes |
+
+In `bibliography` mode, numeric inline citations refer to the final bibliography
+across the deck. In the other modes, citation numbers share the slide-local
+sequence with Markdown footnotes. Authored Markdown footnotes remain visible in
+all three modes. In `footnotes` mode, an otherwise empty reference heading or
+references placeholder does not leave an empty slide behind.
 
 Bibliography and CSL paths are resolved relative to the Markdown file but are not covered by the external-code root-confinement check. Render only trusted decks.
 
