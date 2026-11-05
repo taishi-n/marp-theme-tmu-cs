@@ -118,13 +118,13 @@ function formatFenceAttribute(key, value) {
   return `${key}="${escapedValue}"`;
 }
 
-function buildExpandedFenceOpening(fence, language, attributes) {
+function buildExpandedFenceOpening(fence, language, attributes, metadata) {
   const marker = fence.marker.repeat(fence.length);
   const renderedAttributes = Object.entries(attributes)
     .filter(([key]) => key !== 'path' && key !== 'src')
     .map(([key, value]) => formatFenceAttribute(key, value));
 
-  const infoParts = [language, ...renderedAttributes].filter((part) => String(part ?? '').trim() !== '');
+  const infoParts = [language, ...metadata, ...renderedAttributes].filter((part) => String(part ?? '').trim() !== '');
   return infoParts.length > 0 ? `${marker}${infoParts.join(' ')}` : marker;
 }
 
@@ -226,7 +226,7 @@ export function resolveExternalCode(markdown, options = {}) {
       });
 
       output.push(
-        buildExpandedFenceOpening({ marker, length }, resolvedLanguage, parsedInfo.attributes),
+        buildExpandedFenceOpening({ marker, length }, resolvedLanguage, parsedInfo.attributes, parsedInfo.metadata),
         ...splitContentLines(source),
         lines[cursor],
       );

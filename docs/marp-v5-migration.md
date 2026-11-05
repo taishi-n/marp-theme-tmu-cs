@@ -32,7 +32,7 @@ migration; those warnings are recorded separately from browser observations.
 | U0 | Baseline: CLI 4.4.0, Core 4.3.0, Marpit 3.2.1 | 100 tests pass; 51 pages captured; no browser errors or external requests |
 | U1 | CLI 4.5.1, its Core 4.4.0 and Marpit 3.2.3 | 100 tests pass; all three static reports pass; 51/51 screenshots and element positions unchanged |
 | U2 | Explicit Core 5.0.2 and unified feature initialization | 102 tests pass; three static reports pass; 51 pages captured with no browser errors or external requests. 28 pages have pixel changes; element changes are limited to two math pages, the native Mermaid element, and two newly highlighted plain fences |
-| U3 | Delegate base Shiki rendering to Core | Pending |
+| U3 | Delegate base Shiki rendering to Core | 104 tests pass; three static reports pass; no browser errors or external requests. 26 pages have pixel changes, mainly syntax colors; only two plain fences change their element rectangles |
 | U4 | Native Mermaid with Kroki fallback | Pending |
 | U5 | MathJax 4 annotation notes | Pending |
 | U6 | Package and consumer validation; documentation | Pending |
@@ -56,3 +56,19 @@ The first comparison exposed double code padding in the new default theme and
 font requests inside Mermaid's imported CSS. U2 removes the duplicate padding
 and recursively embeds CSS dependencies, including relative font URLs, with a
 cycle guard. Repeated capture confirms zero external browser requests.
+
+### U3 observations
+
+Core now owns grammar loading and base highlighting. The local eager
+highlighter and 28-language list are removed. TMU transformers use the public
+`shikiTransformers` hook, and the fence adapter retains wrapping, blank lines,
+aliases, and fit-height behavior. Native `{2,4-5}` metadata is preserved when
+external code is expanded, before step generation and visual wrapping.
+
+The existing C++ and Python samples retain their element positions, line
+heights, and emphasis bands. Color differences follow Core's CSS-variable
+token palette. The two plain-text examples now use the same layout as the
+other fences, removing U2's extra inner padding. Math and media do not move;
+controls and comparison decks remain pixel-identical. Contract tests also
+cover metadata combined with external code and steps, a language beyond the
+old preload list, and escaped/wrapped unknown-language output.

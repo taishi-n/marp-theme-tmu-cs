@@ -42,37 +42,6 @@ const extensionLanguageMap = new Map([
   ['zsh', 'shell'],
 ]);
 
-export const supportedShikiLanguages = [
-  'c',
-  'cpp',
-  'csharp',
-  'css',
-  'fsharp',
-  'go',
-  'haskell',
-  'html',
-  'java',
-  'javascript',
-  'json',
-  'jsx',
-  'kotlin',
-  'lua',
-  'perl',
-  'php',
-  'python',
-  'r',
-  'ruby',
-  'rust',
-  'scala',
-  'shell',
-  'sql',
-  'swift',
-  'toml',
-  'typescript',
-  'tsx',
-  'yaml',
-];
-
 const lineCommentPrefixesByLanguage = new Map([
   ['c', '//'],
   ['cpp', '//'],
@@ -120,10 +89,6 @@ export function normalizeFenceLanguage(info = '') {
   return normalizeCodeLanguage(language);
 }
 
-export function isShikiLanguageSupported(language = '') {
-  return supportedShikiLanguages.includes(normalizeCodeLanguage(language));
-}
-
 export function getLineCommentPrefix(language = '') {
   return lineCommentPrefixesByLanguage.get(normalizeCodeLanguage(language)) ?? null;
 }
@@ -147,10 +112,20 @@ export function parseFenceInfo(info = '') {
     cursor = languageStart;
   }
   const attributes = {};
+  const metadata = [];
 
   while (cursor < input.length) {
     while (cursor < input.length && /\s/.test(input[cursor])) cursor += 1;
     if (cursor >= input.length) break;
+
+    if (input[cursor] === '{') {
+      const end = input.indexOf('}', cursor + 1);
+      if (end !== -1) {
+        metadata.push(input.slice(cursor, end + 1));
+        cursor = end + 1;
+        continue;
+      }
+    }
 
     const keyStart = cursor;
     while (cursor < input.length && /[A-Za-z0-9_-]/.test(input[cursor])) cursor += 1;
@@ -202,7 +177,7 @@ export function parseFenceInfo(info = '') {
     attributes[key] = value;
   }
 
-  return { language, attributes };
+  return { language, attributes, metadata };
 }
 
 export function inferLanguageFromPath(reference) {

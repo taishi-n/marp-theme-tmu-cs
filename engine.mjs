@@ -2,9 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHighlighter } from 'shiki';
 import { installCodeFeature } from './src/features/code/index.mjs';
-import { supportedShikiLanguages } from './src/features/code/shared.mjs';
 import { installDiagramFeature } from './src/features/diagrams/index.mjs';
 import { createKrokiBackend } from './src/features/diagrams/kroki-backend.mjs';
 import { installMathFeature } from './src/features/math/index.mjs';
@@ -20,11 +18,6 @@ const themeName = 'tmu-cs';
 const logPrefix = `[${themeName}]`;
 const themeCssUrl = new URL(`./theme/${themeName}.css`, import.meta.url);
 const defaultCitationStylePath = fileURLToPath(new URL('./vendor/csl/ieee.csl', import.meta.url));
-
-const highlighterPromise = createHighlighter({
-  themes: ['github-light'],
-  langs: supportedShikiLanguages,
-});
 
 function findOutputArgument(args = []) {
   for (let index = 0; index < args.length; index += 1) {
@@ -69,10 +62,7 @@ function detectOutputFormat(args = process.argv.slice(2)) {
 export default async (options = {}) => {
   const outputFormat = detectOutputFormat();
   const marp = initializeMarp(options, outputFormat);
-  const [highlighter, themeCss] = await Promise.all([
-    highlighterPromise,
-    readFile(themeCssUrl, 'utf8'),
-  ]);
+  const themeCss = await readFile(themeCssUrl, 'utf8');
 
   const overridePaths = JSON.parse(process.env.TMU_CS_THEME_OVERRIDES ?? '[]');
   const overrideCss = loadThemeOverrides(overridePaths, {
@@ -83,7 +73,7 @@ export default async (options = {}) => {
 
   const originalRenderMarkdown = marp.renderMarkdown.bind(marp);
   const mathFeature = installMathFeature(marp, { logPrefix });
-  installCodeFeature(marp, { highlighter, logPrefix });
+  installCodeFeature(marp, { logPrefix });
   installDiagramFeature(marp, {
     backend: createKrokiBackend(),
   });

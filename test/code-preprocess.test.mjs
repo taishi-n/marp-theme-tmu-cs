@@ -4,10 +4,19 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { inflateSync } from 'node:zlib';
+import { parseFragment } from 'parse5';
 import { Marp } from '@marp-team/marp-core';
 import engine from '../engine.mjs';
 import { preprocessCodeMarkdown } from '../src/features/code/index.mjs';
 import { codeLayoutMetrics } from '../src/features/code/layout-metrics.mjs';
+
+function findElements(node, predicate) {
+  return [...(predicate(node) ? [node] : []), ...(node.childNodes ?? []).flatMap(child => findElements(child, predicate))];
+}
+
+function elementClasses(node) {
+  return (node.attrs?.find(attr => attr.name === 'class')?.value ?? '').split(/\s+/u);
+}
 
 test('preprocessCodeMarkdown expands external code and step slides together', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-code-'));
@@ -144,6 +153,38 @@ test('rendered external code preserves blank lines', async () => {
   });
 
   assert.match(html, /<span class="line">\u200b<\/span>/);
+});
+
+test('native line metadata survives external code, steps, and visual wrapping', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-code-meta-'));
+  try {
+    const markdownPath = join(tempDir, 'slides.md');
+    const source = '```cpp {2} path="./sample.cpp"\n```';
+    await writeFile(markdownPath, source);
+    await writeFile(join(tempDir, 'sample.cpp'), `int first = 1; // [!step 1 warning]\nconst char* text = "${'x'.repeat(160)}";\n`);
+    const marp = await engine();
+    const { html } = marp.render(source, { file: { absolutePath: markdownPath } });
+    const sections = findElements(parseFragment(html), node => node.tagName === 'section');
+    assert.equal(sections.length, 2);
+    for (const [index, section] of sections.entries()) {
+      const lines = findElements(section, node => elementClasses(node).includes('line'));
+      const highlighted = lines.filter(node => elementClasses(node).includes('highlighted'));
+      assert.ok(highlighted.length >= 2, 'all visual segments of logical line 2 are highlighted');
+      assert.equal(lines.filter(node => elementClasses(node).includes('is-warning')).length, index);
+    }
+    assert.doesNotMatch(html, /\[!step|\[!code/u);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
+test('Core languages and unknown fences share the wrapping adapter', async () => {
+  const marp = await engine();
+  const { html } = marp.render('```powershell\nWrite-Host "hello"\n```\n\n```unknown-language\n<untrusted>\n' + 'x'.repeat(150) + '\n```');
+  assert.match(html, /class="language-powershell"/u);
+  assert.match(html, /color:var\(--marp-shiki-token-function\)/u);
+  assert.match(html, /&lt;untrusted&gt;/u);
+  assert.match(html, /data-wrapped="true"/u);
 });
 
 test('external code cannot escape the markdown input root without explicit trust', async () => {

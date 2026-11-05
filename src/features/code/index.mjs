@@ -6,8 +6,7 @@ import {
 import expandStepSlides from './expand-step-slides.mjs';
 import resolveExternalCode from './resolve-external-code.mjs';
 import {
-  isShikiLanguageSupported,
-  normalizeFenceLanguage,
+  normalizeCodeLanguage,
   parseFenceInfo,
 } from './shared.mjs';
 import { createWrapLongLinesTransformer, wrapCodeSource } from '../../shiki/wrap-long-lines-transformer.mjs';
@@ -120,7 +119,7 @@ function stripCodeBlockAutoScaling(html) {
 
 function normalizeShikiPreTag(html) {
   return stripCodeBlockAutoScaling(html).replace(/^<pre\b([^>]*)>/, (_match, attrs) => {
-    let normalizedAttrs = String(attrs ?? '').replace(/\sstyle="[^"]*"/, '');
+    let normalizedAttrs = String(attrs ?? '').replace(/\sstyle="[^"]*"/, '').replace(/\sis="[^"]*"/, '');
     const classMatch = normalizedAttrs.match(/\sclass="([^"]*)"/);
 
     if (classMatch) {
@@ -274,68 +273,36 @@ export function warnForOverflowingCodeBlocks(markdown, marp, env = {}, options =
 
 export function installCodeFeature(marp, options = {}) {
   const defaultFence = marp.markdown.renderer.rules.fence;
-  const highlighter = options.highlighter;
+  const coreHighlighter = marp.highlighter.bind(marp);
+  const codeWrapOptions = getCodeWrapOptions();
+  marp.shikiTransformers.push(
+    transformerNotationHighlight({ classActiveLine: 'is-highlighted', classActivePre: 'has-highlighted' }),
+    transformerNotationFocus({ classActiveLine: 'is-focused', classActivePre: 'has-focused' }),
+    transformerNotationErrorLevel({
+      classMap: { warning: 'is-warning', error: 'is-error', info: 'is-info' },
+      classActivePre: 'has-message-lines',
+    }),
+    createWrapLongLinesTransformer(codeWrapOptions),
+  );
+  marp.highlighter = (source, language, attrs) => {
+    try {
+      const rendered = coreHighlighter(source, normalizeCodeLanguage(language) || 'text', attrs);
+      if (rendered) return rendered;
+    } catch (error) {
+      console.warn(`${options.logPrefix} Failed to highlight ${language}; rendering as plain text. ${error}`);
+    }
+    return coreHighlighter(source, 'text', attrs);
+  };
+
   marp.markdown.renderer.rules.fence = (tokens, idx, renderOptions, env, self) => {
     const token = tokens[idx];
-    const language = normalizeFenceLanguage(token.info);
-    const source = token.content.replace(/\r?\n$/, '');
-    const codeWrapOptions = getCodeWrapOptions();
     if (idx === 0 || tokens[idx - 1]?.meta?.[fitHeightMetaKey] === undefined) {
       computeFitHeightMetadata(tokens);
     }
     const fitHeight = token.meta?.[fitHeightMetaKey];
 
-    if (!isShikiLanguageSupported(language)) {
-      const originalContent = token.content;
-
-      try {
-        token.content = wrapCodeSource(originalContent, codeWrapOptions);
-        return wrapFittedCodeBlock(
-          stripCodeBlockAutoScaling(defaultFence(tokens, idx, renderOptions, env, self)),
-          fitHeight,
-        );
-      } finally {
-        token.content = originalContent;
-      }
-    }
-
-    try {
-      const transformers = [
-        transformerNotationHighlight({
-          classActiveLine: 'is-highlighted',
-          classActivePre: 'has-highlighted',
-        }),
-        transformerNotationFocus({
-          classActiveLine: 'is-focused',
-          classActivePre: 'has-focused',
-        }),
-        transformerNotationErrorLevel({
-          classMap: {
-            warning: 'is-warning',
-            error: 'is-error',
-            info: 'is-info',
-          },
-          classActivePre: 'has-message-lines',
-        }),
-      ];
-
-      transformers.push(createWrapLongLinesTransformer(codeWrapOptions));
-
-      const html = highlighter.codeToHtml(source, {
-        lang: language,
-        theme: 'github-light',
-        transformers,
-      });
-
-      return wrapFittedCodeBlock(normalizeShikiPreTag(html), fitHeight);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`${options.logPrefix} Failed to render ${language || 'plain-text'} block with Shiki. Falling back to default renderer. ${message}`);
-      return wrapFittedCodeBlock(
-        stripCodeBlockAutoScaling(defaultFence(tokens, idx, renderOptions, env, self)),
-        fitHeight,
-      );
-    }
+    const html = defaultFence.call(self, tokens, idx, renderOptions, env, self);
+    return wrapFittedCodeBlock(normalizeShikiPreTag(html), fitHeight);
   };
 }
 

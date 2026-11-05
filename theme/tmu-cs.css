@@ -61,6 +61,20 @@
 }
 
 section {
+  --marp-shiki-foreground: #24292e;
+  --marp-shiki-background: var(--bgColor-muted);
+  --marp-shiki-token-link: #032f62;
+  --marp-shiki-token-string: #032f62;
+  --marp-shiki-token-comment: #6a737d;
+  --marp-shiki-token-constant: #005cc5;
+  --marp-shiki-token-keyword: #d73a49;
+  --marp-shiki-token-parameter: #24292e;
+  --marp-shiki-token-function: #6f42c1;
+  --marp-shiki-token-string-expression: #032f62;
+  --marp-shiki-token-punctuation: #24292e;
+  --marp-shiki-token-inserted: #22863a;
+  --marp-shiki-token-deleted: #b31d28;
+  --marp-shiki-token-changed: #e36209;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -617,11 +631,7 @@ pre,
 pre code em,
 pre code i,
 pre code strong,
-pre code b,
-.marp-code .hljs-emphasis,
-.marp-code .hljs-strong,
-code .hljs-emphasis,
-code .hljs-strong {
+pre code b {
   font-style: normal;
   font-weight: inherit;
 }
@@ -630,6 +640,7 @@ code .hljs-strong {
   opacity: 0.38;
 }
 
+.marp-code .line.highlighted,
 .marp-code .line.is-highlighted,
 .marp-code .line.is-focused,
 .marp-code .line.is-warning,
@@ -642,7 +653,9 @@ code .hljs-strong {
   width: calc(100% + (2 * var(--base-size-16)));
 }
 
+.marp-code .line.highlighted,
 .marp-code .line.is-highlighted {
+  border-image: none;
   background:
     linear-gradient(
       90deg,

@@ -129,7 +129,15 @@ rendering. `--slide-index` accepts one explicit Markdown input.
 
 ## Annotated And Step-Emphasized Code
 
-The theme uses Shiki for fenced code block highlighting. The package-specific magic-comment flow for code blocks is step-based emphasis on supported languages that have line comments.
+The theme uses Marp Core's Shiki renderer and language support for fenced code
+blocks. Core's native fence metadata such as `python {2,4-5}` highlights logical
+source lines, including lines loaded through `path` or `src`. Unknown languages
+are rendered as plain text. The package adds notation transformers through
+`marp.shikiTransformers`, then wraps long lines while preserving their emphasis.
+Syntax colors are configured with `--marp-shiki-*` theme variables.
+
+The package-specific magic-comment flow is step-based emphasis on languages
+that have a supported line comment prefix.
 
 Supported line comment prefixes:
 
