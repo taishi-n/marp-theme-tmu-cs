@@ -2,6 +2,11 @@
 
 Node.js 20.19.0 or newer is required.
 
+This checkout pins Marp Core 5.0.2 (release candidate) and CLI 4.5.1. See the
+[migration record](docs/marp-v5-migration.md) for compatibility and layout
+comparisons. Core's Shiki, Mermaid, and MathJax renderers are extended by this
+package's authoring features.
+
 `marp-theme-tmu-cs` is a Marp theme package for the Department of Computer Science, Tokyo Metropolitan University. It bundles:
 
 - the `tmu-cs` theme CSS
@@ -44,6 +49,8 @@ npm run watch
 ```
 
 The sample source is `examples/slides.md`. It exercises the theme styling and the package-specific authoring features in one deck.
+`examples/native-features.md` additionally demonstrates native line metadata,
+extended language support, Mermaid fallback selection, and math inside notes.
 
 To build a strict single-file HTML that embeds local and remote media, stylesheets, fonts, scripts, GIF player sources, and supported local HTML iframes, use:
 

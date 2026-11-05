@@ -293,7 +293,7 @@ int main() {
 ---
 
 <!--
-These slides demonstrate Kroki-backed diagram rendering from normal fenced code blocks.
+These slides demonstrate native Mermaid and Kroki diagram rendering from normal fenced code blocks.
 They intentionally avoid raw HTML so the authoring model stays consistent with Markdown-first slides.
 -->
 
@@ -305,7 +305,7 @@ flowchart LR
     API --> Result[Response]
 ```
 
-Write the diagram as a normal fenced code block; the engine renders it through Kroki. See the [official Kroki repository](https://github.com/yuzutech/kroki).
+Marp renders Mermaid as native SVG. Use `mermaid-kroki` to select Kroki explicitly; unsupported native diagrams fall back automatically.
 
 ---
 

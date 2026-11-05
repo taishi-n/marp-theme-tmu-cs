@@ -31,6 +31,22 @@ npx marp-tmu-cs-check dist/slide.html --standalone \
 図の重なり，主張の正しさ，音声の聞こえ方，出典hashは検証しない．
 これらのうち研究内容と出典は個別repoの検証を併用し，表示確認は利用者へ委ねる．
 
+## コード，図，数式
+
+Core v5を使う版では，通常の構文強調をMarpのShikiへ委ねる．
+`python {2,4-5}`のような行番号指定は，外部コードの`path`や`src`，ステップ強調と併用できる．
+長い行は強調状態を保って折り返されるため，原稿や外部コードへ表示用の改行を加えない．
+構文色は追加CSSの`--marp-shiki-*`変数で調整する．
+
+`mermaid`はCoreのネイティブSVGを優先し，未対応構文や描画エラーではKrokiへフォールバックする．
+従来の描画が必要な場合は`mermaid-kroki`を選ぶ．
+PlantUMLやGraphvizなどは引き続きKrokiを使う．
+`--standalone`は図とネイティブSVGのフォント依存もビルド時に埋め込む．
+
+数式注釈には`math: mathjax`を指定する．
+注釈の`note`内でも`$...$`を使え，本文と同じMathJax 4で描画される．
+数式の字形や図の配置はCoreの版で変わるため，移行時には利用者へ変更点を示す．
+
 ## 章扉，付録，フッター
 
 章扉は`sectionPages: true/false`で全体を選ぶ．

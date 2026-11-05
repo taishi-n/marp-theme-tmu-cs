@@ -2,6 +2,9 @@
 
 This document collects the maintainer-facing information for working on `marp-theme-tmu-cs`.
 
+The [Core v5 migration record](marp-v5-migration.md) contains the dependency
+boundary, per-stage layout comparisons, and package validation results.
+
 The [consumer-session improvement plan](improvement-plan.md) records recurring authoring requests, existing support, and proposed maintenance work as of 2026-11-05. It is a plan rather than an implemented feature reference.
 
 ## Repository Shape
@@ -77,6 +80,9 @@ TOC preprocessing assigns temporary target references, which travel with heading
 Core 5.0.2 is an explicit dependency, including all optional peers used by its
 full build. CLI and programmatic initialization share
 `src/pipeline/marp-instance.mjs`. `await engine()` creates a full instance.
+When CLI resolves its bundled Core 4 outside the theme checkout, initialization
+replaces it with this package's explicit Core 5 full build, retaining the CLI
+constructor options.
 Calls with `{ marp: instance }` accept a fresh lightweight Core or `/full`
 instance; lightweight instances receive Core's public math, Shiki, and Mermaid
 plugins, while full instances retain their existing registrations.
@@ -147,7 +153,9 @@ Dependency audit:
 npm audit --omit=dev
 ```
 
-As of 2026-08-18, the direct `js-yaml` advisories are resolved and safe transitive updates have been applied. Four high-severity findings remain only through `@marp-team/marp-cli -> puppeteer-core -> @puppeteer/browsers -> extract-zip`. The affected extractor is used while acquiring a browser archive, not while parsing a deck or resolving its authored assets. npm offers no compatible upgrade and incorrectly proposes downgrading Marp CLI to 2.4.0, so the project retains Marp CLI 4.4.0 and will update once its Puppeteer chain contains a fixed `extract-zip` release.
+Dependency audit findings and their affected paths should be checked against
+the current lockfile before a release. Do not apply `npm audit fix --force`
+without reviewing its proposed dependency changes.
 
 The citation backend directly uses `@xmldom/xmldom` 0.9.11. Main equations and
 math inside annotation notes share Core 5's MathJax 4 renderer. Annotation

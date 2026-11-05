@@ -1,7 +1,7 @@
 # Marp Core v5 migration record
 
 This record tracks the ordered migration approved on 2026-11-05. Core 5.0.2 is
-published under `next`; the migration pins that version explicitly. The stable
+published under `next` ([upstream release](https://github.com/marp-team/marp-core/releases/tag/v5.0.2)); the migration pins that version explicitly. The stable
 CLI remains 4.5.1. No package publication is part of this migration.
 
 ## Comparison method
@@ -35,10 +35,10 @@ migration; those warnings are recorded separately from browser observations.
 | U3 | Delegate base Shiki rendering to Core | 104 tests pass; three static reports pass; no browser errors or external requests. 26 pages have pixel changes, mainly syntax colors; only two plain fences change their element rectangles |
 | U4 | Native Mermaid with Kroki fallback | 105 tests pass; three static reports pass; all 51 screenshots and element positions unchanged from U3; no browser errors or external requests |
 | U5 | MathJax 4 annotation notes | 106 tests pass; three static reports pass; all element positions unchanged. Only 24 pixels change on the annotation page; no browser errors, math errors, or external requests |
-| U6 | Package and consumer validation; documentation | Pending |
+| U6 | Package and consumer validation; documentation | 107 tests pass on Node 20.19.0, 24.22.2, and 26.12.0; clean package builds all 57 sample pages; consumer builds/static checks pass on 233 pages. Final 51-page comparison changes only the corrected Mermaid explanation and one pixel in a note |
 
-U2–U5 are developed on `refactor/marp-core-v5`. The completed migration is
-adopted only after the comparison and package validation gates pass.
+U2–U6 were developed on `refactor/marp-core-v5`. The migration is adopted on
+`main` after the comparison and package validation gates pass.
 
 ### U2 observations
 
@@ -96,3 +96,76 @@ four boxes and all other measured elements retain their rectangles. The direct
 MathJax 3 dependency is removed. CLI 4.5.1 still includes Core 4 / MathJax 3 in
 its own dependency chain; removing those transitive packages requires a future
 CLI update, not a consumer-ineffective dependency override.
+
+### U6 observations
+
+Consumer and added-sample checks exposed four integration issues, fixed in
+`eff1f4d`:
+
+- CLI can select its bundled Core 4 when invoked outside this checkout.
+  Initialization now selects this package's explicit Core 5 full build while
+  preserving the CLI options and initializing its getter once.
+- The note attribute parser interpreted TeX commands beginning with `\t`,
+  `\n`, or `\r` as text escapes. Math segments now preserve those commands.
+- MathJax 4 can return several SVG segments for one inline expression. Notes
+  now retain the complete renderer result, including break nodes, so operators
+  and the rest of the expression are preserved.
+- Some Kroki SVGs have percentage dimensions and only a `viewBox`, which can
+  collapse to zero size in auto-scaling. Standalone embedding supplies intrinsic
+  dimensions from the aspect ratio while preserving explicit dimensions,
+  including Graphviz's point units.
+
+The added `examples/native-features.md` covers six pages: native line metadata
+with visual wrapping, PowerShell, native Mermaid, unsupported Mermaid fallback,
+explicit Kroki selection, and math inside notes. All six were captured and
+visually inspected with zero browser errors, external requests, or math errors.
+Image checks also require nonzero displayed dimensions.
+
+The final existing-deck comparison against U5 has two changed pages. Page 35
+updates the explanation to describe native Mermaid and fallback selection;
+page 12 changes one pixel and gains an inline MathJax container without moving
+the note boxes. All other pixels are identical. The local
+`examples/dist/marp-v5-migration/review.html` viewer switches between all stages,
+decks, and pages; full-resolution PNGs and the six-page overview are linked.
+
+Package validation installs the tarball in a fresh temporary consumer using
+registry dependencies, without local development links. On Node 20.19.0, its
+public exports and wrapper build all four decks (44 + 4 + 3 + 6 pages), followed
+by successful standalone static checks with no external assets. Node 24.22.2
+also passes a clean-package public-export/render smoke. Lint and type checks
+pass, and the full 107-test suite passes on all three tested Node versions.
+
+Existing consumer builds and their static checks pass for `keio-sap` (121
+pages), `onolab-research-intro` (30), and `oss2-exp-taslp/slides/jvs-paired-motion`
+(82). The paired-motion source and audio contracts also pass. Consumer sources
+were not edited; the dirty Git inventory in `oss2-exp-taslp` is unchanged.
+Consumer browser review was not performed.
+
+The repository's authoring skill and the installed skill reference now describe
+native metadata, renderer selection, and shared note math. Their validation
+passes; the default browser-review policy is unchanged.
+
+### Remaining maintenance boundaries
+
+Core 5.0.2 remains an upstream release candidate. CLI 4.5.1 still installs Core
+4 / MathJax 3 transitively even though the theme renders with Core 5. Publication
+and removal of that legacy CLI dependency chain are separate work.
+
+The production dependency audit does not pass: it reports 16 affected packages
+(12 high, 2 moderate, 2 low), compared with 19 (14 high, 3 moderate, 2 low) for
+the U0 lockfile under the same advisory database. Remaining paths include
+the CLI/Puppeteer chain, the legacy speech-rule-engine chain, `js-yaml`, and
+`@xmldom/xmldom`. Compatible YAML/XML updates and upstream CLI fixes should be
+handled as dependency maintenance; this migration does not claim to resolve
+all advisories or apply npm's incompatible downgrade suggestions.
+
+### Implementation commits
+
+| Stage | Signed commit |
+| --- | --- |
+| U1 | `4962039` |
+| U2 | `862c716` |
+| U3 | `f5edcef` |
+| U4 | `5d919ef` |
+| U5 | `4a4372e` |
+| U6 integration fixes | `eff1f4d` |
