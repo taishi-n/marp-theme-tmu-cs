@@ -3,7 +3,7 @@ import { resolve as resolvePath } from 'node:path';
 import { parseFrontMatter } from '../core/front-matter.mjs';
 import { annotateSlideSources } from '../core/slide-source.mjs';
 import { preprocessCitationMarkdown } from '../features/citations/index.mjs';
-import { preprocessCodeMarkdown, warnForOverflowingCodeBlocks } from '../features/code/index.mjs';
+import { preprocessCodeMarkdown } from '../features/code/index.mjs';
 import applyDeckDefaults from './deck-defaults.mjs';
 import applySectionPages from './section-pages.mjs';
 
@@ -64,10 +64,4 @@ export function prepareMarkdownForRender(markdown, context) {
     frontMatter: preparedDeck.frontMatter,
     markdown: resolvedMarkdown,
   };
-}
-
-export function warnForPreparedMarkdown(markdown, context) {
-  warnForOverflowingCodeBlocks(markdown, context.marp, context.env, {
-    logPrefix: context.logPrefix,
-  });
 }

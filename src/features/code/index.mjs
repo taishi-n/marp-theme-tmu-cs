@@ -11,6 +11,7 @@ import {
 } from './shared.mjs';
 import { createWrapLongLinesTransformer, wrapCodeSource } from '../../shiki/wrap-long-lines-transformer.mjs';
 import { codeLayoutMetrics, headingHeightsPx } from './layout-metrics.mjs';
+import { isDiagramLanguage } from '../diagrams/languages.mjs';
 
 const {
   bodyBlockGapPx,
@@ -141,77 +142,7 @@ function wrapFittedCodeBlock(html, fit) {
   return `<div class="tmu-code-fit-height" style="${style}"><div class="tmu-code-fit-height__inner">${html}</div></div>`;
 }
 
-function computeFitHeightMetadata(tokens) {
-  let slideLevel = null;
-  let usedHeightPx = 0;
-
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
-
-    if (token.type === 'marpit_slide_open') {
-      slideLevel = token.level;
-      usedHeightPx = 0;
-      continue;
-    }
-
-    if (token.type === 'marpit_slide_close') {
-      slideLevel = null;
-      continue;
-    }
-
-    if (slideLevel === null || token.level !== slideLevel + 1) continue;
-
-    if (token.type === 'heading_open') {
-      usedHeightPx += headingHeightsPx[token.tag] ?? estimateMappedBlockHeight(token, { bottomMarginPx: 0 });
-      index = findMatchingCloseIndex(tokens, index);
-      continue;
-    }
-
-    if (token.type === 'fence') {
-      const blockHeightPx = estimateCodeBlockHeight(token);
-
-      if (shouldFitCodeHeight(token)) {
-        const availableHeightPx = Math.max(1, slideContentHeightPx - usedHeightPx);
-        const scale = Math.min(1, availableHeightPx / Math.max(1, blockHeightPx));
-        token.meta ??= {};
-        token.meta[fitHeightMetaKey] = {
-          enabled: true,
-          scale,
-          fittedHeightPx: blockHeightPx * scale,
-        };
-        usedHeightPx += blockHeightPx * scale;
-      } else {
-        usedHeightPx += blockHeightPx;
-      }
-      continue;
-    }
-
-    if (token.type === 'paragraph_open' || token.type === 'bullet_list_open' || token.type === 'ordered_list_open' || token.type === 'blockquote_open' || token.type === 'table_open') {
-      usedHeightPx += estimateMappedBlockHeight(token);
-      index = findMatchingCloseIndex(tokens, index);
-      continue;
-    }
-
-    if (token.type === 'html_block' || token.type === 'marp_math_block' || token.type === 'hr') {
-      usedHeightPx += estimateMappedBlockHeight(token);
-    }
-  }
-}
-
-export function preprocessCodeMarkdown(markdown, options = {}) {
-  const resolvedMarkdown = resolveExternalCode(markdown, {
-    allowLocalFiles: options.allowLocalFiles === true,
-    markdownPath: options.markdownPath,
-    onWarning: createMarkdownWarningEmitter(options.onWarning),
-  });
-
-  return expandStepSlides(resolvedMarkdown, {
-    onWarning: createMarkdownWarningEmitter(options.onWarning),
-  });
-}
-
-export function warnForOverflowingCodeBlocks(markdown, marp, env = {}, options = {}) {
-  const tokens = marp.markdown.parse(markdown, { ...env });
+function computeCodeLayout(tokens, options) {
   let slideNumber = 0;
   let slideLevel = null;
   let usedHeightPx = 0;
@@ -239,22 +170,28 @@ export function warnForOverflowingCodeBlocks(markdown, marp, env = {}, options =
       continue;
     }
 
-    if (token.type === 'fence') {
-      const codeBlockHeightPx = estimateCodeBlockHeight(token);
+    if (token.type === 'fence' && !isDiagramLanguage(parseFenceInfo(token.info).language)) {
+      const blockHeightPx = estimateCodeBlockHeight(token);
       const availableHeightPx = slideContentHeightPx - usedHeightPx;
-      const renderedHeightPx = shouldFitCodeHeight(token)
-        ? Math.min(codeBlockHeightPx, Math.max(1, availableHeightPx))
-        : codeBlockHeightPx;
-      const overflowPx = renderedHeightPx - availableHeightPx;
+      let renderedHeightPx = blockHeightPx;
 
-      if (overflowPx > codeWarningTolerancePx) {
-        const line = Array.isArray(token.map) ? token.map[0] + 1 : undefined;
-        const lineSuffix = typeof line === 'number' ? ` line ${line}` : '';
-        console.warn(
-          `${options.logPrefix} slide ${slideNumber}${lineSuffix}: code block is estimated to overflow the drawable area by ${formatPixels(overflowPx)} (available ${formatPixels(availableHeightPx)}, needs ${formatPixels(renderedHeightPx)}).`,
-        );
+      if (shouldFitCodeHeight(token)) {
+        const scale = Math.min(1, Math.max(1, availableHeightPx) / Math.max(1, blockHeightPx));
+        renderedHeightPx = blockHeightPx * scale;
+        token.meta ??= {};
+        token.meta[fitHeightMetaKey] = {
+          enabled: true,
+          scale,
+          fittedHeightPx: renderedHeightPx,
+        };
       }
 
+      const overflowPx = renderedHeightPx - availableHeightPx;
+      if (overflowPx > codeWarningTolerancePx) {
+        const line = token.map?.[0];
+        const lineSuffix = typeof line === 'number' ? ` line ${line + 1}` : '';
+        console.warn(`${options.logPrefix} slide ${slideNumber}${lineSuffix}: code block is estimated to overflow the drawable area by ${formatPixels(overflowPx)} (available ${formatPixels(availableHeightPx)}, needs ${formatPixels(renderedHeightPx)}).`);
+      }
       usedHeightPx += renderedHeightPx;
       continue;
     }
@@ -271,7 +208,22 @@ export function warnForOverflowingCodeBlocks(markdown, marp, env = {}, options =
   }
 }
 
+export function preprocessCodeMarkdown(markdown, options = {}) {
+  const resolvedMarkdown = resolveExternalCode(markdown, {
+    allowLocalFiles: options.allowLocalFiles === true,
+    markdownPath: options.markdownPath,
+    onWarning: createMarkdownWarningEmitter(options.onWarning),
+  });
+
+  return expandStepSlides(resolvedMarkdown, {
+    onWarning: createMarkdownWarningEmitter(options.onWarning),
+  });
+}
+
 export function installCodeFeature(marp, options = {}) {
+  marp.markdown.core.ruler.before('marpit_collect', 'tmu_cs_code_layout', state => {
+    if (!state.inlineMode) computeCodeLayout(state.tokens, options);
+  });
   const defaultFence = marp.markdown.renderer.rules.fence;
   const coreHighlighter = marp.highlighter.bind(marp);
   const codeWrapOptions = getCodeWrapOptions();
@@ -296,9 +248,6 @@ export function installCodeFeature(marp, options = {}) {
 
   marp.markdown.renderer.rules.fence = (tokens, idx, renderOptions, env, self) => {
     const token = tokens[idx];
-    if (idx === 0 || tokens[idx - 1]?.meta?.[fitHeightMetaKey] === undefined) {
-      computeFitHeightMetadata(tokens);
-    }
     const fitHeight = token.meta?.[fitHeightMetaKey];
 
     const html = defaultFence.call(self, tokens, idx, renderOptions, env, self);
@@ -309,5 +258,4 @@ export function installCodeFeature(marp, options = {}) {
 export default {
   install: installCodeFeature,
   preprocessMarkdown: preprocessCodeMarkdown,
-  warnForOverflowingCodeBlocks,
 };

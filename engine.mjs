@@ -11,7 +11,7 @@ import decorateAuxiliarySlides, { installSlideMetadata } from './src/pipeline/sl
 import installMediaPlayback from './src/pipeline/media-playback.mjs';
 import inlineStandaloneAssets from './src/pipeline/standalone-assets.mjs';
 import { loadThemeOverrides } from './src/pipeline/theme-overrides.mjs';
-import { getMarkdownPathFromEnv, prepareMarkdownForRender, warnForPreparedMarkdown } from './src/pipeline/markdown-pipeline.mjs';
+import { getMarkdownPathFromEnv, prepareMarkdownForRender } from './src/pipeline/markdown-pipeline.mjs';
 import { initializeMarp } from './src/pipeline/marp-instance.mjs';
 
 const themeName = 'tmu-cs';
@@ -104,17 +104,6 @@ export default async (options = {}) => {
         console.warn(`${logPrefix} ${message}`);
       },
     });
-
-    try {
-      warnForPreparedMarkdown(preparedMarkdown, {
-        env,
-        logPrefix,
-        marp,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`${logPrefix} Failed to estimate code block overflow. ${message}`);
-    }
 
     const renderedHtml = decorateAuxiliarySlides(enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env), {
       allowLocalFiles,
