@@ -94,12 +94,13 @@ The external-project workflow documented in `README.md` is based on `npm link` p
 
 For local wavegram development, rebuild wavegram before building a deck: its UMD bundle
 is embedded in the generated HTML. A previously built standalone deck does not pick up
-dependency source edits automatically. The current development component supports
-`rendering="suspended"` and `refresh()`; the published 0.2.0 dependency remains compatible
-with deferred source loading but does not provide those rendering optimizations.
-After publishing a wavegram version containing these APIs, raise the minimum dependency
-and refresh the lockfile before publishing the corresponding theme release. Keep local
-links and machine-specific dependency paths out of the committed package metadata.
+dependency source edits automatically. The minimum dependency is the published
+wavegram 0.2.1, including `rendering="suspended"`, `refresh()`, and scaled-slide
+seek coordinates. The lockfile resolves its registry tarball, without a local
+link or machine-specific path. The theme's optional capability checks retain
+compatibility with older components when they are supplied programmatically.
+Verify release packages in a temporary consumer with registry dependencies;
+a build against a development link alone is insufficient.
 
 ## Local Workflow
 

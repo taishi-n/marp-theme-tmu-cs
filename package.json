@@ -65,7 +65,7 @@
     "mathjax-full": "^3.2.2",
     "parse5": "^8.0.1",
     "shiki": "4.0.2",
-    "wavegram": "^0.2.0"
+    "wavegram": "^0.2.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

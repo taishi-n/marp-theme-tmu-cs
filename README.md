@@ -263,7 +263,9 @@ Set `mediaPlayback: sequential` in front matter, or use `<!-- _mediaPlayback: se
 
 See the [sequential media playback guide](docs/media-playback.md) for the complete authoring and navigation contract.
 
-Audio elements with `class="wavesurfer-spectrogram"` hide the native browser controller and instead render a wavegram-based waveform/spectrogram panel in HTML output. Playback, seeking, cursor display, and waveform/spectrogram rendering follow wavegram defaults; the theme only adds the surrounding green frame. Use `data-spectrogram-height` and `data-spectrogram-fft-samples` to pass explicit spectrogram height and FFT size to wavegram. The runtime embeds the wavegram Web Component only when such an audio element exists. Local spectrogram audio sources are embedded as `data:` URLs during HTML rendering so they still work from `file://`, while remote audio sources must allow CORS for analysis.
+Audio elements with `class="wavesurfer-spectrogram"` render a wavegram panel in HTML output. The theme defaults to the `magma` spectrogram palette and a green frame. Use `data-wavegram-*` attributes to select FFT/hop sizes, dB bounds, and waveform, spectrogram, control, and time visibility. The older `data-spectrogram-height` and `data-spectrogram-fft-samples` aliases remain supported. Optional labels and downloads use the [audio row layout](docs/feature-guide.md#labelled-audio-rows-and-downloads).
+
+The runtime embeds wavegram only when an enhanced audio element exists. Interactive slides initialize audio when visible and suspend drawing when hidden, using the published wavegram 0.2.1 APIs. Local spectrogram audio is embedded as `data:` URLs so it works from `file://`; remote audio must allow CORS for analysis.
 
 The spectrogram feature relies on `wavegram` (MIT). Third-party
 license notices are collected in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
