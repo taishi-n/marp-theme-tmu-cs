@@ -7,7 +7,7 @@ function hasOption(args, optionName) {
   ));
 }
 
-export function applyTmuCsDefaults(args) {
+export function applyTmuCsDefaults(args, options = {}) {
   const terminatorIndex = args.indexOf('--');
   const optionArgs = terminatorIndex === -1 ? [...args] : args.slice(0, terminatorIndex);
   const positionalTail = terminatorIndex === -1 ? [] : args.slice(terminatorIndex);
@@ -16,7 +16,7 @@ export function applyTmuCsDefaults(args) {
     optionArgs.push('--engine', enginePath);
   }
 
-  if (!hasOption(optionArgs, '--theme-set')) {
+  if (options.themeSet !== false && !hasOption(optionArgs, '--theme-set')) {
     optionArgs.push('--theme-set', themePath);
   }
 

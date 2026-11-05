@@ -9,6 +9,7 @@ test('wrapper metadata options preserve Marp arguments and positional terminator
   assert.equal(options.standalone, false);
   assert.deepEqual(options.args, ['slides.md', '-o', 'dist/deck.html', '--', '--standalone']);
   assert.throws(() => parseThemeOptions(['--slide-index', '--pdf']), /requires an output path/);
+  assert.deepEqual(parseThemeOptions(['--theme-overrides', 'first.css', '--theme-overrides=second.css', 'slides.md']).themeOverrides, ['first.css', 'second.css']);
 });
 import { enginePath, themePath } from '../index.mjs';
 import { applyTmuCsDefaults, detectOutputFormat } from '../scripts/marp-cli-options.mjs';

@@ -17,7 +17,11 @@ try {
   process.exit(1);
 }
 const { standalone } = themeOptions;
-const forwardedArgs = applyTmuCsDefaults(themeOptions.args);
+if (themeOptions.themeOverrides.length && themeOptions.args.some((arg) => arg === '--theme-set' || arg.startsWith('--theme-set='))) {
+  console.error('[tmu-cs] choose --theme-overrides for the bundled theme or --theme-set for a complete custom theme.');
+  process.exit(1);
+}
+const forwardedArgs = applyTmuCsDefaults(themeOptions.args, { themeSet: themeOptions.themeOverrides.length === 0 });
 const outputFormat = detectOutputFormat(forwardedArgs);
 
 if (standalone && outputFormat !== 'html') {
@@ -72,6 +76,7 @@ const result = spawnSync(process.execPath, [marpCliPath, ...forwardedArgs], {
     TMU_CS_OUTPUT_FORMAT: outputFormat,
     ...(themeOptions.editLabels ? { TMU_CS_EDIT_LABELS: '1' } : {}),
     ...(themeOptions.slideIndex ? { TMU_CS_SLIDE_INDEX: resolve(themeOptions.slideIndex) } : {}),
+    ...(themeOptions.themeOverrides.length ? { TMU_CS_THEME_OVERRIDES: JSON.stringify(themeOptions.themeOverrides.map((path) => resolve(path))) } : {}),
   },
 });
 
@@ -81,7 +86,7 @@ if (result.error) {
 }
 
 if (help && result.status === 0) {
-  console.log('\nTMU-CS options:\n  --standalone           Embed HTML assets\n  --edit-labels          Show edit IDs in HTML\n  --slide-index <path>   Write a source-to-slide JSON index');
+  console.log('\nTMU-CS options:\n  --standalone              Embed HTML assets\n  --edit-labels             Show edit IDs in HTML\n  --slide-index <path>      Write a source-to-slide JSON index\n  --theme-overrides <css>   Apply additional CSS (repeatable)');
 }
 
 process.exit(result.status ?? 1);

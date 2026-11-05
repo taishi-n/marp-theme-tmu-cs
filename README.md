@@ -97,9 +97,14 @@ npx marp-tmu-cs slides.md -o slides.html
 npx marp-tmu-cs --allow-local-files --pdf slides.md -o slides.pdf
 npx marp-tmu-cs --allow-local-files --pptx slides.md -o slides.pptx
 npx marp-tmu-cs --standalone slides.md -o slides.html
+npx marp-tmu-cs --theme-overrides slide.css --standalone slides.md -o slides.html
 ```
 
 `marp-tmu-cs` automatically supplies the bundled engine and theme CSS when they are not explicitly provided, so a project-local `marp.config.mjs` is optional.
+
+Keep deck-specific declarations in `slide.css` and pass it with
+`--theme-overrides`. Repeat the option to apply several files in order. Keep
+`theme: tmu-cs`; manual CSS concatenation and theme renaming are unnecessary.
 
 `--standalone` is for HTML and fails instead of producing a partially embedded file. It may fetch authored remote URLs and embed scripts from local HTML iframes. Render only trusted decks.
 

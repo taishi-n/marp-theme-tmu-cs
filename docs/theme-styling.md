@@ -77,6 +77,22 @@ Definition-card example:
 
 This is implemented through `blockquote:has(> h4)` in the theme, so the `h4` must be a direct child of the quote block.
 
+## Project CSS Overrides
+
+Use the wrapper's `--theme-overrides slide.css` to append project declarations
+to the bundled `tmu-cs` theme. Repeat the option to apply files in order. An
+override file contains declarations without `@theme` or `@import`; use
+`--theme-set` instead for a complete custom theme, and do not combine the two.
+
+Local `url(...)` assets are embedded relative to the stylesheet, including
+fonts. Assets are confined to that stylesheet's directory unless
+`--allow-local-files` is explicitly enabled. Remote CSS assets are embedded
+only in standalone mode. Keep the source deck on `theme: tmu-cs`.
+
+```sh
+npx marp-tmu-cs --theme-overrides slide.css --standalone slide.md -o dist/slide.html
+```
+
 ## Columns
 
 Two helper patterns are supported for side-by-side layout:

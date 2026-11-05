@@ -189,9 +189,10 @@ function resolveNestedBase(reference, basePath) {
   return resolve(dirname(basePath), stripUrlSuffix(reference));
 }
 
-function inlineCssReferences(css, context, basePath) {
+function inlineCssReferences(css, context, basePath, embedRemote = true) {
   return String(css ?? '').replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/giu, (match, _quote, reference) => {
     const trimmed = reference.trim();
+    if (!embedRemote && isRemoteReference(trimmed)) return match;
     const asset = loadAsset(trimmed, context, basePath);
     return asset ? `url("${toDataUrl(trimmed, asset)}")` : match;
   });
@@ -434,13 +435,8 @@ function inlineHtmlDocument(html, context, basePath = context.basePath) {
   return serialize(document);
 }
 
-export default function inlineStandaloneAssets(html, options = {}) {
-  const basePath = options.markdownPath ?? resolve(process.cwd(), 'slides.md');
-  if (typeof basePath !== 'string' || basePath === '') {
-    throw new Error('[tmu-cs] standalone mode requires the markdown or output path to resolve local assets.');
-  }
-
-  const context = {
+function createAssetContext(basePath, options) {
+  return {
     allowLocalFiles: options.allowLocalFiles === true,
     assetCache: new Map(),
     basePath,
@@ -448,6 +444,19 @@ export default function inlineStandaloneAssets(html, options = {}) {
     inputRoot: resolveInputRoot(basePath),
     visitedHtml: new Set([resolve(basePath)]),
   };
+}
+
+export function inlineStylesheetAssets(css, options = {}) {
+  const basePath = options.stylesheetPath ?? resolve(process.cwd(), 'slide.css');
+  return inlineCssReferences(css, createAssetContext(basePath, options), basePath, options.embedRemote === true);
+}
+
+export default function inlineStandaloneAssets(html, options = {}) {
+  const basePath = options.markdownPath ?? resolve(process.cwd(), 'slides.md');
+  if (typeof basePath !== 'string' || basePath === '') {
+    throw new Error('[tmu-cs] standalone mode requires the markdown or output path to resolve local assets.');
+  }
+  const context = createAssetContext(basePath, options);
 
   return inlineHtmlDocument(html, context);
 }

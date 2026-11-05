@@ -1,0 +1,4 @@
+/* Only deck-specific declarations; no theme import or renamed base theme. */
+section {
+  --tmu-cs-comparison-figure-height: 360px;
+}

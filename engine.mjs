@@ -12,6 +12,7 @@ import enhanceAnimatedImages from './src/pipeline/animated-images.mjs';
 import decorateAuxiliarySlides, { installSlideMetadata } from './src/pipeline/slide-metadata.mjs';
 import installMediaPlayback from './src/pipeline/media-playback.mjs';
 import inlineStandaloneAssets from './src/pipeline/standalone-assets.mjs';
+import { loadThemeOverrides } from './src/pipeline/theme-overrides.mjs';
 import { getMarkdownPathFromEnv, prepareMarkdownForRender, warnForPreparedMarkdown } from './src/pipeline/markdown-pipeline.mjs';
 
 const themeName = 'tmu-cs';
@@ -84,7 +85,12 @@ export default async (options) => {
     readFile(themeCssUrl, 'utf8'),
   ]);
 
-  marp.themeSet.add(themeCss);
+  const overridePaths = JSON.parse(process.env.TMU_CS_THEME_OVERRIDES ?? '[]');
+  const overrideCss = loadThemeOverrides(overridePaths, {
+    allowLocalFiles: process.env.TMU_CS_ALLOW_LOCAL_FILES === '1',
+    embedRemote: process.env.TMU_CS_STANDALONE === '1',
+  });
+  marp.themeSet.add(`${themeCss}\n${overrideCss}`);
 
   const originalRenderMarkdown = marp.renderMarkdown.bind(marp);
   const mathFeature = installMathFeature(marp, { logPrefix });
