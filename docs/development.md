@@ -132,6 +132,8 @@ Standalone embedding and static resource checks share
 shared with spectrogram audio embedding; later renders read updated files.
 Protocol-relative URLs use HTTPS for local inputs. Both CSS import syntaxes are
 embedded recursively, and nonportable URLs such as `blob:` fail standalone checks.
+SVG `use` references must target inline fragment IDs; converting external symbols
+to data URLs does not preserve their display in the CLI's Chromium renderer.
 Media runtime output includes only the GIF, spectrogram, and sequential-playback
 features used by the deck. Math annotations measure server-rendered math
 synchronously on scheduled animation frames; detailed diagnostics are built only

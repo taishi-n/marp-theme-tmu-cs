@@ -37,8 +37,8 @@ export function checkDeck(html, options = {}) {
     }
   }
 
-  function visit(node, outerSection = null, protectedText = false) {
-    const section = node.tagName === 'section' && !outerSection ? node : outerSection;
+  function visit(node, outerSection = null, protectedText = false, nested = false) {
+    const section = node.tagName === 'section' && !outerSection && !nested ? node : outerSection;
     if (section === node) {
       sections.push(node);
       const id = attribute(node, 'data-slide-id');
@@ -47,12 +47,16 @@ export function checkDeck(html, options = {}) {
     }
     if (node.tagName === 'base' && attribute(node, 'href')) base = new URL(attribute(node, 'href'), base);
     for (const reference of nodeResourceReferences(node)) resource(reference, section);
-    if (node.tagName === 'merror' || attribute(node, 'data-mml-node') === 'merror' || attribute(node, 'data-mjx-error') !== undefined || /(?:^|\s)mjx-merror(?:\s|$)/u.test(attribute(node, 'class') ?? '')) {
+    if (!nested && (node.tagName === 'merror' || attribute(node, 'data-mml-node') === 'merror' || attribute(node, 'data-mjx-error') !== undefined || /(?:^|\s)mjx-merror(?:\s|$)/u.test(attribute(node, 'class') ?? ''))) {
       add('MATH_ERROR', attribute(node, 'data-mjx-error') || 'Rendered mathematics contains an error.', section);
     }
     if (!protectedText && node.nodeName === '#text' && containsCitationSyntax(node.value)) add('UNRESOLVED_CITATION', `Unresolved citation: ${node.value.trim()}`, section);
     const protect = protectedText || ['code', 'pre', 'script', 'style', 'textarea', 'template'].includes(node.tagName);
-    for (const child of node.childNodes ?? []) visit(child, section, protect);
+    for (const child of node.childNodes ?? []) visit(child, section, protect, nested);
+    const outerBase = base;
+    if (node.tagName === 'iframe' && attribute(node, 'srcdoc')) visit(parse(attribute(node, 'srcdoc')), section, true, true);
+    for (const child of node.content?.childNodes ?? []) visit(child, section, true, true);
+    base = outerBase;
   }
   visit(document);
   if (sections.length === 0) add('NO_SLIDES', 'No slides found.', null);

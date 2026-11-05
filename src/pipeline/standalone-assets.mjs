@@ -27,7 +27,7 @@ function removeAttribute(node, name) {
 
 function walk(node, visit) {
   visit(node);
-  for (const child of [...(node?.childNodes ?? [])]) walk(child, visit);
+  for (const child of [...(node?.childNodes ?? []), ...(node?.content?.childNodes ?? [])]) walk(child, visit);
 }
 
 function inlineCssReferences(css, context, basePath, embedRemote = true, imports = new Set()) {
@@ -139,6 +139,9 @@ function withIntrinsicSvgDimensions(asset) {
 function inlineUrlAttribute(node, attributeName, context, basePath) {
   const reference = getAttribute(node, attributeName);
   if (!reference) return;
+  if (node.tagName === 'use' && !reference.trim().startsWith('#')) {
+    throw new Error('[tmu-cs] standalone mode requires SVG use references to point to inline fragment IDs.');
+  }
   const asset = loadAsset(reference, context, basePath);
   if (asset) setAttribute(node, attributeName, toDataUrl(reference, node.tagName === 'img' ? withIntrinsicSvgDimensions(asset) : asset));
 }

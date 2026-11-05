@@ -239,6 +239,32 @@ test('animated GIF sources use the same standalone and diagnostic resource rules
   assert.equal(checkDeck(output, { standalone: true }).ok, true);
 });
 
+test('standalone and static checks cover SVG, embedded iframe HTML and inert template assets', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tmu-cs-nested-assets-'));
+  try {
+    await writeFile(join(root, 'icon.png'), 'image');
+    for (const content of [
+      '<svg><image xlink:href="icon.png"></image></svg>',
+      '<input type="image" src="icon.png">',
+      '<iframe srcdoc=\'<img src="icon.png">\'></iframe>',
+      '<template><section><img src="icon.png"><code>[@example]</code></section></template>',
+    ]) {
+      const html = `<section data-slide-id="nested">${content}</section>`;
+      const before = checkDeck(html, { htmlPath: join(root, 'slides.html'), standalone: true });
+      assert.equal(before.ok, false, content);
+      assert.ok(before.diagnostics.every((item) => item.slideId === 'nested'));
+      const output = inlineStandaloneAssets(html, { markdownPath: join(root, 'slides.md') });
+      const after = checkDeck(output, { standalone: true });
+      assert.equal(after.ok, true, JSON.stringify(after.diagnostics));
+      assert.equal(after.slideCount, 1);
+    }
+    assert.throws(() => inlineStandaloneAssets('<svg><use href="data:image/svg+xml;base64,AA==#shape"></use></svg>'), /inline fragment IDs/u);
+    assert.doesNotThrow(() => inlineStandaloneAssets('<svg><rect id="shape" width="10" height="10"></rect><use href="#shape"></use></svg>'));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test('inlineStandaloneAssets requires trust before reading assets outside the input root', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-standalone-'));
 
