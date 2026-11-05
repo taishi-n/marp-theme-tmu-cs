@@ -360,6 +360,7 @@ Requirements and behavior:
 
 - `math: mathjax` must be enabled in front matter
 - `note` is required
+- `$...$` inside a note uses the deck's MathJax 4 renderer and TeX packages; note text is HTML-escaped
 - `color` is optional and accepts three- or six-digit hexadecimal colors, with or without `#`
 - the annotation must be placed at the end of the line it describes
 - the engine wraps the math block and injects a runtime that places note boxes and connectors

@@ -1,11 +1,5 @@
 import { escapeHtml } from '../../core/html.mjs';
 import { joinLines, splitLinesPreservingEOF } from '../../core/text-lines.mjs';
-import { liteAdaptor } from 'mathjax-full/js/adaptors/liteAdaptor.js';
-import { RegisterHTMLHandler } from 'mathjax-full/js/handlers/html.js';
-import { mathjax } from 'mathjax-full/js/mathjax.js';
-import { TeX } from 'mathjax-full/js/input/tex.js';
-import { AllPackages } from 'mathjax-full/js/input/tex/AllPackages.js';
-import { SVG } from 'mathjax-full/js/output/svg.js';
 
 const TAB10_COLORS = [
   '#1f77b4',
@@ -21,14 +15,6 @@ const TAB10_COLORS = [
 ];
 
 const MATH_ANNOTATE_DIRECTIVE = '!math-annotate';
-
-const mathAdaptor = liteAdaptor();
-RegisterHTMLHandler(mathAdaptor);
-
-const noteMathDocument = mathjax.document('', {
-  InputJax: new TeX({ packages: AllPackages }),
-  OutputJax: new SVG({ fontCache: 'none' }),
-});
 
 function stripTrailingWhitespace(line) {
   return String(line ?? '').replace(/[ \t]+$/u, '');
@@ -73,18 +59,17 @@ function parseInlineMathSegments(note) {
   return segments;
 }
 
-function renderInlineMathSvg(tex) {
-  const node = noteMathDocument.convert(String(tex ?? ''), { display: false });
-  const svg = mathAdaptor.firstChild(node);
-  const svgHtml = svg ? mathAdaptor.outerHTML(/** @type {any} */ (svg)) : mathAdaptor.outerHTML(node);
+function renderInlineMathSvg(tex, renderInlineMath) {
+  const rendered = renderInlineMath?.(tex) ?? escapeHtml(`$${tex}$`);
+  const svgHtml = rendered.match(/<svg\b[\s\S]*?<\/svg>/u)?.[0] ?? rendered;
   return `<span class="eqann-inline-math">${svgHtml}</span>`;
 }
 
-function renderAnnotationNoteHtml(note) {
+function renderAnnotationNoteHtml(note, renderInlineMath) {
   return parseInlineMathSegments(note)
     .map((segment) => {
       if (segment.type === 'math') {
-        return renderInlineMathSvg(segment.value);
+        return renderInlineMathSvg(segment.value, renderInlineMath);
       }
 
       return escapeHtml(segment.value.replace(/\\\$/g, '$'));
@@ -277,7 +262,6 @@ function buildAnnotatedLine(line, annotationId, options = {}) {
     annotation: {
       id: annotationId,
       note: directive.note,
-      noteHtml: renderAnnotationNoteHtml(directive.note),
       label: directive.label,
       color,
     },
@@ -855,7 +839,10 @@ export function renderAnnotatedMathBlock(renderedMathHtml, annotationData, optio
   const annotations = Array.isArray(annotationData?.annotations) ? annotationData.annotations : [];
   if (annotations.length === 0) return renderedMathHtml;
 
-  const annotationsJson = escapeJsonForHtml(annotations);
+  const annotationsJson = escapeJsonForHtml(annotations.map(annotation => ({
+    ...annotation,
+    noteHtml: renderAnnotationNoteHtml(annotation.note, options.renderInlineMath),
+  })));
   const runtimeScript = options.injectRuntime ? buildRuntimeScriptTag() : '';
 
   return (

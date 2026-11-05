@@ -29,6 +29,12 @@ export function installMathFeature(marp, options = {}) {
       return renderAnnotatedMathBlock(rendered, mathAnnotations, {
         injectRuntime: shouldInjectMathAnnotationRuntime,
         onWarning: createWarningLogger(token, logPrefix),
+        renderInlineMath: (content) => {
+          const inlineToken = new token.constructor('marp_math_inline', 'math', 0);
+          inlineToken.content = content;
+          inlineToken.markup = '$';
+          return self.rules.marp_math_inline([inlineToken], 0, renderOptions, env, self);
+        },
       });
     } finally {
       if (mathAnnotations.annotations.length > 0) shouldInjectMathAnnotationRuntime = false;

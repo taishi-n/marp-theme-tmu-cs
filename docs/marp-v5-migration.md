@@ -34,7 +34,7 @@ migration; those warnings are recorded separately from browser observations.
 | U2 | Explicit Core 5.0.2 and unified feature initialization | 102 tests pass; three static reports pass; 51 pages captured with no browser errors or external requests. 28 pages have pixel changes; element changes are limited to two math pages, the native Mermaid element, and two newly highlighted plain fences |
 | U3 | Delegate base Shiki rendering to Core | 104 tests pass; three static reports pass; no browser errors or external requests. 26 pages have pixel changes, mainly syntax colors; only two plain fences change their element rectangles |
 | U4 | Native Mermaid with Kroki fallback | 105 tests pass; three static reports pass; all 51 screenshots and element positions unchanged from U3; no browser errors or external requests |
-| U5 | MathJax 4 annotation notes | Pending |
+| U5 | MathJax 4 annotation notes | 106 tests pass; three static reports pass; all element positions unchanged. Only 24 pixels change on the annotation page; no browser errors, math errors, or external requests |
 | U6 | Package and consumer validation; documentation | Pending |
 
 U2–U5 are developed on `refactor/marp-core-v5`. The completed migration is
@@ -82,3 +82,17 @@ verify native success without a Kroki URL, an unsupported pie chart falling
 back with its original source, and the explicit `mermaid-kroki` escape hatch.
 Kroki source remains untouched by code wrapping. Recursive font embedding was
 completed in U2 because the full build already activates native Mermaid.
+
+### U5 observations
+
+Notes delegate inline math to the active Core math renderer after rendering
+the annotated equation. This shares MathJax 4's document, packages, and font
+handling instead of maintaining a second MathJax integration. Parsing remains
+independent of rendering. Tests cover note SVG, extended TeX commands, escaped
+HTML, and runtime injection once per render across repeated renders.
+
+Main-deck page 12 changes only the small inline math glyph inside a note; its
+four boxes and all other measured elements retain their rectangles. The direct
+MathJax 3 dependency is removed. CLI 4.5.1 still includes Core 4 / MathJax 3 in
+its own dependency chain; removing those transitive packages requires a future
+CLI update, not a consumer-ineffective dependency override.

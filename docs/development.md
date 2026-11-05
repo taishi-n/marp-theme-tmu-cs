@@ -149,7 +149,16 @@ npm audit --omit=dev
 
 As of 2026-08-18, the direct `js-yaml` advisories are resolved and safe transitive updates have been applied. Four high-severity findings remain only through `@marp-team/marp-cli -> puppeteer-core -> @puppeteer/browsers -> extract-zip`. The affected extractor is used while acquiring a browser archive, not while parsing a deck or resolving its authored assets. npm offers no compatible upgrade and incorrectly proposes downgrading Marp CLI to 2.4.0, so the project retains Marp CLI 4.4.0 and will update once its Puppeteer chain contains a fixed `extract-zip` release.
 
-The citation backend directly uses `@xmldom/xmldom` 0.9.11. `mathjax-full` 3.2.2 is retained because both the annotation implementation and Marp Core currently use the MathJax 3 module API. Its `speech-rule-engine` dependency still pins `@xmldom/xmldom` 0.9.10 and emits an upstream deprecation warning during a clean install. Do not hide this with a package-level npm override: dependency overrides are root-project policy and are not applied when this package is installed by a consumer. Revisit this constraint when Marp Core migrates away from `mathjax-full` 3.
+The citation backend directly uses `@xmldom/xmldom` 0.9.11. Main equations and
+math inside annotation notes share Core 5's MathJax 4 renderer. Annotation
+parsing no longer constructs a separate MathJax document or loads its own TeX
+package list. The direct `mathjax-full` dependency has been removed. CLI 4.5.1
+still brings Core 4.4.0 and `mathjax-full` 3.2.2 transitively; these remain
+installed even though this engine uses the explicit Core 5 dependency.
+Their `speech-rule-engine` chain still emits an upstream `@xmldom/xmldom`
+deprecation warning during a clean install. Do not hide this with a package
+override: dependency overrides are root-project policy and do not apply when
+this package is installed by a consumer.
 
 The regression sample deck is `examples/slides.md`. Build outputs are written to `examples/dist/`.
 

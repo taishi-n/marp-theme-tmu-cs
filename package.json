@@ -70,7 +70,6 @@
     "citeproc": "^2.4.63",
     "js-yaml": "^4.3.1",
     "katex": "0.18.4",
-    "mathjax-full": "^3.2.2",
     "parse5": "^8.0.1",
     "shiki": "4.0.2",
     "wavegram": "^0.2.1"
