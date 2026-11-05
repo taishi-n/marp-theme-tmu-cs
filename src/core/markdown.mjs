@@ -107,3 +107,34 @@ export function joinMarkdownSlides({ frontMatter = '', slides = [], hasTrailingN
   const joined = frontMatter === '' ? joinedSlides : `${frontMatter}\n${joinedSlides}`;
   return hasTrailingNewline ? `${joined}\n` : joined;
 }
+
+// Read opt-in authoring comments without consuming examples inside fences or notes.
+export function findStandaloneDirectives(markdown, name) {
+  const pattern = new RegExp(`^\\s*<!--\\s*${name}\\s*:\\s*(.*?)\\s*-->\\s*$`, 'u');
+  const found = [];
+  let fence = null;
+  let inComment = false;
+  String(markdown ?? '').split(/\r?\n/u).forEach((line, lineIndex) => {
+    if (fence) {
+      if (isFenceClose(line, fence)) fence = null;
+      return;
+    }
+    if (!inComment) {
+      fence = parseFenceStart(line);
+      if (fence) return;
+      const match = line.match(pattern);
+      if (match) {
+        found.push({ lineIndex, value: match[1].trim() });
+        return;
+      }
+    }
+    let cursor = 0;
+    while (cursor < line.length) {
+      const position = line.indexOf(inComment ? '-->' : '<!--', cursor);
+      if (position === -1) break;
+      cursor = position + (inComment ? 3 : 4);
+      inComment = !inComment;
+    }
+  });
+  return found;
+}

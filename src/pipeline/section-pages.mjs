@@ -1,6 +1,6 @@
 import { hasOwn, parseFrontMatter } from '../core/front-matter.mjs';
 import { parseMarkdownHeadings } from '../core/headings.mjs';
-import { isFenceClose, joinMarkdownSlides, parseFenceStart, splitMarkdownSlides } from '../core/markdown.mjs';
+import { findStandaloneDirectives, isFenceClose, joinMarkdownSlides, parseFenceStart, splitMarkdownSlides } from '../core/markdown.mjs';
 import { splitLinesPreservingEOF } from '../core/text-lines.mjs';
 import { isReferenceHeadingText } from '../features/citations/markdown-utils.mjs';
 
@@ -214,10 +214,7 @@ function collectSections(headingRecords, sectionLevel) {
 }
 
 function insertSectionPages(markdown, frontMatter) {
-  if (!hasOwn(frontMatter, 'sectionPages') || isFalseLike(frontMatter.sectionPages)) {
-    return markdown;
-  }
-
+  const enabledByDefault = hasOwn(frontMatter, 'sectionPages') && !isFalseLike(frontMatter.sectionPages);
   const sectionLevel = parsePositiveInteger(frontMatter.sectionPageLevel, 2);
   const { body, frontMatter: rawFrontMatter } = parseFrontMatter(markdown);
   const document = splitMarkdownSlides(body);
@@ -229,16 +226,27 @@ function insertSectionPages(markdown, frontMatter) {
       || slideHasClassMarker(slide.content, 'auxiliary-page')
     ) return [slide];
 
-    const headings = parseMarkdownHeadings(slide.content)
+    const sectionHeadings = parseMarkdownHeadings(slide.content)
       .filter((heading) => (
         heading.level === sectionLevel
         && heading.text !== ''
         && !isReferenceHeadingText(heading.text)
       ));
 
-    if (headings.length === 0) return [slide];
-
     const slideLines = slide.content.replace(/\r\n/g, '\n').split('\n');
+    const overrides = new Map();
+    for (const directive of findStandaloneDirectives(slide.content, 'section-page')) {
+      let headingLine = directive.lineIndex - 1;
+      while (headingLine >= 0 && slideLines[headingLine].trim() === '') headingLine -= 1;
+      if (!sectionHeadings.some((heading) => heading.lineIndex === headingLine) || !['true', 'false'].includes(directive.value)) {
+        throw new Error('[tmu-cs] section-page: true or false must follow a section heading.');
+      }
+      overrides.set(headingLine, directive.value === 'true');
+      slideLines[directive.lineIndex] = '';
+    }
+    const headings = sectionHeadings.filter((heading) => overrides.get(heading.lineIndex) ?? enabledByDefault);
+    if (headings.length === 0) return [{ ...slide, content: slideLines.join('\n') }];
+
     const producedSlides = [];
     let pendingLeadingLines = [];
     let cursor = 0;

@@ -158,6 +158,7 @@ mediaPlayback: sequential
 
 - `sectionPages`: insert auxiliary section pages automatically
 - `sectionPageLevel`: choose which heading level starts a section
+- `<!-- section-page: true -->` or `false` immediately after a section heading overrides `sectionPages` for that chapter
 - `tocPageMaxLevel`: choose how deep `<!-- toc -->` expands by default
 - `mediaPlayback: sequential`: use Left/Right and Marp's previous/next buttons for ordered media steps; Up/Down bypass media and retain normal Marp navigation
 - `<!-- toc -->`: expand a TOC slide at the default depth

@@ -5,6 +5,28 @@ import engine from '../engine.mjs';
 import applySectionPages from '../src/pipeline/section-pages.mjs';
 import decorateAuxiliarySlides from '../src/pipeline/slide-metadata.mjs';
 
+test('section pages can be enabled or disabled globally and overridden per chapter', () => {
+  for (const sectionPages of [true, false]) {
+    const markdown = ['---', `sectionPages: ${sectionPages}`, '---',
+      '## Inherited', '### Content', '---',
+      '## Included', '<!-- section-page: true -->', '### Content', '---',
+      '## Excluded', '<!-- section-page: false -->', '### Content'].join('\n');
+    const processed = applySectionPages(markdown);
+    const sectionTitles = [...processed.matchAll(/^# (.+?) <span class="tmu-cs-slide-class--section-page/guim)].map((match) => match[1]);
+    assert.deepEqual(sectionTitles, sectionPages ? ['Inherited', 'Included'] : ['Included']);
+    assert.doesNotMatch(processed, /<!-- section-page:/u);
+  }
+});
+
+test('section-page comments are validated without interpreting examples or speaker notes', () => {
+  const markdown = ['---', 'sectionPages: false', '---', '### Content',
+    '```md', '## Example', '<!-- section-page: true -->', '```',
+    '<!--', '## Note', '<!-- section-page: true -->', '-->'].join('\n');
+  assert.doesNotMatch(applySectionPages(markdown), /tmu-cs-slide-class--section-page/u);
+  assert.throws(() => applySectionPages('## Chapter\n<!-- section-page: maybe -->'), /section-page: true or false/);
+  assert.throws(() => applySectionPages('### Content\n<!-- section-page: true -->'), /must follow a section heading/);
+});
+
 test('applySectionPages inserts auxiliary section pages before section headings', () => {
   const markdown = [
     '---',
