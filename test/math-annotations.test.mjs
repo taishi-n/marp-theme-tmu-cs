@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { Script } from 'node:vm';
 import { collectMathAnnotations } from '../src/features/math/annotate-math-block.mjs';
 import engine from '../engine.mjs';
+import { attributes, findElements, parseFragment, textContent } from '../test-support/html.mjs';
 
 test('collectMathAnnotations recognizes !math-annotate directives', () => {
   const result = collectMathAnnotations(
@@ -43,6 +45,19 @@ $$`;
       assert.doesNotMatch(annotation.noteHtml, /data-mjx-error|data-mml-node="merror"/u);
     }
     assert.match(payloads[0][0].noteHtml, /&lt;img src=x&gt;/u);
-    assert.equal((html.match(/window\['__tmuCsMathAnnotationRuntimeLoaded'\] = true/gu) ?? []).length, 1);
+    const runtimes = findElements(parseFragment(html), node => node.tagName === 'section')
+      .flatMap(section => findElements(section, node => node.tagName === 'script' && attributes(node).type !== 'application/json'));
+    assert.equal(runtimes.length, 1, 'all annotation blocks share one runtime per deck');
+    const bindings = [];
+    const context = {
+      document: { readyState: 'loading', addEventListener: type => bindings.push(`document:${type}`) },
+      window: { addEventListener: type => bindings.push(`window:${type}`) },
+    };
+    const runtime = new Script(textContent(runtimes[0]));
+    runtime.runInNewContext(context);
+    runtime.runInNewContext(context);
+    for (const binding of ['document:DOMContentLoaded', 'window:load']) {
+      assert.equal(bindings.filter(value => value === binding).length, 1, 'reloading the runtime does not duplicate initialization');
+    }
   }
 });

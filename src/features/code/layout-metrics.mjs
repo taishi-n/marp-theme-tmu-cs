@@ -1,5 +1,4 @@
-// Keep these values in sync with the --tmu-cs-layout-* custom properties in
-// theme/tmu-cs.css. A contract test fails when either side changes alone.
+// Static geometry estimates for code wrapping and fit-height in the TMU-CS theme.
 export const codeLayoutMetrics = Object.freeze({
   bodyBlockGapPx: 28,
   bodyFontSizePx: 28,

@@ -28,7 +28,7 @@ test('CLI getter receives native emoji options before Core initialization', asyn
   assert.doesNotMatch(marp.render(source).html, /data-marp-twemoji/u);
 });
 
-test('PDF and PPTX retain Twemoji rendering', async () => {
+test('non-HTML output modes preserve the Core Twemoji renderer', async () => {
   const previous = process.env.TMU_CS_OUTPUT_FORMAT;
   try {
     for (const format of ['pdf', 'pptx']) {

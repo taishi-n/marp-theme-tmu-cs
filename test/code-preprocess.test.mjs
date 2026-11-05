@@ -1,22 +1,13 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { inflateSync } from 'node:zlib';
-import { parseFragment } from 'parse5';
 import { Marp } from '@marp-team/marp-core';
 import engine from '../engine.mjs';
 import { preprocessCodeMarkdown } from '../src/features/code/index.mjs';
-import { codeLayoutMetrics } from '../src/features/code/layout-metrics.mjs';
-
-function findElements(node, predicate) {
-  return [...(predicate(node) ? [node] : []), ...(node.childNodes ?? []).flatMap(child => findElements(child, predicate))];
-}
-
-function elementClasses(node) {
-  return (node.attrs?.find(attr => attr.name === 'class')?.value ?? '').split(/\s+/u);
-}
+import { attributes, elementClasses, findElements, parseFragment, textContent } from '../test-support/html.mjs';
 
 test('preprocessCodeMarkdown expands external code and step slides together', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-code-'));
@@ -37,7 +28,7 @@ test('preprocessCodeMarkdown expands external code and step slides together', as
       '',
     ].join('\n');
 
-  const processed = preprocessCodeMarkdown(markdown, {
+    const processed = preprocessCodeMarkdown(markdown, {
       markdownPath,
     });
 
@@ -133,7 +124,7 @@ test('preprocessCodeMarkdown expands step slides for sql line comments', () => {
   assert.match(processed, /-- \[!code info]/);
 });
 
-test('preprocessCodeMarkdown leaves unsupported languages unchanged', () => {
+test('step expansion preserves languages without supported line comments', () => {
   const markdown = [
     '```html',
     '<div></div> <!-- [!step 1 highlight] -->',
@@ -147,12 +138,21 @@ test('preprocessCodeMarkdown leaves unsupported languages unchanged', () => {
 });
 
 test('rendered external code preserves blank lines', async () => {
-  const marp = await engine({ marp: new Marp() });
-  const { html } = marp.render('[sample.cpp](cpp/sample.cpp)\n', {
-    file: { absolutePath: join(process.cwd(), 'examples', 'slides.md') },
-  });
-
-  assert.match(html, /<span class="line">\u200b<\/span>/);
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-code-blank-'));
+  try {
+    await writeFile(join(tempDir, 'sample.cpp'), 'int a = 1;\n\nint b = 2;\n');
+    const markdownPath = join(tempDir, 'slides.md');
+    const source = '[sample.cpp](./sample.cpp)\n';
+    await writeFile(markdownPath, source);
+    const marp = await engine();
+    const { html } = marp.render(source, {
+      file: { absolutePath: markdownPath },
+    });
+    const lines = findElements(parseFragment(html), node => elementClasses(node).includes('line'));
+    assert.deepEqual(lines.map(line => textContent(line).replace(/\u200b/gu, '')), ['int a = 1;', '', 'int b = 2;']);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
 });
 
 test('native line metadata survives external code, steps, and visual wrapping', async () => {
@@ -168,8 +168,12 @@ test('native line metadata survives external code, steps, and visual wrapping', 
     assert.equal(sections.length, 2);
     for (const [index, section] of sections.entries()) {
       const lines = findElements(section, node => elementClasses(node).includes('line'));
-      const highlighted = lines.filter(node => elementClasses(node).includes('highlighted'));
-      assert.ok(highlighted.length >= 2, 'all visual segments of logical line 2 are highlighted');
+      assert.equal(textContent(lines[0]), 'int first = 1;');
+      assert.ok(!elementClasses(lines[0]).includes('highlighted'));
+      const wrapped = lines.slice(1);
+      assert.ok(wrapped.length > 1, 'logical line 2 wraps into multiple visual segments');
+      assert.ok(wrapped.every(node => elementClasses(node).includes('highlighted')), 'every segment of logical line 2 is highlighted');
+      assert.equal(wrapped.map(textContent).join(''), `const char* text = "${'x'.repeat(160)}";`);
       assert.equal(lines.filter(node => elementClasses(node).includes('is-warning')).length, index);
     }
     assert.doesNotMatch(html, /\[!step|\[!code/u);
@@ -238,31 +242,26 @@ test('diagram source bypasses generic code wrapping in the integrated engine', a
   assert.equal(inflateSync(Buffer.from(encoded, 'base64url')).toString('utf8'), diagramSource);
 });
 
-test('fit-height uses wrapped visual lines and actual theme dimensions', async () => {
-  const marp = await engine({ marp: new Marp() });
-  const lines = Array.from({ length: 22 }, (_, index) => `line_${index} = ${'x'.repeat(90)}`).join('\n');
-  const { html } = marp.render(`# Heading\n\n\`\`\`cpp fit-height\n${lines}\n\`\`\`\n`);
-
-  assert.match(html, /class="tmu-code-fit-height"/);
-  const scale = Number(html.match(/--tmu-code-scale:([\d.]+)/u)?.[1]);
-  assert.ok(scale > 0 && scale < 1);
-});
-
-test('code layout metrics stay synchronized with theme custom properties', async () => {
-  const css = await readFile(join(process.cwd(), 'theme', 'tmu-cs.css'), 'utf8');
-  const expectedProperties = {
-    bodyBlockGapPx: '--tmu-cs-layout-body-block-gap',
-    bodyFontSizePx: '--tmu-cs-layout-body-font-size',
-    bodyLineHeightPx: '--tmu-cs-layout-body-line-height',
-    codeFontSizePx: '--tmu-cs-layout-code-font-size',
-    codeLineHeightPx: '--tmu-cs-layout-code-line-height',
-    codeMarginBottomPx: '--tmu-cs-layout-code-margin-bottom',
-    codePaddingXPx: '--tmu-cs-layout-code-padding-x',
-    codePaddingYPx: '--tmu-cs-layout-code-padding-y',
-    slideContentHeightPx: '--tmu-cs-layout-content-height',
-  };
-
-  for (const [metric, property] of Object.entries(expectedProperties)) {
-    assert.match(css, new RegExp(`${property}:\\s*${codeLayoutMetrics[metric]}px`, 'u'));
+test('fit-height shrinks with visual line count and remaining slide space', async () => {
+  const marp = await engine();
+  function renderCode(code, heading = '# Heading') {
+    const { html } = marp.render(`${heading}\n\n\`\`\`cpp fit-height\n${code}\n\`\`\`\n`);
+    const root = parseFragment(html);
+    const fit = findElements(root, node => elementClasses(node).includes('tmu-code-fit-height'))[0];
+    return {
+      lineCount: findElements(root, node => elementClasses(node).includes('line')).length,
+      scale: fit ? Number(attributes(fit).style.match(/--tmu-code-scale:([\d.]+)/u)?.[1]) : 1,
+    };
   }
+  const short = renderCode('int x = 1;');
+  const long = renderCode(Array(22).fill('int x = 1;').join('\n'));
+  const longer = renderCode(Array(44).fill('int x = 1;').join('\n'));
+  assert.equal(short.scale, 1, 'a short block retains its natural size');
+  assert.ok(longer.scale > 0 && longer.scale < long.scale && long.scale < short.scale);
+
+  const wrapped = renderCode(Array(22).fill(`const char* text = "${'x'.repeat(90)}";`).join('\n'));
+  assert.ok(wrapped.lineCount > long.lineCount);
+  const explicit = renderCode(Array(wrapped.lineCount).fill('int x = 1;').join('\n'));
+  assert.equal(wrapped.scale, explicit.scale, 'wrapped and explicit visual lines consume the same height');
+  assert.ok(renderCode(Array(22).fill('int x = 1;').join('\n'), '').scale > long.scale, 'headings reduce the space available to code');
 });

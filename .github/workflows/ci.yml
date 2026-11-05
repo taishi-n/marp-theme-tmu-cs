@@ -24,4 +24,3 @@ jobs:
       - run: npm run check
       - run: npm run build:html
       - run: npm run build:html:standalone:ci
-      - run: npm pack --dry-run

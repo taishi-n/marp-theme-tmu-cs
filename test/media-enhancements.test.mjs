@@ -4,46 +4,68 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
-import { parseFragment } from 'parse5';
 import enhanceAnimatedImages from '../src/pipeline/animated-images.mjs';
 import { linkAudioDownload } from '../src/pipeline/audio-download.mjs';
+import { attributes, elementClasses, findElements, parseFragment, textContent } from '../test-support/html.mjs';
 
 function firstAttributes(html, tagName) {
-  function find(node) {
-    if (node.tagName === tagName) return Object.fromEntries(node.attrs.map(({ name, value }) => [name, value]));
-    for (const child of node.childNodes || []) {
-      const attributes = find(child);
-      if (attributes) return attributes;
-    }
-    return null;
-  }
-  return find(parseFragment(html));
+  return attributes(findElements(parseFragment(html), node => node.tagName === tagName)[0]);
 }
 
-function createSequentialPlaybackHarness(runtime) {
+const sequentialMedia = '<section data-media-playback="sequential"><p id="caption">Media</p><audio id="first" controls src="./one.wav"></audio><video id="second" controls src="./two.mp4"></video></section>';
+
+function createMediaHarness(output = enhanceAnimatedImages(sequentialMedia), { active = true } = {}) {
   const events = [];
   const listeners = new Map();
+  const observers = [];
+  const registrations = new Map();
 
   class FakeElement {
-    constructor(name) {
-      this.classList = { contains: () => false };
+    constructor(node, parent = null) {
+      this.tagName = node.tagName;
+      this.attributes = attributes(node);
+      this.parentElement = parent;
+      this.children = (node.childNodes ?? []).filter(child => child.tagName).map(child => new FakeElement(child, this));
+      this.classList = {
+        contains: name => (this.attributes.class ?? '').split(/\s+/u).includes(name),
+        add: name => { this.attributes.class = `${this.attributes.class ?? ''} ${name}`; },
+      };
       this.currentTime = 0;
-      this.dataset = {};
-      this.name = name;
+      this.dataset = Object.fromEntries(Object.entries(this.attributes).filter(([name]) => name.startsWith('data-'))
+        .map(([name, value]) => [name.slice(5).replace(/-([a-z])/gu, (_, letter) => letter.toUpperCase()), value]));
+      this.name = this.attributes.id ?? this.tagName;
       this.paused = true;
+      this.disabled = this.hasAttribute('disabled');
     }
 
-    closest() {
+    closest(selector) {
+      for (let node = this; node; node = node.parentElement) if (node.matches(selector)) return node;
       return null;
     }
 
-    hasAttribute() {
-      return false;
+    getAttribute(name) { return this.attributes[name] ?? null; }
+    hasAttribute(name) { return name in this.attributes; }
+    setAttribute(name, value) { this.attributes[name] = value; }
+    removeAttribute(name) { delete this.attributes[name]; }
+    get src() { return this.attributes.src ?? ''; }
+    blur() {}
+    addEventListener(type, listener) { listeners.set(`${this.name}:${type}`, listener); }
+
+    matches(selector) {
+      return selector.split(',').some(part => {
+        const match = part.trim().match(/^([a-z][a-z\d-]*)?((?:\.[\w-]+)*)(?:\[([\w-]+)(?:="([^"]*)")?\])?$/iu);
+        assert.ok(match, `Unsupported fixture selector: ${part}`);
+        const [, tag, classes, attribute, value] = match;
+        return (!tag || tag === this.tagName) &&
+          classes.split('.').filter(Boolean).every(name => this.classList.contains(name)) &&
+          (!attribute || (this.hasAttribute(attribute) && (value === undefined || this.getAttribute(attribute) === value)));
+      });
     }
 
-    matches() {
-      return false;
+    querySelectorAll(selector) {
+      return this.children.flatMap(child => [...(child.matches(selector) ? [child] : []), ...child.querySelectorAll(selector)]);
     }
+    querySelector(selector) { return this.querySelectorAll(selector)[0] ?? null; }
 
     pause() {
       events.push(`pause:${this.name}`);
@@ -57,21 +79,17 @@ function createSequentialPlaybackHarness(runtime) {
     }
   }
 
-  const steps = [new FakeElement('first'), new FakeElement('second')];
-  const section = {
-    querySelectorAll: () => steps,
-  };
-  const activeSlide = {
-    querySelector: () => section,
-  };
+  const root = new FakeElement(parseFragment(`<div class="marpit"><div class="bespoke-marp-slide${active ? ' bespoke-marp-active' : ''}">${output}</div></div>
+    <button data-bespoke-marp-osc="next" disabled><span class="next-icon">Next</span></button>`));
+  const runtime = findElements(parseFragment(output), node => node.tagName === 'script').map(textContent).join('\n');
+  assert.ok(runtime);
   const document = {
     addEventListener: (type, listener) => listeners.set(type, listener),
+    createElement: tagName => new FakeElement({ tagName }),
     body: { dataset: {} },
-    documentElement: {},
-    querySelector: (selector) => (
-      selector === '.bespoke-marp-slide.bespoke-marp-active' ? activeSlide : null
-    ),
-    querySelectorAll: () => [],
+    documentElement: root,
+    querySelector: selector => root.querySelector(selector),
+    querySelectorAll: selector => root.querySelectorAll(selector),
   };
   const window = {
     addEventListener: () => {},
@@ -80,7 +98,13 @@ function createSequentialPlaybackHarness(runtime) {
   runInNewContext(runtime, {
     document,
     Element: FakeElement,
+    HTMLElement: class {},
+    customElements: {
+      get: name => registrations.get(name),
+      define: (name, component) => registrations.set(name, component),
+    },
     MutationObserver: class {
+      constructor(callback) { observers.push(callback); }
       observe() {}
     },
     setTimeout: (callback) => callback(),
@@ -88,14 +112,12 @@ function createSequentialPlaybackHarness(runtime) {
   });
 
   events.length = 0;
-  const target = new FakeElement('target');
-  const pressKey = (key) => {
+  const dispatch = (type, details) => {
     let defaultPrevented = false;
     let propagationStopped = false;
-    listeners.get('keydown')({
+    listeners.get(type)({
       altKey: false,
       ctrlKey: false,
-      key,
       metaKey: false,
       preventDefault: () => {
         defaultPrevented = true;
@@ -105,33 +127,55 @@ function createSequentialPlaybackHarness(runtime) {
       stopImmediatePropagation: () => {
         propagationStopped = true;
       },
-      target,
+      target: root.querySelector('p'),
+      ...details,
     });
     return { defaultPrevented, propagationStopped };
   };
 
-  return { events, pressKey, steps };
+  return {
+    events, registrations,
+    pressKey: key => dispatch('keydown', { key }),
+    clickNext: () => dispatch('click', { target: root.querySelector('.next-icon') }),
+    nextButton: root.querySelector('[data-bespoke-marp-osc="next"]'),
+    steps: root.querySelectorAll('audio,video'),
+    querySelector: selector => root.querySelector(selector),
+    activate: () => {
+      const slide = root.querySelector('.bespoke-marp-slide');
+      slide.classList.add('bespoke-marp-active');
+      for (const observe of observers) observe([{ target: slide, attributeName: 'class' }]);
+    },
+  };
 }
 
 test('enhanceAnimatedImages emits spectrogram markup and a self-contained wavegram runtime', () => {
   const html = '<section><p><audio class="demo wavesurfer-spectrogram" controls src="./tone.wav" data-spectrogram-height="120" data-spectrogram-fft-samples="2048"></audio></p></section>';
   const output = enhanceAnimatedImages(html);
 
-  assert.match(output, /<div class="tmu-cs-spectrogram-player" data-wavegram-spectrogram-player>/);
-  assert.deepEqual(firstAttributes(output, 'audio'), {
+  const root = parseFragment(output);
+  const player = findElements(root, node => elementClasses(node).includes('tmu-cs-spectrogram-player'))[0];
+  assert.ok('data-wavegram-spectrogram-player' in attributes(player));
+  const audio = firstAttributes(output, 'audio');
+  for (const [name, value] of Object.entries({
     class: 'demo wavesurfer-spectrogram', src: './tone.wav',
     'data-spectrogram-height': '120', 'data-spectrogram-fft-samples': '2048', preload: 'none',
-  });
-  assert.doesNotMatch(output, /<audio[^>]*controls/);
-  assert.deepEqual(firstAttributes(output, 'wavegram-player'), {
+  })) assert.equal(audio[name], value);
+  assert.equal(audio.controls, undefined);
+  const wavegram = firstAttributes(output, 'wavegram-player');
+  for (const [name, value] of Object.entries({
     'data-wavegram-player': '', rendering: 'suspended', 'color-map': 'magma',
     'spectrogram-height': '120', 'fft-size': '2048',
-  });
-  assert.match(output, /customElements\.define\("wavegram-player"/);
-  assert.match(output, /const sourceUrl = resolveAudioSource\(audio\)/);
-  assert.match(output, /wavegram\.setAttribute\('src', sourceUrl\)/);
-  assert.match(output, /\(function \(Worker\)/);
-  assert.doesNotMatch(output, /<p>\s*<div class="tmu-cs-spectrogram-player"/);
+  })) assert.equal(wavegram[name], value);
+  assert.equal(wavegram.src, undefined);
+  assert.notEqual(player.parentNode.tagName, 'p');
+
+  const harness = createMediaHarness(output, { active: false });
+  assert.equal(typeof harness.registrations.get('wavegram-player'), 'function');
+  const component = harness.querySelector('wavegram-player');
+  assert.equal(component.getAttribute('src'), null, 'hidden slides defer audio loading');
+  harness.activate();
+  assert.equal(component.getAttribute('src'), audio.src, 'activation loads the authored audio source');
+  assert.equal(component.getAttribute('rendering'), 'active');
 });
 
 test('enhanceAnimatedImages leaves plain audio unchanged', () => {
@@ -162,66 +206,35 @@ test('audio rows label and download the original embedded source without a secon
   }
 });
 
-test('enhanceAnimatedImages injects a valid sequential navigation runtime for marked media', () => {
-  const html = [
-    '<section data-media-playback="sequential">',
-    '<audio controls src="./one.wav"></audio>',
-    '<video controls src="./two.mp4"></video>',
-    '</section>',
-  ].join('');
-  const output = enhanceAnimatedImages(html);
-  const runtime = output.match(/<script>([\s\S]*)<\/script>$/u)?.[1];
+test('sequential keys and next buttons select media in order and pause the previous item', () => {
+  for (const control of ['key', 'button']) {
+    const { events, pressKey, clickNext, nextButton, steps } = createMediaHarness();
+    const advance = control === 'key' ? () => pressKey('ArrowRight') : clickNext;
+    assert.equal(nextButton.disabled, false, 'media steps enable next even at the end of a deck');
 
-  assert.ok(runtime);
-  assert.match(runtime, /function playNextStep\(section\)/u);
-  assert.match(runtime, /pausePlayingSteps\(section\);[\s\S]*playStep\(steps\[position\]\);/u);
-  assert.match(runtime, /event\.key === 'ArrowRight'/u);
-  assert.match(runtime, /data-bespoke-marp-osc="next"/u);
-  assert.match(runtime, /'audio',[\s\S]*'video'/u);
-  assert.doesNotThrow(() => Function(runtime));
-});
+    steps[1].play();
+    events.length = 0;
+    assert.deepEqual(advance(), { defaultPrevented: true, propagationStopped: true });
+    assert.deepEqual(events, ['pause:second', 'play:first']);
 
-test('sequential navigation pauses current media before playing the next step', () => {
-  const html = [
-    '<section data-media-playback="sequential">',
-    '<audio controls src="./one.wav"></audio>',
-    '<video controls src="./two.mp4"></video>',
-    '</section>',
-  ].join('');
-  const output = enhanceAnimatedImages(html);
-  const runtime = output.match(/<script>([\s\S]*)<\/script>$/u)?.[1];
+    steps[0].currentTime = 4;
+    events.length = 0;
+    assert.deepEqual(advance(), { defaultPrevented: true, propagationStopped: true });
+    assert.deepEqual(events, ['pause:first', 'play:second']);
+    assert.equal(steps[0].paused, true);
+    assert.equal(steps[0].currentTime, 4);
+    assert.equal(steps[1].paused, false);
+    assert.equal(nextButton.disabled, true, 'the original button state is restored after the final step');
 
-  assert.ok(runtime);
-  const { events, pressKey, steps } = createSequentialPlaybackHarness(runtime);
-
-  steps[1].play();
-  events.length = 0;
-  pressKey('ArrowRight');
-  assert.deepEqual(events, ['pause:second', 'play:first']);
-
-  steps[0].currentTime = 4;
-  events.length = 0;
-  pressKey('ArrowRight');
-
-  assert.deepEqual(events, ['pause:first', 'play:second']);
-  assert.equal(steps[0].paused, true);
-  assert.equal(steps[0].currentTime, 4);
-  assert.equal(steps[1].paused, false);
+    events.length = 0;
+    assert.deepEqual(advance(), { defaultPrevented: false, propagationStopped: false });
+    assert.deepEqual(events, [], 'navigation proceeds after all media steps');
+  }
 });
 
 test('vertical arrows bypass sequential media playback', () => {
-  const html = [
-    '<section data-media-playback="sequential">',
-    '<audio controls src="./one.wav"></audio>',
-    '<video controls src="./two.mp4"></video>',
-    '</section>',
-  ].join('');
-  const output = enhanceAnimatedImages(html);
-  const runtime = output.match(/<script>([\s\S]*)<\/script>$/u)?.[1];
-
-  assert.ok(runtime);
   for (const key of ['ArrowDown', 'ArrowUp']) {
-    const { events, pressKey, steps } = createSequentialPlaybackHarness(runtime);
+    const { events, pressKey, steps } = createMediaHarness();
     const eventState = pressKey(key);
 
     assert.deepEqual(events, []);
@@ -271,10 +284,22 @@ test('enhanceAnimatedImages preserves GIF identity and accessibility attributes'
   const html = '<section><img id="demo-gif" class="demo" src="./demo.gif" alt="Demo animation" title="Demo" data-kind="result" aria-describedby="caption"></section>';
   const output = enhanceAnimatedImages(html);
 
-  assert.match(output, /<span id="demo-gif" title="Demo" data-kind="result" aria-describedby="caption" class="tmu-cs-gif-player demo"/);
-  assert.match(output, /role="group" aria-label="Demo animation"/);
-  assert.match(output, /<button type="button" class="tmu-cs-gif-play-button" aria-label="Play animation">/);
-  assert.match(output, /<template data-gif-image-template><img class="demo" alt="Demo animation" title="Demo" data-kind="result" aria-describedby="caption"><\/template>/);
+  const root = parseFragment(output);
+  const player = findElements(root, node => elementClasses(node).includes('tmu-cs-gif-player'))[0];
+  const identity = { title: 'Demo', 'data-kind': 'result', 'aria-describedby': 'caption' };
+  for (const [name, value] of Object.entries({ ...identity, id: 'demo-gif', role: 'group', 'aria-label': 'Demo animation' })) {
+    assert.equal(attributes(player)[name], value);
+  }
+  assert.ok(elementClasses(player).includes('demo'));
+  const buttonNode = findElements(player, node => node.tagName === 'button')[0];
+  assert.ok(elementClasses(buttonNode).includes('tmu-cs-gif-play-button'));
+  const button = attributes(buttonNode);
+  assert.equal(button.type, 'button');
+  assert.equal(button['aria-label'], 'Play animation');
+  const template = findElements(player, node => node.tagName === 'template' && 'data-gif-image-template' in attributes(node))[0];
+  const image = findElements(template, node => node.tagName === 'img')[0];
+  for (const [name, value] of Object.entries({ ...identity, alt: 'Demo animation' })) assert.equal(attributes(image)[name], value);
+  assert.ok(elementClasses(image).includes('demo'));
 });
 
 test('enhanceAnimatedImages does not substitute a same-basename audio file', async () => {

@@ -4,6 +4,7 @@ import { inflateSync } from 'node:zlib';
 import engine from '../engine.mjs';
 import { installDiagramFeature } from '../src/features/diagrams/index.mjs';
 import { createKrokiBackend } from '../src/features/diagrams/kroki-backend.mjs';
+import { attributes, findElements, parseFragment } from '../test-support/html.mjs';
 
 function createMockMarp(defaultFence = (tokens, idx) => `<pre>${tokens[idx].content}</pre>`) {
   return {
@@ -34,9 +35,14 @@ test('the diagram fence adapter provides the Kroki Mermaid fallback', () => {
   }];
   const html = marp.markdown.renderer.rules.fence(tokens, 0);
 
-  assert.match(html, /^<p><marp-auto-scaling data-downscale-only><img src="https:\/\/kroki\.io\/mermaid\/svg\//);
-  assert.match(html, /alt="mermaid diagram"/);
-  assert.match(html, /marp-auto-scaling/);
+  const scaling = findElements(parseFragment(html), node => node.tagName === 'marp-auto-scaling')[0];
+  assert.ok(scaling);
+  assert.ok('data-downscale-only' in attributes(scaling));
+  const image = findElements(scaling, node => node.tagName === 'img')[0];
+  assert.equal(attributes(image).alt, 'mermaid diagram');
+  const source = new URL(attributes(image).src);
+  assert.equal(source.origin, 'https://kroki.io');
+  assert.match(source.pathname, /^\/mermaid\/svg\//u);
 });
 
 test('integrated Mermaid prefers native SVG and preserves source in Kroki fallbacks', async (t) => {

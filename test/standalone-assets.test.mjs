@@ -3,7 +3,9 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { DOMParser } from '@xmldom/xmldom';
 import inlineStandaloneAssets from '../src/pipeline/standalone-assets.mjs';
+import { attributes, findElements, parseFragment, textContent } from '../test-support/html.mjs';
 
 test('inlineStandaloneAssets inlines local media and local iframe HTML', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-standalone-'));
@@ -37,12 +39,23 @@ test('inlineStandaloneAssets inlines local media and local iframe HTML', async (
       outputPath: markdownPath,
     });
 
-    assert.match(output, /<img src="data:image\/png;base64,[^"]+"/);
-    assert.match(output, /<audio controls="" src="data:audio\/wav;base64,[^"]+"><\/audio>/);
-    assert.match(output, /<iframe class="demo-frame" title="Demo" srcdoc="/);
-    assert.match(output, /window\.__demoLoaded = true;/);
-    assert.match(output, /data:image\/png;base64/);
-    assert.ok(!output.includes('src="./demo.html"'));
+    const root = parseFragment(output);
+    const image = attributes(findElements(root, node => node.tagName === 'img')[0]);
+    const audio = attributes(findElements(root, node => node.tagName === 'audio')[0]);
+    assert.equal(image.alt, 'image');
+    assert.equal(image.src, `data:image/png;base64,${Buffer.from('png-data').toString('base64')}`);
+    assert.equal(audio.src, `data:audio/wav;base64,${Buffer.from('wav-data').toString('base64')}`);
+    assert.ok('controls' in audio);
+    const iframe = attributes(findElements(root, node => node.tagName === 'iframe')[0]);
+    assert.equal(iframe.class, 'demo-frame');
+    assert.equal(iframe.title, 'Demo');
+    assert.equal(iframe.src, undefined);
+    const embedded = parseFragment(iframe.srcdoc);
+    assert.equal(attributes(findElements(embedded, node => node.tagName === 'img')[0]).src, image.src);
+    const scripts = findElements(embedded, node => node.tagName === 'script');
+    assert.equal(scripts.length, 1);
+    assert.equal(attributes(scripts[0]).src, undefined);
+    assert.match(textContent(scripts[0]), /window\.__demoLoaded = true;/u);
   } finally {
     await rm(tempDir, { force: true, recursive: true });
   }
@@ -134,30 +147,39 @@ test('inlineStandaloneAssets inlines Kroki SVG images for standalone output', as
       },
     });
 
-    assert.match(output, /<img src="data:image\/svg\+xml;base64,[^"]+" alt="diagram">/);
-    assert.doesNotMatch(output, /https:\/\/kroki\.io\/mermaid\/svg\/example/);
-    const encoded = output.match(/data:image\/svg\+xml;base64,([^"]+)/u)[1];
-    const svg = Buffer.from(encoded, 'base64').toString();
-    assert.match(svg, /width="480"/u);
-    assert.match(svg, /height="240"/u);
-    assert.match(svg, /<path d="M0 0L480 240"/u);
+    function embeddedSvg(html) {
+      const image = attributes(findElements(parseFragment(html), node => node.tagName === 'img')[0]);
+      assert.equal(image.alt, 'diagram');
+      assert.match(image.src, /^data:image\/svg\+xml;base64,/u);
+      const xml = Buffer.from(image.src.split(',')[1], 'base64').toString();
+      const document = new DOMParser({ onError: (level, message) => { throw new Error(`${level}: ${message}`); } })
+        .parseFromString(xml, 'image/svg+xml');
+      const svg = document.documentElement;
+      assert.equal(svg.localName, 'svg');
+      assert.equal(svg.namespaceURI, 'http://www.w3.org/2000/svg');
+      assert.equal(svg.getAttribute('viewBox'), '0 0 480 240');
+      return svg;
+    }
+    const svg = embeddedSvg(output);
+    assert.equal(svg.getAttribute('width'), '480');
+    assert.equal(svg.getAttribute('height'), '240');
+    assert.equal(svg.getElementsByTagName('path').item(0).getAttribute('d'), 'M0 0L480 240');
 
-    for (const [dimensions, expectedWidth, expectedHeight] of [
-      ['width="100%" height="100"', 200, 100],
-      ['width="600" height="300"', 600, 300],
-      ['width="360pt" height="180pt"', '360pt', '180pt'],
+    for (const [dimensions, expectedWidth, expectedHeight, closing] of [
+      ['width="100%" height="100"', '200', '100', '/>'],
+      ['width="600" height="300"', '600', '300', '></svg>'],
+      ['width="360pt" height="180pt"', '360pt', '180pt', '/>'],
     ]) {
       const embedded = inlineStandaloneAssets(html, {
         markdownPath,
         fetchRemoteAsset: () => ({
-          buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" ${dimensions} viewBox="0 0 480 240"/>`),
+          buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" ${dimensions} viewBox="0 0 480 240"${closing}`),
           mimeType: 'image/svg+xml',
         }),
       });
-      const xml = Buffer.from(embedded.match(/data:image\/svg\+xml;base64,([^"]+)/u)[1], 'base64').toString();
-      assert.ok(xml.includes(`width="${expectedWidth}"`));
-      assert.ok(xml.includes(`height="${expectedHeight}"`));
-      assert.ok(xml.endsWith('/>'));
+      const svg = embeddedSvg(embedded);
+      assert.equal(svg.getAttribute('width'), expectedWidth);
+      assert.equal(svg.getAttribute('height'), expectedHeight);
     }
   } finally {
     await rm(tempDir, { force: true, recursive: true });

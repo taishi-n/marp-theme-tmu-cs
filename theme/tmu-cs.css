@@ -49,15 +49,6 @@
   --tmu-cs-footer-top-padding: 0.18rem;
   --tmu-cs-footer-band-height: 1.9rem;
   --tmu-cs-code-font-family: "TMU CS Code", "Noto Sans Mono ExtraCondensed", monospace;
-  --tmu-cs-layout-body-font-size: 28px;
-  --tmu-cs-layout-body-line-height: 37.8px;
-  --tmu-cs-layout-body-block-gap: 28px;
-  --tmu-cs-layout-code-font-size: 23.8px;
-  --tmu-cs-layout-code-line-height: 23.8px;
-  --tmu-cs-layout-code-padding-x: 56px;
-  --tmu-cs-layout-code-padding-y: 56px;
-  --tmu-cs-layout-code-margin-bottom: 16px;
-  --tmu-cs-layout-content-height: 550px;
 }
 
 section {

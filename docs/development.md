@@ -188,6 +188,19 @@ Use the user's direct review for layout, clipping, and media playback.
 
 The repository includes a lightweight `node:test` suite for preprocessing and public-surface regressions, plus sample-driven build checks.
 
+Permanent tests should protect a continuing behavior with a concrete failure
+mode and an expectation derived from the public contract, a reference value,
+or an invariant. Prefer relationships between authored input and rendered
+output, and exercise runtime behavior when testing event handling. Parse HTML,
+XML, and YAML when their structure or values matter; attribute order and
+equivalent serialization forms are incidental.
+
+Use diff review and scoped searches for one-time edit verification. When
+merging or removing a test, identify where its continuing contract remains
+covered. Checks at multiple layers should detect distinct failures. Public API
+tests resolve package imports and inspect an npm tarball containing the
+documented assets and CLI targets.
+
 Use these checks based on the change:
 
 - CSS or layout changes: run `npm run build:html` and the relevant static checks; the user reviews the rendered sample

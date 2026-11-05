@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Marp } from '@marp-team/marp-core';
+import { load } from 'js-yaml';
 import engine from '../engine.mjs';
+import { splitMarkdownSlides } from '../src/core/markdown.mjs';
 import applySectionPages from '../src/pipeline/section-pages.mjs';
 import decorateAuxiliarySlides from '../src/pipeline/slide-metadata.mjs';
+import { attributes, elementClasses, findElements, parseFragment, textContent } from '../test-support/html.mjs';
 
 test('section pages can be enabled or disabled globally and overridden per chapter', () => {
   for (const sectionPages of [true, false]) {
@@ -193,8 +196,9 @@ test('applySectionPages excludes fit headings from toc output', () => {
 
   const processed = applySectionPages(markdown);
 
-  assert.doesNotMatch(processed, /\[<!--fit--> Huge<br \/>Words\]\(#hugewords\)/);
-  assert.match(processed, /- \[Normal heading\]\(#tmu-cs-toc-\d+\)/);
+  const { html } = new Marp().render(processed);
+  const entries = findElements(parseFragment(html), node => node.tagName === 'a');
+  assert.deepEqual(entries.map(textContent), ['Normal heading']);
 });
 
 test('applySectionPages ignores inline toc syntax examples in prose and tables', () => {
@@ -235,27 +239,6 @@ test('applySectionPages ignores inline toc syntax examples in prose and tables',
   assert.doesNotMatch(processed, /<span class="tmu-cs-slide-class--toc-page tmu-cs-slide-class--auxiliary-page"><\/span>/);
 });
 
-test('applySectionPages assigns distinct target references to repeated headings', () => {
-  const markdown = [
-    '# Agenda',
-    '',
-    '<!-- toc -->',
-    '',
-    '---',
-    '',
-    '## Duplicate',
-    '',
-    '---',
-    '',
-    '## Duplicate',
-    '',
-  ].join('\n');
-
-  const processed = applySectionPages(markdown);
-
-  assert.match(processed, /- \[Duplicate\]\(#tmu-cs-toc-\d+\)\n- \[Duplicate\]\(#tmu-cs-toc-\d+\)/);
-});
-
 test('applySectionPages preserves front matter directives such as theme', () => {
   const markdown = [
     '---',
@@ -273,7 +256,10 @@ test('applySectionPages preserves front matter directives such as theme', () => 
 
   const processed = applySectionPages(markdown);
 
-  assert.match(processed, /^---\nmarp: true\ntheme: tmu-cs\nsectionPages: true\nsectionPageLevel: 2\n---/);
+  const { frontMatter } = splitMarkdownSlides(processed);
+  assert.deepEqual(load(frontMatter.split('\n').slice(1, -1).join('\n')), {
+    marp: true, theme: 'tmu-cs', sectionPages: true, sectionPageLevel: 2,
+  });
 });
 
 test('engine excludes auxiliary pages and respects authored pagination directives', async () => {
@@ -330,19 +316,46 @@ test('decorateAuxiliarySlides preserves nested section elements inside slides', 
 
 test('TOC links use rendered heading IDs across title collisions, code steps and Unicode', async () => {
   const marp = await engine({ marp: new Marp() });
+  const destinations = [
+    { sourceId: 'chapter-a', heading: '## Duplicate', label: 'Duplicate' },
+    { sourceId: 'inline-code', heading: '### `foo_bar`', label: 'foo_bar' },
+    { sourceId: 'unicode', heading: '### 日本語', label: '日本語' },
+    { sourceId: 'numeric', heading: '### 1', label: '1' },
+    { sourceId: 'step-a', heading: '### Step', label: 'Step', code: '```js\nlet x = 1; // [!step 1 highlight]\n```' },
+    { sourceId: 'step-b', heading: '### Step', label: 'Step' },
+    { sourceId: 'chapter-b', heading: '## Duplicate', label: 'Duplicate' },
+  ];
   const source = [
     '---', 'title: Duplicate', 'sectionPages: true', '---',
     '# Agenda', '<!-- toc level=3 -->', '---',
-    '## Duplicate', '---', '### `foo_bar`', '---',
-    '### 日本語', '---', '### 1', '---',
-    '### Step', '```js', 'let x = 1; // [!step 1 highlight]', '```', '---',
-    '### Step', '---', '# Another agenda', '<!-- toc level=3 -->',
+    '# Another agenda', '<!-- toc level=3 -->', '---',
+    ...destinations.flatMap(({ sourceId, heading, code = '' }, index) => [
+      ...(index === 0 ? [] : ['---']), `<!-- slide-id: ${sourceId} -->`, heading, code,
+    ]),
   ].join('\n');
   const { html } = marp.render(source);
-  const ids = [...html.matchAll(/<h[1-6]\b[^>]*\bid="([^"]+)"/gu)].map((match) => match[1]);
-  const links = [...html.matchAll(/<a href="#([^"]+)">/gu)].map((match) => match[1]);
-  assert.deepEqual(links.slice(0, 6), ['duplicate-1', 'foo_bar', encodeURI('日本語'), '1-1', 'step', 'step-2']);
-  for (const link of links) assert.ok(ids.includes(link), `Missing heading for ${link}`);
+  const root = parseFragment(html);
+  const sections = findElements(root, node => node.tagName === 'section');
+  const slides = marp.tmuCsSlides.slides;
+  const firstSection = sourceId => {
+    const index = slides.findIndex(slide => slide.sourceId === sourceId);
+    assert.ok(index >= 0, `Missing source slide ${sourceId}`);
+    return sections[index];
+  };
+  const expected = destinations.map(({ sourceId, label }) => {
+    const heading = findElements(firstSection(sourceId), node => /^h[1-6]$/u.test(node.tagName))[0];
+    assert.equal(textContent(heading).trim(), label);
+    const id = attributes(heading).id;
+    assert.ok(id);
+    return { label, href: `#${id}` };
+  });
+  const agendas = sections.filter(section => elementClasses(section).includes('toc-page'));
+  assert.equal(agendas.length, 2);
+  for (const agenda of agendas) {
+    const links = findElements(agenda, node => node.tagName === 'a');
+    assert.deepEqual(links.map(link => ({ label: textContent(link), href: attributes(link).href })), expected);
+  }
+  const ids = findElements(root, node => /^h[1-6]$/u.test(node.tagName)).map(node => attributes(node).id);
   assert.equal(new Set(ids).size, ids.length);
   assert.doesNotMatch(html, /data-tmu-cs-heading|tmu-cs-toc-|tmu-cs-slide-class--/u);
   assert.equal(marp.render(source).html, html);
