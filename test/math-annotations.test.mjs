@@ -34,8 +34,11 @@ $$`;
     const payloads = [...html.matchAll(/<script type="application\/json" class="eqann-data">([\s\S]*?)<\/script>/gu)]
       .map(match => JSON.parse(match[1]));
     assert.equal(payloads.length, 2);
+    assert.equal(payloads[0][0].note, String.raw`Map $\mathbb{R} \to \mathbb{R}$ <img src=x>`);
+    assert.match(payloads[0][0].noteHtml, /data-c="2192"/u);
     for (const [annotation] of payloads) {
-      assert.match(annotation.noteHtml, /class="eqann-inline-math"><svg/u);
+      assert.match(annotation.noteHtml, /class="eqann-inline-math"><mjx-container/u);
+      assert.match(annotation.noteHtml, /<svg\b/u);
       assert.match(annotation.noteHtml, /<path\b/u);
       assert.doesNotMatch(annotation.noteHtml, /data-mjx-error|data-mml-node="merror"/u);
     }

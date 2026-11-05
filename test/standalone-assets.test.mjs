@@ -128,7 +128,7 @@ test('inlineStandaloneAssets inlines Kroki SVG images for standalone output', as
       fetchRemoteAsset: (reference) => {
         assert.equal(reference, 'https://kroki.io/mermaid/svg/example');
         return {
-          buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
+          buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 480 240"><path d="M0 0L480 240"/></svg>'),
           mimeType: 'image/svg+xml',
         };
       },
@@ -136,6 +136,29 @@ test('inlineStandaloneAssets inlines Kroki SVG images for standalone output', as
 
     assert.match(output, /<img src="data:image\/svg\+xml;base64,[^"]+" alt="diagram">/);
     assert.doesNotMatch(output, /https:\/\/kroki\.io\/mermaid\/svg\/example/);
+    const encoded = output.match(/data:image\/svg\+xml;base64,([^"]+)/u)[1];
+    const svg = Buffer.from(encoded, 'base64').toString();
+    assert.match(svg, /width="480"/u);
+    assert.match(svg, /height="240"/u);
+    assert.match(svg, /<path d="M0 0L480 240"/u);
+
+    for (const [dimensions, expectedWidth, expectedHeight] of [
+      ['width="100%" height="100"', 200, 100],
+      ['width="600" height="300"', 600, 300],
+      ['width="360pt" height="180pt"', '360pt', '180pt'],
+    ]) {
+      const embedded = inlineStandaloneAssets(html, {
+        markdownPath,
+        fetchRemoteAsset: () => ({
+          buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" ${dimensions} viewBox="0 0 480 240"/>`),
+          mimeType: 'image/svg+xml',
+        }),
+      });
+      const xml = Buffer.from(embedded.match(/data:image\/svg\+xml;base64,([^"]+)/u)[1], 'base64').toString();
+      assert.ok(xml.includes(`width="${expectedWidth}"`));
+      assert.ok(xml.includes(`height="${expectedHeight}"`));
+      assert.ok(xml.endsWith('/>'));
+    }
   } finally {
     await rm(tempDir, { force: true, recursive: true });
   }

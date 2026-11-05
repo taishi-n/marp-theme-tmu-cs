@@ -12,10 +12,13 @@ export function initializeMarp(options, outputFormat) {
   }
 
   let marp = options.marp;
-  if (!marp) {
+  if (!marp || !Array.isArray(marp.shikiTransformers)) {
+    // CLI can resolve its bundled Core v4 when run outside this package.
+    // Select this package's explicit v5 dependency in that case.
+    const constructorOptions = lazyMarp ? options : (marp?.options ?? options);
     marp = new FullMarp({
-      ...options,
-      ...(outputFormat === 'html' && { emoji: { ...options.emoji, ...nativeEmoji } }),
+      ...constructorOptions,
+      ...(outputFormat === 'html' && { emoji: { ...constructorOptions.emoji, ...nativeEmoji } }),
     });
   } else if (outputFormat === 'html' && !lazyMarp) {
     const Core = marp.constructor;

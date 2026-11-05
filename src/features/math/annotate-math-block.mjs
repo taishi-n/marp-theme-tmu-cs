@@ -59,17 +59,17 @@ function parseInlineMathSegments(note) {
   return segments;
 }
 
-function renderInlineMathSvg(tex, renderInlineMath) {
+function renderInlineNoteMath(tex, renderInlineMath) {
   const rendered = renderInlineMath?.(tex) ?? escapeHtml(`$${tex}$`);
-  const svgHtml = rendered.match(/<svg\b[\s\S]*?<\/svg>/u)?.[0] ?? rendered;
-  return `<span class="eqann-inline-math">${svgHtml}</span>`;
+  // MathJax 4 can return several SVG segments separated by mjx-break nodes.
+  return `<span class="eqann-inline-math">${rendered}</span>`;
 }
 
 function renderAnnotationNoteHtml(note, renderInlineMath) {
   return parseInlineMathSegments(note)
     .map((segment) => {
       if (segment.type === 'math') {
-        return renderInlineMathSvg(segment.value, renderInlineMath);
+        return renderInlineNoteMath(segment.value, renderInlineMath);
       }
 
       return escapeHtml(segment.value.replace(/\\\$/g, '$'));
@@ -92,12 +92,16 @@ function warn(options, message) {
 }
 
 function unescapeQuotedValue(value) {
-  return value.replace(/\\(["'\\nrt])/g, (_match, token) => {
-    if (token === 'n') return '\n';
-    if (token === 'r') return '\r';
-    if (token === 't') return '\t';
-    return token;
-  });
+  return parseInlineMathSegments(value).map(segment => {
+    // TeX commands such as \to, \rho, and \nabla are not text escapes.
+    if (segment.type === 'math') return `$${segment.value}$`;
+    return segment.value.replace(/\\(["'\\nrt])/g, (_match, token) => {
+      if (token === 'n') return '\n';
+      if (token === 'r') return '\r';
+      if (token === 't') return '\t';
+      return token;
+    });
+  }).join('');
 }
 
 function extractAnnotateComment(line) {

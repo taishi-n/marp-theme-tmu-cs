@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, extname, isAbsolute, resolve } from 'node:path';
-import { parse, parseFragment, serialize } from 'parse5';
+import { parse, parseFragment, serialize, serializeOuter } from 'parse5';
 import { resolveConstrainedFilePath, resolveInputRoot } from '../core/local-path.mjs';
 
 const mimeTypes = new Map([
@@ -272,11 +272,37 @@ function inlineIframe(node, context, basePath) {
   }
 }
 
+function withIntrinsicSvgDimensions(asset) {
+  if (detectMimeType('', asset.mimeType) !== 'image/svg+xml') return asset;
+  const source = asset.buffer.toString('utf8');
+  const opening = source.match(/<svg\b[^>]*>/iu)?.[0];
+  if (!opening) return asset;
+  const svg = parseFragment(`${opening}</svg>`).childNodes.find(node => node.nodeName === 'svg');
+  if (!svg) return asset;
+  const viewBox = String(getAttribute(svg, 'viewBox') ?? '').trim().split(/[\s,]+/u).map(Number);
+  if (viewBox.length !== 4 || !viewBox.every(Number.isFinite) || viewBox[2] <= 0 || viewBox[3] <= 0) return asset;
+  const absoluteSize = value => {
+    const match = String(value ?? '').match(/^(\d+(?:\.\d+)?)(px|pt|pc|in|cm|mm|q)?$/iu);
+    if (!match || Number(match[1]) <= 0) return undefined;
+    const units = { px: 1, pt: 96 / 72, pc: 16, in: 96, cm: 96 / 2.54, mm: 96 / 25.4, q: 96 / 101.6 };
+    return Number(match[1]) * (units[match[2]?.toLowerCase() ?? 'px']);
+  };
+  const width = absoluteSize(getAttribute(svg, 'width'));
+  const height = absoluteSize(getAttribute(svg, 'height'));
+  if (width && height) return asset;
+  const ratio = viewBox[2] / viewBox[3];
+  setAttribute(svg, 'width', width ?? (height ? height * ratio : viewBox[2]));
+  setAttribute(svg, 'height', height ?? (width ? width / ratio : viewBox[3]));
+  let normalizedOpening = serializeOuter(/** @type {any} */ (svg)).replace(/<\/svg>$/u, '');
+  if (opening.endsWith('/>')) normalizedOpening = normalizedOpening.replace(/>$/u, '/>');
+  return { ...asset, buffer: Buffer.from(source.replace(opening, normalizedOpening)) };
+}
+
 function inlineUrlAttribute(node, attributeName, context, basePath) {
   const reference = getAttribute(node, attributeName);
   if (!reference) return;
   const asset = loadAsset(reference, context, basePath);
-  if (asset) setAttribute(node, attributeName, toDataUrl(reference, asset));
+  if (asset) setAttribute(node, attributeName, toDataUrl(reference, node.tagName === 'img' ? withIntrinsicSvgDimensions(asset) : asset));
 }
 
 export function parseSrcsetCandidates(srcset) {
