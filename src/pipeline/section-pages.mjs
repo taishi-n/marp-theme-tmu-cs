@@ -1,6 +1,6 @@
 import { hasOwn, parseFrontMatter } from '../core/front-matter.mjs';
 import { parseMarkdownHeadings } from '../core/headings.mjs';
-import { findStandaloneDirectives, isFenceClose, joinMarkdownSlides, parseFenceStart, splitMarkdownSlides } from '../core/markdown.mjs';
+import { findStandaloneDirectives, joinMarkdownSlides, standaloneComments, splitMarkdownSlides } from '../core/markdown.mjs';
 import { splitLinesPreservingEOF } from '../core/text-lines.mjs';
 import { sourceMarkerPattern, stripSlideSource } from '../core/slide-source.mjs';
 import { isReferenceHeadingText } from '../features/citations/markdown-utils.mjs';
@@ -39,7 +39,7 @@ function prependSlideClassMarker(content, classNames) {
 
   for (let index = 0; index < lines.length; index += 1) {
     const trimmed = lines[index].trim();
-    if (trimmed === '' || trimmed.startsWith('<!--')) continue;
+    if (trimmed === '' || trimmed.startsWith('<!--') || sourceMarkerPattern.test(trimmed)) continue;
 
     if (/^#{1,6}[ \t]+/u.test(lines[index])) {
       lines[index] = `${lines[index]} ${marker}`;
@@ -78,35 +78,10 @@ function headingExcludedFromToc(heading) {
 }
 
 function findStandaloneTocCommand(slideContent) {
-  const { lines } = splitLinesPreservingEOF(slideContent);
-  let fence = null;
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
-
-    if (!fence) {
-      const fenceStart = parseFenceStart(line);
-      if (fenceStart) {
-        fence = fenceStart;
-        continue;
-      }
-
-      const match = line.trim().match(tocCommandLinePattern);
-      if (match) {
-        return {
-          lineIndex: index,
-          level: match.groups?.level,
-        };
-      }
-
-      continue;
-    }
-
-    if (isFenceClose(line, fence)) {
-      fence = null;
-    }
+  for (const { lineIndex, line } of standaloneComments(slideContent)) {
+    const match = line.trim().match(tocCommandLinePattern);
+    if (match) return { lineIndex, level: match.groups?.level };
   }
-
   return null;
 }
 
@@ -243,10 +218,11 @@ function insertSectionPages(markdown, frontMatter) {
     for (const directive of findStandaloneDirectives(slide.content, 'section-page')) {
       let headingLine = directive.lineIndex - 1;
       while (headingLine >= 0 && slideLines[headingLine].trim() === '') headingLine -= 1;
-      if (!sectionHeadings.some((heading) => heading.lineIndex === headingLine) || !['true', 'false'].includes(directive.value)) {
+      const heading = sectionHeadings.find((heading) => heading.endLineIndex - 1 === headingLine);
+      if (!heading || !['true', 'false'].includes(directive.value)) {
         throw new Error('[tmu-cs] section-page: true or false must follow a section heading.');
       }
-      overrides.set(headingLine, directive.value === 'true');
+      overrides.set(heading.lineIndex, directive.value === 'true');
       slideLines[directive.lineIndex] = '';
     }
     const headings = sectionHeadings.filter((heading) => overrides.get(heading.lineIndex) ?? enabledByDefault);
@@ -258,7 +234,7 @@ function insertSectionPages(markdown, frontMatter) {
 
     for (const heading of headings) {
       const beforeLines = slideLines.slice(cursor, heading.lineIndex);
-      const afterLines = slideLines.slice(heading.lineIndex + 1);
+      const afterLines = slideLines.slice(heading.endLineIndex);
       const hasContentBeforeHeading = hasMeaningfulContentBeforeHeading(slide.content, heading.lineIndex);
 
       if (hasContentBeforeHeading || !isIgnorableMarkdownLines(beforeLines)) {
@@ -280,7 +256,7 @@ function insertSectionPages(markdown, frontMatter) {
         if (afterLines.join('\n').trim() !== '') sectionPageLines.push('', afterLines.join('\n'));
         cursor = slideLines.length;
       } else {
-        cursor = heading.lineIndex + 1;
+        cursor = heading.endLineIndex;
       }
 
       producedSlides.push({
@@ -334,6 +310,7 @@ function expandTocCommands(markdown, frontMatter, options = {}) {
       const lines = slide.content.split('\n');
       for (const heading of headingRecords.filter((item) => item.slideIndex === slideIndex)) {
         lines[heading.lineIndex] = `${'#'.repeat(heading.level)} ${heading.text} <span data-tmu-cs-heading="${heading.target}"></span>`;
+        for (let index = heading.lineIndex + 1; index < heading.endLineIndex; index += 1) lines[index] = '';
       }
       return { ...slide, content: lines.join('\n') };
     }

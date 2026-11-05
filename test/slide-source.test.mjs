@@ -37,3 +37,12 @@ test('authored source IDs reject duplicates and ignore examples in code fences',
   assert.throws(() => annotateSlideSources('<!-- slide-id: bad id -->\n# One'), /slide-id must start/);
   assert.doesNotThrow(() => annotateSlideSources('```md\n<!-- slide-id: bad id -->\n```'));
 });
+
+test('authored IDs and source lines survive TOC expansion and speaker notes', async () => {
+  const marp = await engine({ marp: new Marp() });
+  marp.render('<!-- slide-id: contents -->\n# Contents\n<!-- toc -->\n\n<!-- note\n---\n-->\n\n---\n\n<!-- slide-id: body -->\n# Body');
+  assert.deepEqual(marp.tmuCsSlides.slides.map(({ id, sourceSlide, sourceLine }) => ({ id, sourceSlide, sourceLine })), [
+    { id: 'contents', sourceSlide: 1, sourceLine: 1 },
+    { id: 'body', sourceSlide: 2, sourceLine: 10 },
+  ]);
+});

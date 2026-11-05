@@ -1,4 +1,5 @@
 import { splitLinesPreservingEOF } from './text-lines.mjs';
+import { parseMarkdownBlocks } from './markdown-blocks.mjs';
 
 export function parseFenceStart(line) {
   const match = String(line ?? '').match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
@@ -22,32 +23,6 @@ export function isHorizontalRule(line) {
   return /^ {0,3}(?:(?:-\s*){3,}|(?:_\s*){3,}|(?:\*\s*){3,})$/.test(String(line ?? ''));
 }
 
-function parseFrontMatterLines(lines) {
-  if (lines[0]?.trim() !== '---') {
-    return {
-      bodyLines: lines,
-      bodyStartLine: 1,
-      frontMatterLines: [],
-    };
-  }
-
-  for (let index = 1; index < lines.length; index += 1) {
-    if (['---', '...'].includes(lines[index].trim())) {
-      return {
-        bodyLines: lines.slice(index + 1),
-        bodyStartLine: index + 2,
-        frontMatterLines: lines.slice(0, index + 1),
-      };
-    }
-  }
-
-  return {
-    bodyLines: lines,
-    bodyStartLine: 1,
-    frontMatterLines: [],
-  };
-}
-
 function normalizeSlides(slides = []) {
   if (slides.length === 0) return [''];
   return slides.map((slide) => (typeof slide === 'string' ? slide : slide.content));
@@ -55,48 +30,18 @@ function normalizeSlides(slides = []) {
 
 export function splitMarkdownSlides(markdown) {
   const { lines, hasTrailingNewline } = splitLinesPreservingEOF(markdown);
-  const { frontMatterLines, bodyLines, bodyStartLine } = parseFrontMatterLines(lines);
+  const tokens = parseMarkdownBlocks(markdown);
+  const bodyStart = tokens[0]?.type === 'front_matter' ? tokens[0].map[1] : 0;
   const slides = [];
-  let currentLines = [];
-  let currentStartLine = bodyStartLine;
-  let fence = null;
-
-  for (let index = 0; index < bodyLines.length; index += 1) {
-    const line = bodyLines[index];
-    const originalLineNumber = bodyStartLine + index;
-
-    if (!fence) {
-      const fenceStart = parseFenceStart(line);
-
-      if (fenceStart) {
-        fence = fenceStart;
-        currentLines.push(line);
-        continue;
-      }
-
-      if (isHorizontalRule(line)) {
-        slides.push({
-          content: currentLines.join('\n'),
-          startLine: currentStartLine,
-        });
-        currentLines = [];
-        currentStartLine = originalLineNumber + 1;
-        continue;
-      }
-    } else if (isFenceClose(line, fence)) {
-      fence = null;
-    }
-
-    currentLines.push(line);
+  let start = bodyStart;
+  for (const token of tokens) {
+    if (token.type !== 'hr' || token.level !== 0) continue;
+    slides.push({ content: lines.slice(start, token.map[0]).join('\n'), startLine: start + 1 });
+    start = token.map[1];
   }
-
-  slides.push({
-    content: currentLines.join('\n'),
-    startLine: currentStartLine,
-  });
-
+  slides.push({ content: lines.slice(start).join('\n'), startLine: start + 1 });
   return {
-    frontMatter: frontMatterLines.join('\n'),
+    frontMatter: lines.slice(0, bodyStart).join('\n'),
     slides,
     hasTrailingNewline,
   };
@@ -108,33 +53,18 @@ export function joinMarkdownSlides({ frontMatter = '', slides = [], hasTrailingN
   return hasTrailingNewline ? `${joined}\n` : joined;
 }
 
-// Read opt-in authoring comments without consuming examples inside fences or notes.
+// Standalone authoring comments, using the same protected blocks as Core.
+export function standaloneComments(markdown) {
+  const lines = String(markdown ?? '').split(/\r?\n/u);
+  return parseMarkdownBlocks(markdown)
+    .filter((token) => token.type === 'marpit_comment' && token.map[1] === token.map[0] + 1)
+    .map((token) => ({ lineIndex: token.map[0], line: lines[token.map[0]] }));
+}
+
 export function findStandaloneDirectives(markdown, name) {
   const pattern = new RegExp(`^\\s*<!--\\s*${name}\\s*:\\s*(.*?)\\s*-->\\s*$`, 'u');
-  const found = [];
-  let fence = null;
-  let inComment = false;
-  String(markdown ?? '').split(/\r?\n/u).forEach((line, lineIndex) => {
-    if (fence) {
-      if (isFenceClose(line, fence)) fence = null;
-      return;
-    }
-    if (!inComment) {
-      fence = parseFenceStart(line);
-      if (fence) return;
-      const match = line.match(pattern);
-      if (match) {
-        found.push({ lineIndex, value: match[1].trim() });
-        return;
-      }
-    }
-    let cursor = 0;
-    while (cursor < line.length) {
-      const position = line.indexOf(inComment ? '-->' : '<!--', cursor);
-      if (position === -1) break;
-      cursor = position + (inComment ? 3 : 4);
-      inComment = !inComment;
-    }
+  return standaloneComments(markdown).flatMap(({ lineIndex, line }) => {
+    const match = line.match(pattern);
+    return match ? [{ lineIndex, value: match[1].trim() }] : [];
   });
-  return found;
 }

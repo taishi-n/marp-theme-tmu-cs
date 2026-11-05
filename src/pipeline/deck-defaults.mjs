@@ -1,5 +1,6 @@
 import { asNonEmptyString, hasOwn, normalizeText, parseFrontMatter } from '../core/front-matter.mjs';
 import { stripSlideSource } from '../core/slide-source.mjs';
+import { splitMarkdownSlides } from '../core/markdown.mjs';
 
 function getDeckMetadata(frontMatter) {
   return {
@@ -12,8 +13,7 @@ function getDeckMetadata(frontMatter) {
 }
 
 function getFirstSlide(markdown) {
-  const separator = /^\s*---\s*$/m.exec(markdown);
-  return separator ? markdown.slice(0, separator.index) : markdown;
+  return splitMarkdownSlides(markdown).slides[0].content;
 }
 
 function firstSlideHasTitleClass(markdown) {

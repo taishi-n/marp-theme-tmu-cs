@@ -1,4 +1,5 @@
 import jsYaml from 'js-yaml';
+import { parseMarkdownBlocks } from './markdown-blocks.mjs';
 
 const { FAILSAFE_SCHEMA, load } = jsYaml;
 
@@ -15,24 +16,29 @@ export function normalizeText(value) {
 }
 
 export function parseFrontMatter(markdown) {
-  const match = String(markdown ?? '').match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
-
-  if (!match) {
+  const source = String(markdown ?? '');
+  const token = parseMarkdownBlocks(source)[0];
+  if (token?.type !== 'front_matter') {
     return { body: String(markdown ?? ''), data: {}, frontMatter: '' };
+  }
+  let end = 0;
+  for (let line = 0; line < token.map[1]; line += 1) {
+    const newline = source.indexOf('\n', end);
+    end = newline === -1 ? source.length : newline + 1;
   }
 
   let data = {};
 
   try {
-    const parsed = load(match[1], { schema: FAILSAFE_SCHEMA });
+    const parsed = load(token.meta, { schema: FAILSAFE_SCHEMA });
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) data = parsed;
   } catch {
     data = {};
   }
 
   return {
-    body: String(markdown ?? '').slice(match[0].length),
+    body: source.slice(end),
     data,
-    frontMatter: match[0],
+    frontMatter: source.slice(0, end),
   };
 }

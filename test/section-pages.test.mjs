@@ -8,6 +8,16 @@ import applySectionPages from '../src/pipeline/section-pages.mjs';
 import decorateAuxiliarySlides from '../src/pipeline/slide-metadata.mjs';
 import { attributes, elementClasses, findElements, parseFragment, textContent } from '../test-support/html.mjs';
 
+test('Setext headings provide TOC targets and chapter-page overrides', async () => {
+  const marp = await engine({ marp: new Marp() });
+  const { html } = marp.render('# Contents\n<!-- toc -->\n\n---\n\nChapter\n-------\n<!-- section-page: true -->\n\n### Topic');
+  const document = parseFragment(html);
+  assert.ok(findElements(document, (node) => node.tagName === 'a' && attributes(node).href === '#chapter').length > 0);
+  const chapters = findElements(document, (node) => node.tagName === 'section' && elementClasses(node).includes('section-page'));
+  assert.equal(chapters.length, 1);
+  assert.match(textContent(chapters[0]), /Chapter/);
+});
+
 test('section pages can be enabled or disabled globally and overridden per chapter', () => {
   for (const sectionPages of [true, false]) {
     const markdown = ['---', `sectionPages: ${sectionPages}`, '---',

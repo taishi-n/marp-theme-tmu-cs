@@ -281,8 +281,6 @@ function applyReferenceNumbers(citationText, items, referenceNumbers) {
 }
 
 function replaceInlineCitations(slideContent, cite, template, citationHistory, bibliographyNumbers) {
-  const citedKeys = [];
-  const seenKeys = new Set();
   const referenceOrder = collectInlineReferenceOrder(slideContent);
   const referenceNumbers = bibliographyNumbers ?? new Map(referenceOrder.map((reference, index) => [
     reference.type === 'citation' ? `citation:${reference.key}` : `footnote:${reference.id}`,
@@ -293,11 +291,6 @@ function replaceInlineCitations(slideContent, cite, template, citationHistory, b
           if (!inlineCitationMarkerPattern.test(String(contentText))) return match;
 
           const items = parseCitationCluster(contentText);
-          for (const item of items) {
-            if (seenKeys.has(item.id)) continue;
-            seenKeys.add(item.id);
-            citedKeys.push(item.id);
-          }
 
           const citationText = bibliographyNumbers
             ? items.map((item) => formatCitationCluster(cite, template, [item], citationHistory)
@@ -313,7 +306,6 @@ function replaceInlineCitations(slideContent, cite, template, citationHistory, b
   ));
 
   return {
-    citedKeys,
     content,
     referenceOrder,
   };
@@ -338,11 +330,10 @@ export function createJsCitationBackend() {
       return {
         allEntries,
         entriesByKey,
-        metadata: {
-          backend: 'js',
-          template,
-        },
-        slides: slides.map((slide) => replaceInlineCitations(slide.content ?? slide, cite, template, citationHistory, bibliographyNumbers)),
+        slides: slides.map((slide) => ({
+          ...(typeof slide === 'string' ? {} : slide),
+          ...replaceInlineCitations(slide.content ?? slide, cite, template, citationHistory, bibliographyNumbers),
+        })),
       };
     },
   };

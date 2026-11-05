@@ -178,7 +178,6 @@ export function preprocessCitationsWithBackend(markdown, backend, options = {}) 
     return applyCitationRenderResult({
       slides: splitMarkdown.slides.map((slide) => ({
         ...slide,
-        citedKeys: [],
         referenceOrder: collectInlineReferenceOrder(slide.content),
       })),
       entriesByKey: new Map(),
