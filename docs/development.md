@@ -89,6 +89,15 @@ The intended boundary is:
 
 The external-project workflow documented in `README.md` is based on `npm link` plus `npx marp-tmu-cs ...`. The wrapper should remain usable without a project-local `marp.config.mjs`: when `--engine` and `--theme-set` are omitted, it is expected to inject the package defaults automatically.
 
+For local wavegram development, rebuild wavegram before building a deck: its UMD bundle
+is embedded in the generated HTML. A previously built standalone deck does not pick up
+dependency source edits automatically. The current development component supports
+`rendering="suspended"` and `refresh()`; the published 0.2.0 dependency remains compatible
+with deferred source loading but does not provide those rendering optimizations.
+After publishing a wavegram version containing these APIs, raise the minimum dependency
+and refresh the lockfile before publishing the corresponding theme release. Keep local
+links and machine-specific dependency paths out of the committed package metadata.
+
 ## Local Workflow
 
 Install dependencies:
