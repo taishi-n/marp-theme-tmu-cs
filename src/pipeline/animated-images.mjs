@@ -4,6 +4,7 @@ import { dirname, extname, isAbsolute, resolve } from 'node:path';
 import { parse, parseFragment } from 'parse5';
 import { escapeHtmlAttribute } from '../core/html.mjs';
 import { installSpectrogramVisibility } from './spectrogram-visibility.mjs';
+import { linkAudioDownload } from './audio-download.mjs';
 import { resolveConstrainedFilePath, resolveInputRoot } from '../core/local-path.mjs';
 
 const require = createRequire(import.meta.url);
@@ -194,10 +195,18 @@ function createSpectrogramAudioPlayerHtml(attributes, innerHtml = '') {
     if (key in attributes) wavegramAttributes[name] = attributes[key];
   }
   const wavegramHtmlAttributes = serializeHtmlAttributes(wavegramAttributes);
+  const hasDownload = 'data-audio-download' in attributes;
+  const row = hasDownload || 'data-audio-label' in attributes;
+  const label = attributes['data-audio-label'] ?? '';
+  const download = hasDownload
+    ? `<a class="tmu-cs-audio-download" data-audio-download-link download="${escapeHtmlAttribute(attributes['data-audio-download'])}" aria-label="${escapeHtmlAttribute(`Download ${label || 'audio'}`)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></a>`
+    : '';
+  const rowLabel = row ? `<span class="tmu-cs-audio-label">${escapeHtmlAttribute(label)}</span>` : '';
 
   return (
-    '<div class="tmu-cs-spectrogram-player" data-wavegram-spectrogram-player>' +
+    `<div class="tmu-cs-spectrogram-player${row ? ' tmu-cs-audio-row' : ''}" data-wavegram-spectrogram-player>` +
     `<audio${audioAttributes ? ` ${audioAttributes}` : ''}>${innerHtml}</audio>` +
+    download + rowLabel +
     `<wavegram-player${wavegramHtmlAttributes ? ` ${wavegramHtmlAttributes}` : ''}></wavegram-player>` +
     '</div>'
   );
@@ -213,6 +222,7 @@ function unwrapBlockParagraphs(html) {
 function mediaRuntimeScript({ includeWavegram = false } = {}) {
   return `<script>${includeWavegram ? `${getWavegramBundle()}\n` : ''}
 (() => {
+  ${linkAudioDownload.toString()}
     if (window.__tmuCsMediaEnhancementsLoaded) return;
     window.__tmuCsMediaEnhancementsLoaded = true;
 
@@ -336,9 +346,10 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
       if (!audio || !wavegram) return;
 
       player.dataset.wavegramReady = 'true';
+      const sourceUrl = resolveAudioSource(audio);
+      linkAudioDownload(player, sourceUrl);
 
       if (!wavegram.getAttribute('src')) {
-        const sourceUrl = resolveAudioSource(audio);
         if (sourceUrl) wavegram.setAttribute('src', sourceUrl);
       }
 

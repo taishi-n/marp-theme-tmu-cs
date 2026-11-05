@@ -887,6 +887,79 @@ figure {
   display: none;
 }
 
+/* Opt-in comparison slots keep the figure stationary across related pages. */
+section.tmu-cs-comparison {
+  --tmu-cs-comparison-title-height: 60px;
+  --tmu-cs-comparison-figure-height: 390px;
+  --tmu-cs-comparison-message-height: 64px;
+  display: grid;
+  grid-template-rows: var(--tmu-cs-comparison-title-height) var(--tmu-cs-comparison-figure-height) var(--tmu-cs-comparison-message-height);
+  gap: 12px;
+  align-content: start;
+}
+
+section.tmu-cs-comparison > :is(h1, h2, h3) {
+  grid-row: 1;
+  margin: 0;
+}
+
+section.tmu-cs-comparison > .tmu-cs-figure {
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tmu-cs-figure :is(img, video, svg) {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+section.tmu-cs-comparison > .tmu-cs-takeaway { grid-row: 3; }
+section.tmu-cs-comparison > :is(.citation-footnotes-marker, .citation-bibliography-marker) { position: absolute; }
+
+.tmu-cs-takeaway {
+  position: relative;
+  box-sizing: border-box;
+  padding: 10px 16px;
+  border-left: 5px solid var(--tmu-cs-accent);
+  background: var(--tmu-cs-accent-soft);
+  font-size: 22px;
+  line-height: 1.35;
+}
+
+.tmu-cs-takeaway::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: -6px;
+  width: 22px;
+  height: 6px;
+  background: var(--tmu-cs-accent);
+}
+
+.tmu-cs-takeaway > :is(p, ul) { margin: 0; }
+.tmu-cs-audio-list { display: flex; flex-direction: column; gap: 10px; }
+.tmu-cs-audio-list > .tmu-cs-spectrogram-player { margin: 0; }
+
+.tmu-cs-spectrogram-player.tmu-cs-audio-row {
+  display: grid;
+  grid-template-columns: 34px minmax(2em, var(--tmu-cs-audio-label-width, 5em)) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.tmu-cs-audio-download { grid-column: 1; display: block; color: var(--tmu-cs-accent); }
+.tmu-cs-audio-download svg { width: 26px; height: 26px; display: block; }
+.tmu-cs-audio-download:focus-visible { outline: 2px solid var(--tmu-cs-accent); outline-offset: 3px; }
+.tmu-cs-audio-label { grid-column: 2; font-size: 22px; color: var(--tmu-cs-accent); }
+.tmu-cs-audio-row > wavegram-player { grid-column: 3; min-width: 0; }
+
 section.title-slide {
   justify-content: flex-start;
   padding-top: 132px;

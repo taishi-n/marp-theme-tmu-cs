@@ -258,6 +258,28 @@ Behavior:
 - local audio resolution is exact and relative to the Markdown file; a missing path is reported and is never replaced by a same-basename file elsewhere
 - remote audio sources need CORS headers that allow the browser-side analysis fetch
 
+### Labelled audio rows and downloads
+
+Add `data-audio-label` to an enhanced audio element to select the theme's audio
+row layout. `data-audio-download` adds a download icon at the left and supplies
+the suggested file name. Wrap several elements in `.tmu-cs-audio-list` to stack
+channels with consistent spacing:
+
+```html
+<div class="tmu-cs-audio-list">
+  <audio class="wavesurfer-spectrogram" src="audio/output-0.wav"
+    data-audio-label="S0" data-audio-download="output-0.wav"
+    data-wavegram-show-waveform="false"
+    data-wavegram-show-controls="false" data-wavegram-show-time="false"
+    data-wavegram-spectrogram-height="120"></audio>
+</div>
+```
+
+The download link is connected when the visible player initializes and uses
+the same original or embedded audio source as playback. Adding a download does
+not embed a second copy of the audio payload. `--tmu-cs-audio-label-width`
+adjusts the label column. Keep channel order and analysis settings in the deck.
+
 ## Standalone HTML Asset Bundling
 
 When you build through the packaged `marp-tmu-cs` wrapper with `--standalone`, the engine rewrites local asset references so the output HTML can be shared as a single file.

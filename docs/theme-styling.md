@@ -110,6 +110,30 @@ Example:
 
 `column-layout` lays out each direct child `.column` block next to its siblings, so two columns and three columns are both supported without an extra wrapper element.
 
+## Comparison Frames And Takeaways
+
+Opt into `tmu-cs-comparison` on a slide to reserve stationary rows for its
+heading, a `.tmu-cs-figure` container, and an optional `.tmu-cs-takeaway`.
+The takeaway is a green-tab message component and can also be used on its own.
+
+```html
+<!-- _class: tmu-cs-comparison -->
+
+### Comparison condition
+
+<div class="tmu-cs-figure"><img src="assets/result.svg" alt="Result"></div>
+<p class="tmu-cs-takeaway">A short statement supported by this result.</p>
+```
+
+The public CSS variables `--tmu-cs-comparison-title-height`,
+`--tmu-cs-comparison-figure-height`, and
+`--tmu-cs-comparison-message-height` control the three rows. Their defaults are
+60px, 390px, and 64px. Use the same values across a comparison group and prepare
+the original SVG or plot to fit that figure area. Content and axis ranges are
+authored by the deck; the theme does not infer conclusions or rewrite figures.
+
+See `examples/comparison.md` for a runnable comparison and audio-row example.
+
 ## Citations And Footnotes
 
 Citation references and Markdown footnotes are rendered into a shared footnote-style area near the bottom of the slide.

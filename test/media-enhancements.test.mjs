@@ -6,6 +6,7 @@ import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { parseFragment } from 'parse5';
 import enhanceAnimatedImages from '../src/pipeline/animated-images.mjs';
+import { linkAudioDownload } from '../src/pipeline/audio-download.mjs';
 
 function firstAttributes(html, tagName) {
   function find(node) {
@@ -138,6 +139,27 @@ test('enhanceAnimatedImages leaves plain audio unchanged', () => {
   const output = enhanceAnimatedImages(html);
 
   assert.equal(output, html);
+});
+
+test('audio rows label and download the original embedded source without a second audio payload', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-audio-row-'));
+  try {
+    const bytes = Buffer.from('original audio bytes');
+    await writeFile(join(tempDir, 'tone.wav'), bytes);
+    const output = enhanceAnimatedImages('<section><audio class="wavesurfer-spectrogram" src="tone.wav" data-audio-label="S0 &amp; S1" data-audio-download="output.wav"></audio></section>', { markdownPath: join(tempDir, 'slides.md') });
+    const audioSource = firstAttributes(output, 'audio').src;
+    assert.deepEqual(Buffer.from(audioSource.split(',')[1], 'base64'), bytes);
+    assert.equal(output.split(audioSource).length - 1, 1);
+    const link = firstAttributes(output, 'a');
+    assert.equal(link.download, 'output.wav');
+    assert.equal(link['aria-label'], 'Download S0 & S1');
+    assert.equal(link.href, undefined);
+    const linked = {};
+    linkAudioDownload({ querySelector: () => ({ setAttribute: (key, value) => { linked[key] = value; } }) }, audioSource);
+    assert.equal(linked.href, audioSource);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
 });
 
 test('enhanceAnimatedImages injects a valid sequential navigation runtime for marked media', () => {
