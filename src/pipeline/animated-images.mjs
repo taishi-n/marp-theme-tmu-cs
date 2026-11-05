@@ -1,11 +1,11 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, extname, isAbsolute, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { parse, parseFragment } from 'parse5';
-import { escapeHtmlAttribute } from '../core/html.mjs';
+import { escapeHtmlAttribute, replaceHtmlRanges } from '../core/html.mjs';
 import { installSpectrogramVisibility } from './spectrogram-visibility.mjs';
 import { linkAudioDownload } from './audio-download.mjs';
-import { resolveConstrainedFilePath, resolveInputRoot } from '../core/local-path.mjs';
+import { createAssetContext, loadAsset, resolveReference, toDataUrl } from './asset-loader.mjs';
 
 const require = createRequire(import.meta.url);
 
@@ -15,12 +15,6 @@ const BOOLEAN_ATTRIBUTES = new Set([
   'loop',
   'muted',
   'playsinline',
-]);
-
-const binaryMimeTypes = new Map([
-  ['.mp3', 'audio/mpeg'],
-  ['.ogg', 'audio/ogg'],
-  ['.wav', 'audio/wav'],
 ]);
 
 let wavegramBundleCache;
@@ -74,64 +68,19 @@ function walkHtml(node, visit) {
   for (const child of node?.childNodes ?? []) walkHtml(child, visit);
 }
 
-function applyHtmlReplacements(html, replacements) {
-  return replacements
-    .sort((left, right) => right.start - left.start)
-    .reduce((output, replacement) => (
-      `${output.slice(0, replacement.start)}${replacement.html}${output.slice(replacement.end)}`
-    ), html);
-}
-
-function stripUrlSuffix(value = '') {
-  return String(value ?? '').replace(/[?#].*$/u, '');
-}
-
-function isLocalRelativeReference(reference = '') {
-  const value = String(reference ?? '').trim();
-
-  if (value === '') return false;
-  if (value.startsWith('#')) return false;
-  if (value.startsWith('data:')) return false;
-  if (value.startsWith('blob:')) return false;
-  if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(value)) return false;
-  if (value.startsWith('//')) return false;
-  if (isAbsolute(value)) return false;
-
-  return true;
-}
-
-function resolveLocalReference(reference, basePath) {
-  return resolve(dirname(basePath), stripUrlSuffix(reference));
-}
-
-function detectAudioMimeType(filePath) {
-  return binaryMimeTypes.get(extname(filePath).toLowerCase()) ?? 'application/octet-stream';
-}
-
-function tryInlineSpectrogramAudioSource(source, options = {}) {
-  if (!isLocalRelativeReference(source)) return source;
-
+function tryInlineSpectrogramAudioSource(source, options, context) {
+  if (resolveReference(source, context.basePath)?.kind !== 'local') return source;
+  if (!options.markdownPath) {
+    options.onWarning?.(`cannot inline spectrogram audio "${source}" because the markdown path is unavailable.`);
+    return source;
+  }
   try {
-    if (!options.markdownPath) {
-      options.onWarning?.(`cannot inline spectrogram audio "${source}" because the markdown path is unavailable.`);
-      return source;
-    }
-
-    const unresolvedPath = resolveLocalReference(source, options.markdownPath);
-    if (!existsSync(unresolvedPath)) {
-      options.onWarning?.(`spectrogram audio "${source}" was not found at "${unresolvedPath}".`);
-      return source;
-    }
-
-    const filePath = resolveConstrainedFilePath(unresolvedPath, {
-      allowOutsideRoot: options.allowLocalFiles === true,
-      inputRoot: resolveInputRoot(options.markdownPath),
-    });
-    const buffer = readFileSync(filePath);
-    return `data:${detectAudioMimeType(filePath)};base64,${buffer.toString('base64')}`;
+    const asset = loadAsset(source, context);
+    return asset ? toDataUrl(source, asset) : source;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    options.onWarning?.(`failed to inline spectrogram audio "${source}". ${message}`);
+    options.onWarning?.(error.cause?.code === 'ENOENT'
+      ? `spectrogram audio "${source}" was not found.`
+      : `failed to inline spectrogram audio "${source}". ${error.message}`);
     return source;
   }
 }
@@ -635,7 +584,9 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
 
 export default function enhanceAnimatedImages(html, options = {}) {
   const sourceHtml = String(html ?? '');
+  if (!/(?:<img\b[^>]*\.gif(?:[?#]|[\s"'])|<audio\b|data-media-playback=["']sequential["'])/iu.test(sourceHtml)) return sourceHtml;
   const document = parseHtmlWithLocations(sourceHtml);
+  const assetContext = createAssetContext(options.markdownPath ?? resolve('slides.md'), options);
   let hasGifPlayer = false;
   let hasSpectrogramPlayer = false;
   let hasSequentialPlayback = false;
@@ -670,7 +621,7 @@ export default function enhanceAnimatedImages(html, options = {}) {
       if (!hasClassToken(attributes.class, 'wavesurfer-spectrogram')) return;
 
       if (typeof attributes.src === 'string' && attributes.src !== '') {
-        attributes.src = tryInlineSpectrogramAudioSource(attributes.src, options);
+        attributes.src = tryInlineSpectrogramAudioSource(attributes.src, options, assetContext);
       }
 
       const innerStart = location.startTag?.endOffset;
@@ -687,7 +638,7 @@ export default function enhanceAnimatedImages(html, options = {}) {
     }
   });
 
-  const output = applyHtmlReplacements(sourceHtml, replacements);
+  const output = replaceHtmlRanges(sourceHtml, replacements);
   const normalizedOutput = hasSpectrogramPlayer ? unwrapBlockParagraphs(output) : output;
   return hasGifPlayer || hasSpectrogramPlayer || hasSequentialPlayback
     ? `${normalizedOutput}${mediaRuntimeScript({ includeWavegram: hasSpectrogramPlayer })}`

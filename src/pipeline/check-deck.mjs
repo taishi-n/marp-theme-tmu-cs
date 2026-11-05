@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse } from 'parse5';
 import { containsCitationSyntax } from '../features/citations/markdown-utils.mjs';
-import { parseSrcsetCandidates } from './standalone-assets.mjs';
+import { nodeResourceReferences, resolveResourceUrl } from '../core/html-resources.mjs';
 
 function attribute(node, name) { return node.attrs?.find((entry) => entry.name === name)?.value; }
 
@@ -24,7 +24,7 @@ export function checkDeck(html, options = {}) {
     if (!reference || reference.startsWith('#')) return;
     if (reference.startsWith('data:')) { embeddedAssets += 1; return; }
     try {
-      const url = new URL(reference, base);
+      const url = resolveResourceUrl(reference, base);
       if (url.protocol === 'file:') {
         if (!existsSync(fileURLToPath(url))) add('MISSING_ASSET', `Missing asset: ${reference}`, section);
         else if (options.standalone) add('UNEMBEDDED_ASSET', `Local asset is not embedded: ${reference}`, section);
@@ -37,11 +37,6 @@ export function checkDeck(html, options = {}) {
     }
   }
 
-  function cssResources(css, section) {
-    for (const match of css.matchAll(/url\(\s*(['"]?)([^'")]+)\1\s*\)/giu)) resource(match[2].trim(), section);
-    for (const match of css.matchAll(/@import\s+(['"])([^'"]+)\1/giu)) resource(match[2], section);
-  }
-
   function visit(node, outerSection = null, protectedText = false) {
     const section = node.tagName === 'section' && !outerSection ? node : outerSection;
     if (section === node) {
@@ -51,13 +46,7 @@ export function checkDeck(html, options = {}) {
       if (id) ids.add(id);
     }
     if (node.tagName === 'base' && attribute(node, 'href')) base = new URL(attribute(node, 'href'), base);
-    if (['img', 'audio', 'video', 'source', 'script', 'iframe', 'embed'].includes(node.tagName)) resource(attribute(node, 'src'), section);
-    if (node.tagName === 'video') resource(attribute(node, 'poster'), section);
-    if (node.tagName === 'object') resource(attribute(node, 'data'), section);
-    if (node.tagName === 'link' && /stylesheet|icon/iu.test(attribute(node, 'rel') ?? '')) resource(attribute(node, 'href'), section);
-    if (attribute(node, 'srcset')) for (const candidate of parseSrcsetCandidates(attribute(node, 'srcset'))) resource(candidate.url, section);
-    if (attribute(node, 'style')) cssResources(attribute(node, 'style'), section);
-    if (node.tagName === 'style') cssResources((node.childNodes ?? []).map((child) => child.value ?? '').join(''), section);
+    for (const reference of nodeResourceReferences(node)) resource(reference, section);
     if (node.tagName === 'merror' || attribute(node, 'data-mml-node') === 'merror' || attribute(node, 'data-mjx-error') !== undefined || /(?:^|\s)mjx-merror(?:\s|$)/u.test(attribute(node, 'class') ?? '')) {
       add('MATH_ERROR', attribute(node, 'data-mjx-error') || 'Rendered mathematics contains an error.', section);
     }

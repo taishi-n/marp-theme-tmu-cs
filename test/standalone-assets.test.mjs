@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { DOMParser } from '@xmldom/xmldom';
 import inlineStandaloneAssets from '../src/pipeline/standalone-assets.mjs';
+import enhanceAnimatedImages from '../src/pipeline/animated-images.mjs';
+import { checkDeck } from '../src/pipeline/check-deck.mjs';
 import { attributes, findElements, parseFragment, textContent } from '../test-support/html.mjs';
 
 test('inlineStandaloneAssets inlines local media and local iframe HTML', async () => {
@@ -109,7 +111,7 @@ test('inlineStandaloneAssets fails when an asset cannot be embedded', async () =
 
 test('standalone CSS imports embed their nested fonts and reject import cycles', () => {
   const assets = new Map([
-    ['https://example.com/css/main.css', { mimeType: 'text/css', buffer: Buffer.from('@import url("./fonts.css");') }],
+    ['https://example.com/css/main.css', { mimeType: 'text/css', buffer: Buffer.from('@import "./fonts.css";') }],
     ['https://example.com/css/fonts.css', { mimeType: 'text/css', buffer: Buffer.from('@font-face { src: url("../font.woff2"); }') }],
     ['https://example.com/font.woff2', { mimeType: 'font/woff2', buffer: Buffer.from('font') }],
   ]);
@@ -217,9 +219,24 @@ test('inlineStandaloneAssets rejects non-portable blob URLs', async () => {
       () => inlineStandaloneAssets('<img src="blob:https://example.com/id">', { markdownPath }),
       /left embeddable references unresolved/,
     );
+    assert.throws(() => inlineStandaloneAssets('<span class="tmu-cs-gif-player" data-gif-src="blob:https://example.com/id"></span>', { markdownPath }), /left embeddable references unresolved/);
   } finally {
     await rm(tempDir, { force: true, recursive: true });
   }
+});
+
+test('animated GIF sources use the same standalone and diagnostic resource rules as image sources', () => {
+  const html = enhanceAnimatedImages('<section data-slide-id="gif"><img src="//example.com/demo.gif"></section>');
+  const before = checkDeck(html, { standalone: true });
+  assert.equal(before.ok, false);
+  assert.equal(before.diagnostics[0].slideId, 'gif');
+  const output = inlineStandaloneAssets(html, { fetchRemoteAsset: (url) => {
+    assert.equal(url, 'https://example.com/demo.gif');
+    return { mimeType: 'image/gif', buffer: Buffer.from('GIF89a') };
+  } });
+  const player = findElements(parseFragment(output), node => attributes(node)['data-gif-src'])[0];
+  assert.match(attributes(player)['data-gif-src'], /^data:image\/gif;base64,/u);
+  assert.equal(checkDeck(output, { standalone: true }).ok, true);
 });
 
 test('inlineStandaloneAssets requires trust before reading assets outside the input root', async () => {

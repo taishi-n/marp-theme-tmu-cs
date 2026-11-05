@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
+import engine from '../engine.mjs';
 import enhanceAnimatedImages from '../src/pipeline/animated-images.mjs';
 import { linkAudioDownload } from '../src/pipeline/audio-download.mjs';
 import { attributes, elementClasses, findElements, parseFragment, textContent } from '../test-support/html.mjs';
@@ -318,6 +319,26 @@ test('enhanceAnimatedImages does not substitute a same-basename audio file', asy
     assert.match(output, /src="\.\/missing\/tone\.wav"/);
     assert.equal(warnings.length, 1);
     assert.match(warnings[0], /was not found/);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
+test('audio identity is preserved across directories and refreshed on later renders', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-audio-refresh-'));
+  try {
+    await mkdir(join(tempDir, 'a'));
+    await mkdir(join(tempDir, 'b'));
+    await writeFile(join(tempDir, 'a/tone.wav'), 'first');
+    await writeFile(join(tempDir, 'b/tone.wav'), 'second');
+    const marp = await engine();
+    const source = '<audio class="wavesurfer-spectrogram" src="a/tone.wav"></audio>\n\n<audio class="wavesurfer-spectrogram" src="b/tone.wav"></audio>';
+    await writeFile(join(tempDir, 'slides.md'), source);
+    const renderSources = () => findElements(parseFragment(marp.render(source, { path: join(tempDir, 'slides.md') }).html), node => node.tagName === 'audio')
+      .map(node => Buffer.from(attributes(node).src.split(',')[1], 'base64').toString());
+    assert.deepEqual(renderSources(), ['first', 'second']);
+    await writeFile(join(tempDir, 'a/tone.wav'), 'updated');
+    assert.deepEqual(renderSources(), ['updated', 'second']);
   } finally {
     await rm(tempDir, { force: true, recursive: true });
   }

@@ -82,7 +82,6 @@ export default async (options = {}) => {
     onWarning: (message) => console.warn(`${logPrefix} ${message}`),
   });
   const standaloneEnabled = process.env.TMU_CS_STANDALONE === '1';
-  const standaloneOutputPath = process.env.TMU_CS_STANDALONE_OUTPUT;
   const allowLocalFiles = process.env.TMU_CS_ALLOW_LOCAL_FILES === '1'
     || process.argv.slice(2).includes('--allow-local-files');
   let configuredMarkdownPaths = [];
@@ -95,6 +94,7 @@ export default async (options = {}) => {
 
   marp.renderMarkdown = (markdown, env = {}) => {
     mathFeature.resetRuntimeInjection();
+    const assetCache = new Map();
     const markdownPath = getMarkdownPathFromEnv(env, markdown, configuredMarkdownPaths);
     const { markdown: preparedMarkdown, frontMatter: preparedFrontMatter } = prepareMarkdownForRender(markdown, {
       allowLocalFiles,
@@ -108,6 +108,7 @@ export default async (options = {}) => {
     const renderedHtml = decorateAuxiliarySlides(enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env), {
       allowLocalFiles,
       markdownPath,
+      assetCache,
     }), {
       editLabels: outputFormat === 'html' && (String(preparedFrontMatter?.editLabels) === 'true' || process.env.TMU_CS_EDIT_LABELS === '1'),
       onSlides: (slides) => {
@@ -125,10 +126,7 @@ export default async (options = {}) => {
     return inlineStandaloneAssets(renderedHtml, {
       allowLocalFiles,
       markdownPath,
-      outputPath: standaloneOutputPath,
-      onWarning: (message) => {
-        console.warn(`${logPrefix} ${message}`);
-      },
+      assetCache,
     });
   };
 

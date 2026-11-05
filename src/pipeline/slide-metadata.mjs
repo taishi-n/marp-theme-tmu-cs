@@ -1,4 +1,5 @@
 import { parse, parseFragment, serializeOuter } from 'parse5';
+import { replaceHtmlRanges } from '../core/html.mjs';
 import { readSlideSource } from '../core/slide-source.mjs';
 
 function parseHtml(html) {
@@ -65,15 +66,12 @@ function replaceOuterSections(html, sections) {
   const replacements = sections
     .map((section) => ({
       end: section.sourceCodeLocation?.endOffset,
-      replacement: serializeOuter(section),
+      html: serializeOuter(section),
       start: section.sourceCodeLocation?.startOffset,
     }))
-    .filter(({ end, start }) => Number.isInteger(start) && Number.isInteger(end))
-    .sort((left, right) => right.start - left.start);
+    .filter(({ end, start }) => Number.isInteger(start) && Number.isInteger(end));
 
-  return replacements.reduce((output, replacement) => (
-    `${output.slice(0, replacement.start)}${replacement.replacement}${output.slice(replacement.end)}`
-  ), html);
+  return replaceHtmlRanges(html, replacements);
 }
 
 // Consume generated markers before Core derives heading IDs. Keep these as
