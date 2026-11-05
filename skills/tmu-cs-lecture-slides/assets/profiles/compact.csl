@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" version="1.0" class="in-text" default-locale="en-US">
+  <info>
+    <title>TMU CS compact references</title>
+    <id>https://taishi.org/styles/tmu-cs-compact</id>
+    <updated>2026-11-05T00:00:00+00:00</updated>
+  </info>
+  <citation>
+    <layout prefix="[" suffix="]" delimiter=", ">
+      <text variable="citation-number"/>
+    </layout>
+  </citation>
+  <bibliography second-field-align="flush" et-al-min="3" et-al-use-first="1">
+    <layout suffix=".">
+      <text variable="citation-number" prefix="[" suffix="]"/>
+      <group delimiter=", ">
+        <names variable="author"><name form="short" and="text"/></names>
+        <choose>
+          <if variable="container-title"><text variable="container-title" form="short"/></if>
+          <else><text variable="publisher"/></else>
+        </choose>
+        <text variable="number"/>
+        <date variable="issued"><date-part name="year"/></date>
+      </group>
+    </layout>
+  </bibliography>
+</style>

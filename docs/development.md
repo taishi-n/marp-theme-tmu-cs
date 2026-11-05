@@ -59,13 +59,14 @@ When changing engine behavior, keep the processing order stable unless there is 
 
 The intended render order is:
 
-1. citation preprocessing
-2. deck defaults
-3. section page / TOC preprocessing
-4. external code resolution
-5. step expansion
-6. Marp render, including slide metadata and media playback directive application; resolve TOC links after Core assigns heading IDs
-7. HTML postprocessing
+1. authored source IDs and original source positions
+2. citation preprocessing
+3. deck defaults
+4. section page / TOC preprocessing
+5. external code resolution
+6. step expansion
+7. Marp render, including slide metadata and media playback directive application; resolve TOC links after Core assigns heading IDs
+8. HTML postprocessing
 
 Auxiliary slides set the built-in `paginate` directive to `skip` before Marpit applies directives. Normal slides retain authored `false`, `skip`, and `hold` behavior. Title slides remain counted unless explicitly skipped.
 
@@ -164,16 +165,18 @@ The repository includes a lightweight `node:test` suite for preprocessing and pu
 
 Use these checks based on the change:
 
-- CSS or layout changes: run `npm run build:html` and inspect the sample deck
+- CSS or layout changes: run `npm run build:html` and the relevant static checks; the user reviews the rendered sample
 - engine or Markdown preprocessor changes: run `npm test` and `npm run build:html`
-- sequential media playback changes: run `npm run check`, build the sample HTML, and verify Left/Right media steps, Up/Down page navigation, and on-screen controls in a browser
+- sequential media playback changes: run `npm run check` and build the sample HTML; the user verifies Left/Right media steps, Up/Down page navigation, and on-screen controls
 - standalone HTML bundling changes: run `npm test` and the deterministic `npm run build:html:standalone:ci`; use `npm run build:html:standalone` as a network integration check for remote sample assets
 - citation changes: run `npm run build:html` and confirm the JS citation backend still produces the expected output
 - output-format-sensitive changes: also run `npm run build:pdf` or `npm run build:pptx`
 - package/export changes: run `npm pack --dry-run`
 - wrapper CLI argument handling changes: run `npm test` and verify `node scripts/marp-tmu-cs.mjs --help`
 
-When visually checking the sample deck, pay particular attention to:
+Do not launch or automate Chrome, Safari, or a headless browser for visual review.
+Builds and static checks do not establish rendered correctness. The user's
+sample review should cover:
 
 - title slide generation
 - default header and footer
@@ -183,6 +186,20 @@ When visually checking the sample deck, pay particular attention to:
 - code blocks and step emphasis states
 - math annotation overlays
 - citations and Markdown footnotes
+
+## Authoring Skill
+
+The maintained Codex skill source is `skills/tmu-cs-lecture-slides/` in this
+repository. It contains shared authoring guidance and runnable lecture,
+research-talk, and experiment-report profiles. The skill is separate from the
+npm package's runtime files. Install its files into the corresponding personal
+skill directory after reviewing local skill changes; preserve unrelated
+resources already present there.
+
+Keep research-specific notation, selected results, plot ranges, audio
+conditions, and dependency choices in each consumer repository's policy.
+The skill reads those policies rather than applying one deck's decisions to
+every presentation.
 
 ## Maintenance Rules
 

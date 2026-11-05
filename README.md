@@ -276,3 +276,4 @@ Long code lines are wrapped automatically, and wrapped segments end with `\` so 
 - [Feature guide](docs/feature-guide.md)
 - [Sequential media playback](docs/media-playback.md)
 - [Development guide](docs/development.md)
+- Authoring skill source: `skills/tmu-cs-lecture-slides/` in the source repository
