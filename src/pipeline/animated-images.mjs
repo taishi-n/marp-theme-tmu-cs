@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { dirname, extname, isAbsolute, resolve } from 'node:path';
 import { parse, parseFragment } from 'parse5';
 import { escapeHtmlAttribute } from '../core/html.mjs';
+import { installSpectrogramVisibility } from './spectrogram-visibility.mjs';
 import { resolveConstrainedFilePath, resolveInputRoot } from '../core/local-path.mjs';
 
 const require = createRequire(import.meta.url);
@@ -172,17 +173,25 @@ function createAnimatedImagePlayerHtml(attributes) {
 }
 
 function createSpectrogramAudioPlayerHtml(attributes, innerHtml = '') {
-  const audioAttributes = serializeHtmlAttributes(attributes, {
+  const audioAttributes = serializeHtmlAttributes({ ...attributes, preload: 'none' }, {
     skipKeys: ['controls'],
   });
   const wavegramAttributes = {
     'data-wavegram-player': '',
+    rendering: 'suspended',
+    'color-map': 'magma',
   };
   if ('data-spectrogram-height' in attributes) {
     wavegramAttributes['spectrogram-height'] = parsePositiveInteger(attributes['data-spectrogram-height'], 120);
   }
   if ('data-spectrogram-fft-samples' in attributes) {
     wavegramAttributes['fft-size'] = parsePositiveInteger(attributes['data-spectrogram-fft-samples'], 1024);
+  }
+  for (const name of ['height', 'waveform-height', 'spectrogram-height', 'fft-size', 'hop-size',
+    'window-type', 'min-db', 'max-db', 'color-map', 'channel', 'show-waveform',
+    'show-spectrogram', 'show-controls', 'show-time']) {
+    const key = 'data-wavegram-' + name;
+    if (key in attributes) wavegramAttributes[name] = attributes[key];
   }
   const wavegramHtmlAttributes = serializeHtmlAttributes(wavegramAttributes);
 
@@ -339,6 +348,7 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
     }
 
     function playSpectrogram(player) {
+      spectrogramVisibility.activate(player);
       const wavegram = player.querySelector('wavegram-player[data-wavegram-player]');
       if (!wavegram) return;
 
@@ -568,7 +578,9 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
     }, true);
 
     document.querySelectorAll('.tmu-cs-gif-player').forEach(initGif);
-    document.querySelectorAll('[data-wavegram-spectrogram-player]').forEach(initSpectrogram);
+    const spectrogramVisibility = (${installSpectrogramVisibility.toString()})({
+      document, window, initialize: initSpectrogram, pause: pauseSpectrogram,
+    });
 
     let activeSection = null;
     function synchronizeActiveSection() {
@@ -578,17 +590,35 @@ function mediaRuntimeScript({ includeWavegram = false } = {}) {
         if (nextSection) resetSequence(nextSection);
       }
       activeSection = nextSection;
+      spectrogramVisibility.synchronize();
       updateNavigationButtons(nextSection);
     }
 
-    const observer = new MutationObserver(synchronizeActiveSection);
+    let synchronizationPending = false;
+    function scheduleSynchronization() {
+      if (synchronizationPending) return;
+      synchronizationPending = true;
+      const requestFrame = window.requestAnimationFrame?.bind(window) || ((callback) => setTimeout(callback, 0));
+      requestFrame(() => {
+        synchronizationPending = false;
+        synchronizeActiveSection();
+      });
+    }
+    const observer = new MutationObserver((records) => {
+      if (records.some((record) => record.attributeName === 'data-bespoke-view' ||
+        record.target.classList?.contains('bespoke-marp-slide'))) scheduleSynchronization();
+    });
     observer.observe(document.querySelector('.marpit') || document.documentElement, {
       attributeFilter: ['class'],
       attributes: true,
       subtree: true,
     });
-    window.addEventListener('load', synchronizeActiveSection);
-    setTimeout(synchronizeActiveSection, 0);
+    if (document.body) observer.observe(document.body, {
+      attributeFilter: ['data-bespoke-view'], attributes: true,
+    });
+    window.addEventListener('load', scheduleSynchronization);
+    document.addEventListener('DOMContentLoaded', scheduleSynchronization);
+    setTimeout(scheduleSynchronization, 0);
   })();</script>`;
 }
 

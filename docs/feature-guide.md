@@ -232,6 +232,11 @@ Behavior:
 - the wavegram runtime is embedded only when this class is present
 - playback, seeking, cursor display, waveform rendering, spectrogram rendering, ready state, and time display follow wavegram defaults
 - `data-spectrogram-height` and `data-spectrogram-fft-samples` are passed through as `spectrogram-height` and `fft-size` when explicitly present
+- the spectrogram color map defaults to `magma`; `data-wavegram-color-map` can select another supported wavegram palette
+- wavegram settings are applied before the audio source is loaded. The supported `data-wavegram-*` suffixes are `height`, `waveform-height`, `spectrogram-height`, `fft-size`, `hop-size`, `window-type`, `min-db`, `max-db`, `color-map`, `channel`, `show-waveform`, `show-spectrogram`, `show-controls`, and `show-time`. Explicit `data-wavegram-*` values take precedence over the two legacy aliases above
+- in interactive slides, audio analysis starts when its slide becomes visible. Leaving the slide pauses playback and suspends drawing while retaining the player and its canvases for revisits
+- normal and presenter views follow their active slide, next-page previews follow their own active slide, and overview thumbnails load as they enter the viewport. Plain HTML uses viewport visibility as well
+- the retained native `audio` uses `preload="none"`; playback and analysis are handled by wavegram
 - local spectrogram audio sources are converted to `data:` URLs during HTML rendering so they still work when the deck is opened directly from disk
 - local audio resolution is exact and relative to the Markdown file; a missing path is reported and is never replaced by a same-basename file elsewhere
 - remote audio sources need CORS headers that allow the browser-side analysis fetch

@@ -4,7 +4,20 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
+import { parseFragment } from 'parse5';
 import enhanceAnimatedImages from '../src/pipeline/animated-images.mjs';
+
+function firstAttributes(html, tagName) {
+  function find(node) {
+    if (node.tagName === tagName) return Object.fromEntries(node.attrs.map(({ name, value }) => [name, value]));
+    for (const child of node.childNodes || []) {
+      const attributes = find(child);
+      if (attributes) return attributes;
+    }
+    return null;
+  }
+  return find(parseFragment(html));
+}
 
 function createSequentialPlaybackHarness(runtime) {
   const events = [];
@@ -104,9 +117,15 @@ test('enhanceAnimatedImages emits spectrogram markup and a self-contained wavegr
   const output = enhanceAnimatedImages(html);
 
   assert.match(output, /<div class="tmu-cs-spectrogram-player" data-wavegram-spectrogram-player>/);
-  assert.match(output, /<audio class="demo wavesurfer-spectrogram" src="\.\/tone\.wav" data-spectrogram-height="120" data-spectrogram-fft-samples="2048"><\/audio>/);
+  assert.deepEqual(firstAttributes(output, 'audio'), {
+    class: 'demo wavesurfer-spectrogram', src: './tone.wav',
+    'data-spectrogram-height': '120', 'data-spectrogram-fft-samples': '2048', preload: 'none',
+  });
   assert.doesNotMatch(output, /<audio[^>]*controls/);
-  assert.match(output, /<wavegram-player data-wavegram-player="" spectrogram-height="120" fft-size="2048"><\/wavegram-player>/);
+  assert.deepEqual(firstAttributes(output, 'wavegram-player'), {
+    'data-wavegram-player': '', rendering: 'suspended', 'color-map': 'magma',
+    'spectrogram-height': '120', 'fft-size': '2048',
+  });
   assert.match(output, /customElements\.define\("wavegram-player"/);
   assert.match(output, /const sourceUrl = resolveAudioSource\(audio\)/);
   assert.match(output, /wavegram\.setAttribute\('src', sourceUrl\)/);
@@ -207,11 +226,23 @@ test('enhanceAnimatedImages inlines local spectrogram audio when markdownPath is
     const html = '<section><audio class="wavesurfer-spectrogram" src="./assets/tone.wav"></audio></section>';
     const output = enhanceAnimatedImages(html, { markdownPath });
 
-    assert.match(output, /<audio class="wavesurfer-spectrogram" src="data:audio\/wav;base64,[^"]+"><\/audio>/);
+    assert.match(firstAttributes(output, 'audio').src, /^data:audio\/wav;base64,[^"]+$/);
     assert.equal((output.match(/data:audio\/wav;base64,/gu) ?? []).length, 1);
   } finally {
     await rm(tempDir, { force: true, recursive: true });
   }
+});
+
+test('spectrogram configuration reaches wavegram before runtime loading', () => {
+  const output = enhanceAnimatedImages('<section><audio class="wavesurfer-spectrogram" src="tone.wav" data-wavegram-color-map="viridis" data-wavegram-hop-size="128" data-wavegram-min-db="-75" data-wavegram-max-db="-15" data-wavegram-show-waveform="false"></audio></section>');
+  const attributes = firstAttributes(output, 'wavegram-player');
+  assert.equal(attributes['color-map'], 'viridis');
+  assert.equal(attributes['hop-size'], '128');
+  assert.equal(attributes['min-db'], '-75');
+  assert.equal(attributes['max-db'], '-15');
+  assert.equal(attributes['show-waveform'], 'false');
+  assert.equal(attributes.rendering, 'suspended');
+  assert.equal(attributes.src, undefined);
 });
 
 test('enhanceAnimatedImages preserves GIF identity and accessibility attributes', () => {

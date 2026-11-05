@@ -88,6 +88,9 @@ Four Right or on-screen next actions select the GIF, plain audio, spectrogram au
 ## Spectrogram And Standalone HTML
 
 Wavegram must load a spectrogram source before playing it. A sequence request made during loading is applied when the player becomes ready.
+Spectrogram sources load when their slide becomes visible, including slides with sequential
+playback disabled. Hidden slides suspend canvas work and retain their existing player.
+Leaving a slide cancels any pending playback request, so a late load cannot start hidden audio.
 
 Local spectrogram paths are resolved relative to the Markdown file. Remote sources must permit cross-origin fetching. To embed all supported assets into one HTML file, use:
 
