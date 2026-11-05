@@ -2,6 +2,8 @@
 
 This document collects the maintainer-facing information for working on `marp-theme-tmu-cs`.
 
+The [consumer-session improvement plan](improvement-plan.md) records recurring authoring requests, existing support, and proposed maintenance work as of 2026-11-05. It is a plan rather than an implemented feature reference.
+
 ## Repository Shape
 
 The package is an ESM-based Node package (`"type": "module"`) and targets Node 20.19.0 or newer.
