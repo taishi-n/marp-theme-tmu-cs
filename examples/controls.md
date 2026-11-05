@@ -8,6 +8,7 @@ bibliography: references.bib
 citationDisplay: footnotes
 ---
 
+<!-- slide-id: citations -->
 ### Citation placement
 
 Per-slide citation entries [@postel1981ip] can be selected independently of
@@ -17,6 +18,7 @@ authored explanatory notes[^note].
 
 ---
 
+<!-- slide-id: chapter -->
 ## Selected chapter
 <!-- section-page: true -->
 

@@ -2,6 +2,7 @@ import { hasOwn, parseFrontMatter } from '../core/front-matter.mjs';
 import { parseMarkdownHeadings } from '../core/headings.mjs';
 import { findStandaloneDirectives, isFenceClose, joinMarkdownSlides, parseFenceStart, splitMarkdownSlides } from '../core/markdown.mjs';
 import { splitLinesPreservingEOF } from '../core/text-lines.mjs';
+import { sourceMarkerPattern, stripSlideSource } from '../core/slide-source.mjs';
 import { isReferenceHeadingText } from '../features/citations/markdown-utils.mjs';
 
 const tocCommandLinePattern = /^<!--\s*toc(?:\s+level\s*=\s*(?<level>\d+))?\s*-->$/u;
@@ -226,6 +227,10 @@ function insertSectionPages(markdown, frontMatter) {
       || slideHasClassMarker(slide.content, 'auxiliary-page')
     ) return [slide];
 
+    const sourceMarker = slide.content.match(sourceMarkerPattern)?.[0] ?? '';
+    slide = { ...slide, content: stripSlideSource(slide.content) };
+    const restoreSource = (item) => ({ ...item, content: sourceMarker ? `${sourceMarker}\n\n${item.content}` : item.content });
+
     const sectionHeadings = parseMarkdownHeadings(slide.content)
       .filter((heading) => (
         heading.level === sectionLevel
@@ -245,7 +250,7 @@ function insertSectionPages(markdown, frontMatter) {
       slideLines[directive.lineIndex] = '';
     }
     const headings = sectionHeadings.filter((heading) => overrides.get(heading.lineIndex) ?? enabledByDefault);
-    if (headings.length === 0) return [{ ...slide, content: slideLines.join('\n') }];
+    if (headings.length === 0) return [restoreSource({ ...slide, content: slideLines.join('\n') })];
 
     const producedSlides = [];
     let pendingLeadingLines = [];
@@ -295,7 +300,7 @@ function insertSectionPages(markdown, frontMatter) {
       }
     }
 
-    return producedSlides.filter((producedSlide) => producedSlide.content.trim() !== '');
+    return producedSlides.filter((producedSlide) => producedSlide.content.trim() !== '').map(restoreSource);
   });
 
   return joinMarkdownSlides({

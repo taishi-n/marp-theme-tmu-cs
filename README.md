@@ -143,6 +143,11 @@ The package also retains `engine.mjs`, `theme`, and `theme/tmu-cs.css` as compat
 
 Internal implementation files under `src/` are not part of the supported public API.
 
+For stable editing references, add `<!-- slide-id: result-name -->` to an authored
+slide. Use `--edit-labels` to show the IDs during HTML review and
+`--slide-index dist/slide-index.json` to export source lines and rendered page
+numbers, including generated chapter pages and code steps.
+
 ## Theme-Specific Syntax
 
 Deck-level directives and inline commands:

@@ -5,18 +5,19 @@ import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { applyTmuCsDefaults, detectOutputFormat, findOutputPath } from './marp-cli-options.mjs';
+import { parseThemeOptions } from './theme-options.mjs';
 
 const require = createRequire(import.meta.url);
 const marpCliPath = require.resolve('@marp-team/marp-cli/marp-cli.js');
-const rawArgs = process.argv.slice(2);
-const terminatorIndex = rawArgs.indexOf('--');
-const optionArgs = terminatorIndex === -1 ? rawArgs : rawArgs.slice(0, terminatorIndex);
-const positionalTail = terminatorIndex === -1 ? [] : rawArgs.slice(terminatorIndex);
-const standalone = optionArgs.includes('--standalone');
-const forwardedArgs = applyTmuCsDefaults([
-  ...optionArgs.filter((arg) => arg !== '--standalone'),
-  ...positionalTail,
-]);
+let themeOptions;
+try {
+  themeOptions = parseThemeOptions(process.argv.slice(2));
+} catch (error) {
+  console.error(`[tmu-cs] ${error.message}`);
+  process.exit(1);
+}
+const { standalone } = themeOptions;
+const forwardedArgs = applyTmuCsDefaults(themeOptions.args);
 const outputFormat = detectOutputFormat(forwardedArgs);
 
 if (standalone && outputFormat !== 'html') {
@@ -52,6 +53,11 @@ function findMarkdownInputs(args) {
 }
 
 const markdownInputs = findMarkdownInputs(forwardedArgs);
+const help = forwardedArgs.includes('--help') || forwardedArgs.includes('-h');
+if (themeOptions.slideIndex && markdownInputs.length !== 1 && !help) {
+  console.error('[tmu-cs] --slide-index requires exactly one explicit Markdown input.');
+  process.exit(1);
+}
 
 const result = spawnSync(process.execPath, [marpCliPath, ...forwardedArgs], {
   stdio: 'inherit',
@@ -64,12 +70,18 @@ const result = spawnSync(process.execPath, [marpCliPath, ...forwardedArgs], {
     ...(allowLocalFiles ? { TMU_CS_ALLOW_LOCAL_FILES: '1' } : {}),
     ...(markdownInputs.length > 0 ? { TMU_CS_MARKDOWN_PATHS: JSON.stringify(markdownInputs) } : {}),
     TMU_CS_OUTPUT_FORMAT: outputFormat,
+    ...(themeOptions.editLabels ? { TMU_CS_EDIT_LABELS: '1' } : {}),
+    ...(themeOptions.slideIndex ? { TMU_CS_SLIDE_INDEX: resolve(themeOptions.slideIndex) } : {}),
   },
 });
 
 if (result.error) {
   console.error(result.error instanceof Error ? result.error.message : String(result.error));
   process.exit(1);
+}
+
+if (help && result.status === 0) {
+  console.log('\nTMU-CS options:\n  --standalone           Embed HTML assets\n  --edit-labels          Show edit IDs in HTML\n  --slide-index <path>   Write a source-to-slide JSON index');
 }
 
 process.exit(result.status ?? 1);

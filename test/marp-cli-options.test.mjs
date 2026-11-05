@@ -1,5 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { parseThemeOptions } from '../scripts/theme-options.mjs';
+
+test('wrapper metadata options preserve Marp arguments and positional terminators', () => {
+  const options = parseThemeOptions(['--edit-labels', '--slide-index=dist/index.json', 'slides.md', '-o', 'dist/deck.html', '--', '--standalone']);
+  assert.equal(options.editLabels, true);
+  assert.equal(options.slideIndex, 'dist/index.json');
+  assert.equal(options.standalone, false);
+  assert.deepEqual(options.args, ['slides.md', '-o', 'dist/deck.html', '--', '--standalone']);
+  assert.throws(() => parseThemeOptions(['--slide-index', '--pdf']), /requires an output path/);
+});
 import { enginePath, themePath } from '../index.mjs';
 import { applyTmuCsDefaults, detectOutputFormat } from '../scripts/marp-cli-options.mjs';
 

@@ -1,4 +1,5 @@
 import { parse, parseFragment, serializeOuter } from 'parse5';
+import { readSlideSource } from '../core/slide-source.mjs';
 
 function parseHtml(html) {
   const options = { sourceCodeLocationInfo: true };
@@ -82,8 +83,27 @@ export function installSlideMetadata(marp) {
     if (state.inlineMode) return;
     let slide;
     let heading;
+    let skipParagraphClose = false;
+    const retained = [];
     for (const token of state.tokens) {
       if (token.type === 'marpit_slide_open') slide = token;
+      if (skipParagraphClose && token.type === 'paragraph_close') {
+        skipParagraphClose = false;
+        continue;
+      }
+      if (slide && ['html_block', 'inline'].includes(token.type)) {
+        const source = readSlideSource(token.content);
+        if (source) {
+          slide.attrSet('data-source-id', source.id);
+          slide.attrSet('data-source-line', String(source.sourceLine));
+          slide.attrSet('data-source-slide', String(source.sourceSlide));
+          if (token.type === 'inline' && retained.at(-1)?.type === 'paragraph_open') {
+            retained.pop();
+            skipParagraphClose = true;
+          }
+          continue;
+        }
+      }
       if (token.type === 'heading_open') heading = token;
       if (slide && token.type === 'inline') {
         const children = token.children ?? [];
@@ -114,7 +134,9 @@ export function installSlideMetadata(marp) {
         }
         slide = undefined;
       }
+      retained.push(token);
     }
+    state.tokens = retained;
   });
 
   marp.markdown.core.ruler.after('marp_slug', 'tmu_cs_toc_links', (state) => {
@@ -139,7 +161,7 @@ export function installSlideMetadata(marp) {
   });
 }
 
-export default function decorateAuxiliarySlides(html) {
+export default function decorateAuxiliarySlides(html, options = {}) {
   const source = String(html ?? '');
   const document = parseHtml(source);
   const sections = [];
@@ -150,14 +172,41 @@ export default function decorateAuxiliarySlides(html) {
   if (sections.length === 0) return source;
 
   let currentSectionName = '';
+  const occurrences = new Map();
+  const slides = [];
 
-  for (const section of sections) {
+  for (const [offset, section] of sections.entries()) {
     const auxiliary = hasClass(section, 'auxiliary-page');
     if (hasClass(section, 'section-page')) currentSectionName = firstHeadingText(section);
     if (!auxiliary && !hasClass(section, 'title-slide')) {
       updateHeaderSectionName(section, currentSectionName);
     }
+    const kind = hasClass(section, 'title-slide') ? 'title' : hasClass(section, 'section-page') ? 'section' : hasClass(section, 'toc-page') ? 'toc' : 'content';
+    const sourceId = getAttribute(section, 'data-source-id') ?? (kind === 'title' ? '@title' : `@generated-${offset + 1}`);
+    const group = `${sourceId}:${kind}`;
+    const occurrence = (occurrences.get(group) ?? 0) + 1;
+    occurrences.set(group, occurrence);
+    const id = `${sourceId}${kind === 'section' ? '@section' : ''}${occurrence > 1 ? `@${occurrence}` : ''}`;
+    setAttribute(section, 'data-slide-id', id);
+    if (options.editLabels) {
+      const label = parseFragment('<span class="tmu-cs-edit-label" aria-hidden="true"></span>').childNodes[0];
+      if (!('childNodes' in label)) throw new Error('[tmu-cs] could not create the edit label.');
+      label.childNodes = [{ nodeName: '#text', value: id, parentNode: label }];
+      label.parentNode = section;
+      section.childNodes.push(label);
+    }
+    slides.push({
+      id, sourceId,
+      sourceLine: Number(getAttribute(section, 'data-source-line')) || null,
+      sourceSlide: Number(getAttribute(section, 'data-source-slide')) || null,
+      physicalPage: offset + 1,
+      number: Number(getAttribute(section, 'data-marpit-pagination')) || null,
+      total: Number(getAttribute(section, 'data-marpit-pagination-total')) || null,
+      kind, state: occurrence, title: firstHeadingText(section), section: currentSectionName,
+    });
   }
+
+  options.onSlides?.(slides);
 
   return replaceOuterSections(source, sections);
 }

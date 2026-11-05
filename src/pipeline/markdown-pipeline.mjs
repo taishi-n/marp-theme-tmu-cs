@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 import { parseFrontMatter } from '../core/front-matter.mjs';
+import { annotateSlideSources } from '../core/slide-source.mjs';
 import { preprocessCitationMarkdown } from '../features/citations/index.mjs';
 import { preprocessCodeMarkdown, warnForOverflowingCodeBlocks } from '../features/code/index.mjs';
 import applyDeckDefaults from './deck-defaults.mjs';
@@ -39,7 +40,7 @@ export function getMarkdownPathFromEnv(env = {}, markdown, configuredPaths = [])
 
 export function prepareMarkdownForRender(markdown, context) {
   const { data: sourceFrontMatter } = parseFrontMatter(markdown);
-  const citedMarkdown = preprocessCitationMarkdown(markdown, {
+  const citedMarkdown = preprocessCitationMarkdown(annotateSlideSources(markdown), {
     defaultCslPath: context.defaultCitationStylePath,
     frontMatter: sourceFrontMatter,
     markdownPath: context.markdownPath,

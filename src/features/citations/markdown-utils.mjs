@@ -1,4 +1,5 @@
 import { escapeHtml } from '../../core/html.mjs';
+import { stripSlideSource } from '../../core/slide-source.mjs';
 import { isFenceClose, parseFenceStart } from '../../core/markdown.mjs';
 import { splitLinesPreservingEOF } from '../../core/text-lines.mjs';
 import { markdownTextMatches, transformMarkdownText } from '../../core/markdown-text.mjs';
@@ -275,7 +276,7 @@ export function slideHasReferenceHeading(markdown) {
 }
 
 export function slideIsReferenceHeadingOnly(markdown) {
-  const stripped = String(markdown ?? '')
+  const stripped = stripSlideSource(markdown)
     .split('\n')
     .filter((line) => !referenceHeadingPattern.test(line.trim()))
     .join('\n')

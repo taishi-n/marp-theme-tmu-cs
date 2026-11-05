@@ -1,4 +1,6 @@
 import { readFile } from 'node:fs/promises';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHighlighter } from 'shiki';
 import { installCodeFeature } from './src/features/code/index.mjs';
@@ -109,7 +111,7 @@ export default async (options) => {
   marp.renderMarkdown = (markdown, env = {}) => {
     mathFeature.resetRuntimeInjection();
     const markdownPath = getMarkdownPathFromEnv(env, markdown, configuredMarkdownPaths);
-    const { markdown: preparedMarkdown } = prepareMarkdownForRender(markdown, {
+    const { markdown: preparedMarkdown, frontMatter: preparedFrontMatter } = prepareMarkdownForRender(markdown, {
       allowLocalFiles,
       defaultCitationStylePath,
       markdownPath,
@@ -132,7 +134,17 @@ export default async (options) => {
     const renderedHtml = decorateAuxiliarySlides(enhanceAnimatedImages(originalRenderMarkdown(preparedMarkdown, env), {
       allowLocalFiles,
       markdownPath,
-    }));
+    }), {
+      editLabels: outputFormat === 'html' && (String(preparedFrontMatter?.editLabels) === 'true' || process.env.TMU_CS_EDIT_LABELS === '1'),
+      onSlides: (slides) => {
+        const index = { version: 1, sourcePath: markdownPath ?? null, slides };
+        marp.tmuCsSlides = index;
+        if (process.env.TMU_CS_SLIDE_INDEX) {
+          mkdirSync(dirname(process.env.TMU_CS_SLIDE_INDEX), { recursive: true });
+          writeFileSync(process.env.TMU_CS_SLIDE_INDEX, `${JSON.stringify(index, null, 2)}\n`);
+        }
+      },
+    });
 
     if (!standaloneEnabled) return renderedHtml;
 

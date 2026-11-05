@@ -1,4 +1,5 @@
 import { joinMarkdownSlides, splitMarkdownSlides } from '../../core/markdown.mjs';
+import { stripSlideSource } from '../../core/slide-source.mjs';
 import {
   appendBlock,
   collectInlineReferenceOrder,
@@ -16,7 +17,7 @@ import {
 } from './markdown-utils.mjs';
 
 function isEffectivelyEmpty(markdown) {
-  return String(markdown ?? '').trim() === '';
+  return stripSlideSource(markdown).trim() === '';
 }
 
 function createWarningRelay(onWarning) {

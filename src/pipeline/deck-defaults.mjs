@@ -1,4 +1,5 @@
 import { asNonEmptyString, hasOwn, normalizeText, parseFrontMatter } from '../core/front-matter.mjs';
+import { stripSlideSource } from '../core/slide-source.mjs';
 
 function getDeckMetadata(frontMatter) {
   return {
@@ -22,7 +23,7 @@ function firstSlideHasTitleClass(markdown) {
 function firstSlideLooksLikeTitleSlide(markdown, metadata) {
   if (!metadata.title) return false;
 
-  const significantLines = getFirstSlide(markdown)
+  const significantLines = stripSlideSource(getFirstSlide(markdown))
     .replace(/<!--[\s\S]*?-->/g, '\n')
     .split(/\r?\n/)
     .map((line) => line.trim())

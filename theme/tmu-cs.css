@@ -960,6 +960,17 @@ section.tmu-cs-comparison > :is(.citation-footnotes-marker, .citation-bibliograp
 .tmu-cs-audio-label { grid-column: 2; font-size: 22px; color: var(--tmu-cs-accent); }
 .tmu-cs-audio-row > wavegram-player { grid-column: 3; min-width: 0; }
 
+.tmu-cs-edit-label {
+  position: absolute;
+  top: 14px;
+  right: var(--tmu-cs-side-padding);
+  color: var(--tmu-cs-muted);
+  font-size: 12px;
+  line-height: 1;
+}
+
+@media print { .tmu-cs-edit-label { display: none !important; } }
+
 section.title-slide {
   justify-content: flex-start;
   padding-top: 132px;
