@@ -81,6 +81,25 @@ test('bibliography-only citation numbers refer to the same entries across slides
   }
 });
 
+test('author-date citations disambiguate the whole deck and retain citation modifiers', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-csl-context-'));
+  try {
+    await writeFile(join(tempDir, 'refs.bib'), bibliography + '\n@article{other2024, author={Doe, Jane}, title={Other Citation}, journal={Tests}, year={2024}}\n@article{uncited, author={Roe, John}, title={Uncited Entry}, journal={Tests}, year={2025}}');
+    const processed = preprocessCitationMarkdown('# First\n[@demo2024]\n\n---\n\n# Second\n[see @other2024, p. 12]\n[-@demo2024]', {
+      frontMatter: { bibliography: 'refs.bib' },
+      markdownPath: join(tempDir, 'slides.md'),
+    });
+    const citations = [...processed.matchAll(/citation-ref">([^<]+)<\/span>/gu)].map((match) => match[1]);
+    assert.match(citations[0], /Doe, 2024a/u);
+    assert.match(citations[1], /see Doe, 2024b, p. 12/u);
+    assert.match(citations[2], /2024a/u);
+    assert.doesNotMatch(citations[2], /Doe/u);
+    assert.match(processed, /Uncited Entry/u);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
 test('citationDisplay rejects unknown modes instead of silently dropping references', () => {
   assert.throws(() => preprocessCitationMarkdown('# Slide', { frontMatter: { citationDisplay: 'unknown' } }), /citationDisplay must be/);
 });

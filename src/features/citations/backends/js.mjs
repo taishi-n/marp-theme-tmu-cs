@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
-import { Cite, plugins } from '@citation-js/core';
+import { Cite, plugins, util } from '@citation-js/core';
+import CSL from 'citeproc';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import '@citation-js/plugin-bibtex';
 import '@citation-js/plugin-csl';
@@ -253,20 +254,32 @@ function createCitationStateItem(items) {
   };
 }
 
-function formatCitationCluster(cite, template, items, citationHistory) {
+function formatCitationClusters(cite, template, clusters) {
+  if (clusters.length === 0) return [];
   try {
-    const citationStateItem = createCitationStateItem(items);
-    return cite.format('citation', {
-      entry: citationStateItem.citationItems,
-      citationsPre: citationHistory,
-      format: 'text',
-      lang: DEFAULT_LOCALE,
-      template,
-    });
+    const config = plugins.config.get('@csl');
+    const entries = new Map(util.downgradeCsl(cite.data).map((entry) => [entry.id, entry]));
+    const processor = new CSL.Engine({
+      retrieveItem: (id) => {
+        if (!entries.has(id)) throw new Error(`Cannot find entry with id '${id}'`);
+        return entries.get(id);
+      },
+      retrieveLocale: (locale) => config.locales.get(config.locales.has(locale) ? locale : DEFAULT_LOCALE),
+    }, config.templates.get(template), DEFAULT_LOCALE, true);
+    processor.opt.development_extensions.wrap_url_and_doi = false;
+    // citeproc applies incremental updates to earlier citations during this one
+    // deck-wide pass, including author/year disambiguation and numeric ordering.
+    return processor.rebuildProcessorState(clusters, 'text', []).map((result) => result[2]);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw createBackendError('JS_CITATION_FORMAT_FAILED', `failed to format citation with citeproc. ${message}`, error);
   }
+}
+
+function transformInlineCitations(markdown, replace) {
+  return transformMarkdownText(markdown, (text) => text.replace(/\[((?:\\.|[^\]\\])*)\]/gu, (match, contentText) => (
+    inlineCitationMarkerPattern.test(contentText) ? replace(parseCitationCluster(contentText)) : match
+  )));
 }
 
 function applyReferenceNumbers(citationText, items, referenceNumbers) {
@@ -280,30 +293,19 @@ function applyReferenceNumbers(citationText, items, referenceNumbers) {
   return citationText;
 }
 
-function replaceInlineCitations(slideContent, cite, template, citationHistory, bibliographyNumbers) {
+function replaceInlineCitations(slideContent, nextCitation, bibliographyNumbers) {
   const referenceOrder = collectInlineReferenceOrder(slideContent);
   const referenceNumbers = bibliographyNumbers ?? new Map(referenceOrder.map((reference, index) => [
     reference.type === 'citation' ? `citation:${reference.key}` : `footnote:${reference.id}`,
     index + 1,
   ]));
-  const content = transformMarkdownText(slideContent, (text) => (
-    text.replace(/\[((?:\\.|[^\]\\])*)\]/gu, (match, contentText) => {
-          if (!inlineCitationMarkerPattern.test(String(contentText))) return match;
-
-          const items = parseCitationCluster(contentText);
-
-          const citationText = bibliographyNumbers
-            ? items.map((item) => formatCitationCluster(cite, template, [item], citationHistory)
-              .replace(/\[\d+(?=[,\]])/u, `[${bibliographyNumbers.get(`citation:${item.id}`)}`)).join(', ')
-            : applyReferenceNumbers(
-              formatCitationCluster(cite, template, items, citationHistory),
-              items,
-              referenceNumbers,
-            );
-          citationHistory.push(createCitationStateItem(items));
-          return escapeCitationText(citationText);
-        })
-  ));
+  const content = transformInlineCitations(slideContent, (items) => {
+    const citationText = bibliographyNumbers
+      ? items.map((item) => nextCitation()
+        .replace(/\[\d+(?=[,\]])/u, `[${bibliographyNumbers.get(`citation:${item.id}`)}`)).join(', ')
+      : applyReferenceNumbers(nextCitation(), items, referenceNumbers);
+    return escapeCitationText(citationText);
+  });
 
   return {
     content,
@@ -322,17 +324,27 @@ export function createJsCitationBackend() {
       const cite = loadBibliographyEntries(bibliographyPaths);
       const template = resolveTemplate(context);
       const { allEntries, entriesByKey } = createEntriesByKey(cite, template);
-      const citationHistory = [];
       const bibliographyNumbers = context.frontMatter?.citationDisplay === 'bibliography'
         ? new Map(allEntries.map((entry, index) => [`citation:${entry.key}`, index + 1]))
         : undefined;
+
+      const clusters = [];
+      for (const slide of slides) {
+        transformInlineCitations(slide.content ?? slide, (items) => {
+          clusters.push(...(bibliographyNumbers ? items.map((item) => createCitationStateItem([item])) : [createCitationStateItem(items)]));
+          return '';
+        });
+      }
+      const citations = formatCitationClusters(cite, template, clusters);
+      let citationIndex = 0;
+      const nextCitation = () => citations[citationIndex++];
 
       return {
         allEntries,
         entriesByKey,
         slides: slides.map((slide) => ({
           ...(typeof slide === 'string' ? {} : slide),
-          ...replaceInlineCitations(slide.content ?? slide, cite, template, citationHistory, bibliographyNumbers),
+          ...replaceInlineCitations(slide.content ?? slide, nextCitation, bibliographyNumbers),
         })),
       };
     },
