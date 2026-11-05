@@ -33,7 +33,7 @@ migration; those warnings are recorded separately from browser observations.
 | U1 | CLI 4.5.1, its Core 4.4.0 and Marpit 3.2.3 | 100 tests pass; all three static reports pass; 51/51 screenshots and element positions unchanged |
 | U2 | Explicit Core 5.0.2 and unified feature initialization | 102 tests pass; three static reports pass; 51 pages captured with no browser errors or external requests. 28 pages have pixel changes; element changes are limited to two math pages, the native Mermaid element, and two newly highlighted plain fences |
 | U3 | Delegate base Shiki rendering to Core | 104 tests pass; three static reports pass; no browser errors or external requests. 26 pages have pixel changes, mainly syntax colors; only two plain fences change their element rectangles |
-| U4 | Native Mermaid with Kroki fallback | Pending |
+| U4 | Native Mermaid with Kroki fallback | 105 tests pass; three static reports pass; all 51 screenshots and element positions unchanged from U3; no browser errors or external requests |
 | U5 | MathJax 4 annotation notes | Pending |
 | U6 | Package and consumer validation; documentation | Pending |
 
@@ -72,3 +72,13 @@ other fences, removing U2's extra inner padding. Math and media do not move;
 controls and comparison decks remain pixel-identical. Contract tests also
 cover metadata combined with external code and steps, a language beyond the
 old preload list, and escaped/wrapped unknown-language output.
+
+### U4 observations
+
+Native Mermaid remains at Core's intrinsic sizing. Its changed node spacing,
+colors, and dimensions are visible on main-deck page 35 and remain clear of
+the explanatory text. PlantUML and Graphviz are unchanged. Integrated tests
+verify native success without a Kroki URL, an unsupported pie chart falling
+back with its original source, and the explicit `mermaid-kroki` escape hatch.
+Kroki source remains untouched by code wrapping. Recursive font embedding was
+completed in U2 because the full build already activates native Mermaid.

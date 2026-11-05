@@ -205,9 +205,13 @@ Notes:
 - external paths are confined to the directory containing the Markdown input after symbolic links are resolved
 - pass Marp's `--allow-local-files` only for trusted input when an external-code path must leave that directory
 
-## Diagrams Via Kroki
+## Diagrams
 
-Kroki-backed diagram languages can be written as normal fenced code blocks without raw HTML.
+Diagram languages can be written as normal fenced code blocks without raw HTML.
+`mermaid` uses Marp Core's native SVG renderer first. Diagrams unsupported by
+the native renderer, or ones that raise a rendering error, fall back to Kroki.
+Use `mermaid-kroki` to request the Kroki renderer explicitly when its rendering
+or Mermaid compatibility is required.
 
 Mermaid example:
 
@@ -223,13 +227,13 @@ Other supported fence languages include `plantuml`, `graphviz`, `dot`, `vega`, `
 
 Behavior:
 
-- diagram fences are rendered through a Kroki backend instead of the normal code highlighter
-- output uses a remote `https://kroki.io/` image URL with SVG output
-- Marp auto-scaling is applied so large diagrams are scaled down to fit the slide area
+- native Mermaid produces inline SVG during the build; no Kroki request is needed
+- other diagram languages and Mermaid fallback use `https://kroki.io/` SVG images
+- native diagrams use Core's sizing rules; Kroki images use Marp auto-scaling
 - no raw HTML is required in Markdown source
-- standalone HTML output fetches Kroki SVG diagrams during build and rewrites them to `data:` URLs
-- PDF and PPTX output may work when the output pipeline can fetch the remote diagram image, but this is best-effort rather than guaranteed offline behavior
-- diagram syntax errors or Kroki availability problems surface as missing images in rendered output
+- standalone HTML embeds native SVG font dependencies and fetches Kroki images during build, rewriting them to `data:` URLs
+- native diagrams are available to HTML, PDF, and PPTX renderers; Kroki images in non-standalone output still require network access
+- Core warns before falling back; invalid fallback syntax or Kroki availability problems surface as missing images, or as a standalone build failure
 
 ## Media Enhancements
 

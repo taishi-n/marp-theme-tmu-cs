@@ -9,7 +9,7 @@ Node.js 20.19.0 or newer is required.
 - automatic section pages and TOC slide expansion
 - JS-based bibliography processing
 - Shiki-based code highlighting plus step-based emphasis for supported line-comment languages
-- Kroki-backed diagram rendering from fenced code blocks
+- Native Mermaid SVG with Kroki fallback and additional diagram languages
 - display-math annotations
 - external code inclusion from Markdown
 

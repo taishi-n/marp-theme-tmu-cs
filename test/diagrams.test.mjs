@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { inflateSync } from 'node:zlib';
+import engine from '../engine.mjs';
 import { installDiagramFeature } from '../src/features/diagrams/index.mjs';
 import { createKrokiBackend } from '../src/features/diagrams/kroki-backend.mjs';
 
@@ -20,7 +22,7 @@ function createMockMarp(defaultFence = (tokens, idx) => `<pre>${tokens[idx].cont
   };
 }
 
-test('installDiagramFeature renders mermaid fences through Kroki', () => {
+test('the diagram fence adapter provides the Kroki Mermaid fallback', () => {
   const marp = createMockMarp();
   installDiagramFeature(marp, {
     backend: createKrokiBackend(),
@@ -35,6 +37,27 @@ test('installDiagramFeature renders mermaid fences through Kroki', () => {
   assert.match(html, /^<p><marp-auto-scaling data-downscale-only><img src="https:\/\/kroki\.io\/mermaid\/svg\//);
   assert.match(html, /alt="mermaid diagram"/);
   assert.match(html, /marp-auto-scaling/);
+});
+
+test('integrated Mermaid prefers native SVG and preserves source in Kroki fallbacks', async (t) => {
+  const warnings = [];
+  t.mock.method(console, 'warn', (...args) => warnings.push(args));
+  const marp = await engine();
+  const native = marp.render('```mermaid\nflowchart LR\nUser[User] --> API[Web API]\n```').html;
+  assert.match(native, /<svg data-marp-mermaid/u);
+  assert.doesNotMatch(native, /kroki\.io/u);
+  assert.equal(warnings.length, 0);
+
+  const unsupported = 'pie title Pets\n  "Dogs" : 10\n  "Cats" : 20\n';
+  const explicit = 'flowchart LR\n' + 'LongNode'.repeat(24) + ' --> B\n';
+  for (const [language, source] of [['mermaid', unsupported], ['mermaid-kroki', explicit]]) {
+    const { html } = marp.render(`\`\`\`${language}\n${source}\`\`\``);
+    assert.doesNotMatch(html, /<svg data-marp-mermaid/u);
+    const encoded = html.match(/kroki\.io\/mermaid\/svg\/([^"/]+)/u)?.[1];
+    assert.ok(encoded);
+    assert.equal(inflateSync(Buffer.from(encoded, 'base64url')).toString(), source);
+  }
+  assert.equal(warnings.length, 1, 'only the unsupported native diagram emits a Core warning');
 });
 
 test('installDiagramFeature renders additional Kroki languages through the same backend', () => {

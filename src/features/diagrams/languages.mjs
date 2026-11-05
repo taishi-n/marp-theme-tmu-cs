@@ -10,6 +10,7 @@ export const supportedDiagramLanguages = [
   'excalidraw',
   'graphviz',
   'mermaid',
+  'mermaid-kroki',
   'nomnoml',
   'nwdiag',
   'packetdiag',

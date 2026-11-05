@@ -14,6 +14,9 @@ export function installDiagramFeature(marp, options = {}) {
 
   const fallbackFence = marp.markdown.renderer.rules.fence;
 
+  // Core consumes supported Mermaid as marp_mermaid tokens before this fence
+  // adapter. Its error path calls the fence rule dynamically, reaching Kroki
+  // with the original source. Other diagram languages arrive here directly.
   marp.markdown.renderer.rules.fence = (tokens, idx, renderOptions, env, self) => {
     const token = tokens[idx];
     const language = extractFenceLanguage(marp.markdown, token);

@@ -3,7 +3,8 @@ import { escapeHtmlAttribute } from '../../core/html.mjs';
 import { isDiagramLanguage } from './languages.mjs';
 
 function normalizeLanguage(language) {
-  return String(language ?? '').trim().toLowerCase();
+  const normalized = String(language ?? '').trim().toLowerCase();
+  return normalized === 'mermaid-kroki' ? 'mermaid' : normalized;
 }
 
 function encodeKrokiSource(source) {
