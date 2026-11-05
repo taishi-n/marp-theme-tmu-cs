@@ -189,9 +189,9 @@ test('external code rejects a symlink that resolves outside the input root', asy
 
 test('diagram source bypasses generic code wrapping in the integrated engine', async () => {
   const marp = await engine({ marp: new Marp() });
-  const diagramSource = `graph TD\n${'A'.repeat(131)}-->B\n`;
-  const { html } = marp.render(`\`\`\`mermaid\n${diagramSource}\`\`\`\n`);
-  const encoded = html.match(/kroki\.io\/mermaid\/svg\/([^"/]+)/u)?.[1];
+  const diagramSource = `@startuml\nAlice -> Bob: ${'A'.repeat(131)}\n@enduml\n`;
+  const { html } = marp.render(`\`\`\`plantuml\n${diagramSource}\`\`\`\n`);
+  const encoded = html.match(/kroki\.io\/plantuml\/svg\/([^"/]+)/u)?.[1];
 
   assert.ok(encoded);
   assert.equal(inflateSync(Buffer.from(encoded, 'base64url')).toString('utf8'), diagramSource);

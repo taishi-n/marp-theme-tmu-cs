@@ -94,6 +94,26 @@ test('inlineStandaloneAssets fails when an asset cannot be embedded', async () =
   }
 });
 
+test('standalone CSS imports embed their nested fonts and reject import cycles', () => {
+  const assets = new Map([
+    ['https://example.com/css/main.css', { mimeType: 'text/css', buffer: Buffer.from('@import url("./fonts.css");') }],
+    ['https://example.com/css/fonts.css', { mimeType: 'text/css', buffer: Buffer.from('@font-face { src: url("../font.woff2"); }') }],
+    ['https://example.com/font.woff2', { mimeType: 'font/woff2', buffer: Buffer.from('font') }],
+  ]);
+  const output = inlineStandaloneAssets('<svg><style>@import url("https://example.com/css/main.css");</style></svg>', {
+    fetchRemoteAsset: reference => assets.get(reference),
+  });
+  const decodeCss = value => Buffer.from(value.match(/data:text\/css;base64,([A-Za-z0-9+/=]+)/u)[1], 'base64').toString();
+  const fonts = decodeCss(decodeCss(output));
+  assert.match(fonts, /data:font\/woff2;base64,/u);
+  assert.doesNotMatch(fonts, /https:|\.\.\//u);
+
+  assets.set('https://example.com/css/fonts.css', { mimeType: 'text/css', buffer: Buffer.from('@import url("./main.css");') });
+  assert.throws(() => inlineStandaloneAssets('<style>@import url("https://example.com/css/main.css");</style>', {
+    fetchRemoteAsset: reference => assets.get(reference),
+  }), /circular CSS import/u);
+});
+
 test('inlineStandaloneAssets inlines Kroki SVG images for standalone output', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-standalone-'));
 

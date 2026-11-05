@@ -31,7 +31,7 @@ migration; those warnings are recorded separately from browser observations.
 | --- | --- | --- |
 | U0 | Baseline: CLI 4.4.0, Core 4.3.0, Marpit 3.2.1 | 100 tests pass; 51 pages captured; no browser errors or external requests |
 | U1 | CLI 4.5.1, its Core 4.4.0 and Marpit 3.2.3 | 100 tests pass; all three static reports pass; 51/51 screenshots and element positions unchanged |
-| U2 | Explicit Core 5.0.2 and unified feature initialization | Pending |
+| U2 | Explicit Core 5.0.2 and unified feature initialization | 102 tests pass; three static reports pass; 51 pages captured with no browser errors or external requests. 28 pages have pixel changes; element changes are limited to two math pages, the native Mermaid element, and two newly highlighted plain fences |
 | U3 | Delegate base Shiki rendering to Core | Pending |
 | U4 | Native Mermaid with Kroki fallback | Pending |
 | U5 | MathJax 4 annotation notes | Pending |
@@ -39,3 +39,20 @@ migration; those warnings are recorded separately from browser observations.
 
 U2–U5 are developed on `refactor/marp-core-v5`. The completed migration is
 adopted only after the comparison and package validation gates pass.
+
+### U2 observations
+
+Core's full build activates MathJax 4 and native Mermaid at initialization; U4
+will validate and document its fallback policy. Math glyph shapes and SVG
+dimensions change on main-deck pages 5 and 12. All four annotation boxes remain
+attached to the intended terms, without overlaps or math errors. The native
+Mermaid page changes rendering style and size; sizing is reviewed again in U4.
+Plain fences on pages 38 and 39 now receive Core's Shiki output and are brought
+under the common wrapping/layout adapter in U3. Other code elements retain
+their previous rectangles, with small glyph/color differences from Core's
+updated base styles. Controls and comparison decks are pixel-identical.
+
+The first comparison exposed double code padding in the new default theme and
+font requests inside Mermaid's imported CSS. U2 removes the duplicate padding
+and recursively embeds CSS dependencies, including relative font URLs, with a
+cycle guard. Repeated capture confirms zero external browser requests.

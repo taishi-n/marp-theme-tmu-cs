@@ -74,7 +74,14 @@ TOC preprocessing assigns temporary target references, which travel with heading
 
 `mediaPlayback` still needs its attribute integration rule: Marpit snapshots attribute-producing directive names during construction, before this engine registers the custom directive.
 
-For HTML, the engine configures Core with `emoji: { shortcode: true, unicode: false }` before initialization. Other output formats retain Core’s emoji settings. The CLI’s lazy `marp` getter is initialized once. Programmatic calls with `{ marp: instance }` should supply a fresh instance: HTML rendering constructs a new instance of the same class with its constructor options. Install additional plugins on the returned engine.
+Core 5.0.2 is an explicit dependency, including all optional peers used by its
+full build. CLI and programmatic initialization share
+`src/pipeline/marp-instance.mjs`. `await engine()` creates a full instance.
+Calls with `{ marp: instance }` accept a fresh lightweight Core or `/full`
+instance; lightweight instances receive Core's public math, Shiki, and Mermaid
+plugins, while full instances retain their existing registrations.
+
+For HTML, the engine configures Core with `emoji: { shortcode: true, unicode: false }` before initialization. Other output formats retain Core’s emoji settings. The CLI’s lazy `marp` getter is initialized once. Programmatic calls with `{ marp: instance }` should supply a fresh instance: HTML rendering constructs a new instance of the same class with its constructor options. Install additional plugins on the returned engine, after this initialization.
 
 Shared helpers that are reused across preprocessors and renderers should prefer `src/core/*` instead of being duplicated in feature-specific files.
 

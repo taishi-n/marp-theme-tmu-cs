@@ -14,6 +14,7 @@ import installMediaPlayback from './src/pipeline/media-playback.mjs';
 import inlineStandaloneAssets from './src/pipeline/standalone-assets.mjs';
 import { loadThemeOverrides } from './src/pipeline/theme-overrides.mjs';
 import { getMarkdownPathFromEnv, prepareMarkdownForRender, warnForPreparedMarkdown } from './src/pipeline/markdown-pipeline.mjs';
+import { initializeMarp } from './src/pipeline/marp-instance.mjs';
 
 const themeName = 'tmu-cs';
 const logPrefix = `[${themeName}]`;
@@ -65,21 +66,9 @@ function detectOutputFormat(args = process.argv.slice(2)) {
   return 'html';
 }
 
-export default async (options) => {
+export default async (options = {}) => {
   const outputFormat = detectOutputFormat();
-  // CLI's getter constructs Core from this options object on first access.
-  // Configure emoji before initialization, while preserving the selected Core.
-  const nativeEmoji = { shortcode: true, unicode: false };
-  const lazyMarp = Object.getOwnPropertyDescriptor(options, 'marp')?.get;
-  if (outputFormat === 'html' && lazyMarp) {
-    options.emoji = { ...options.emoji, ...nativeEmoji };
-  }
-  let marp = options.marp;
-  if (outputFormat === 'html' && !lazyMarp) {
-    // Programmatic callers may supply a fresh instance instead of CLI's getter.
-    const Core = marp.constructor;
-    marp = new Core({ ...marp.options, emoji: { ...marp.options.emoji, ...nativeEmoji } });
-  }
+  const marp = initializeMarp(options, outputFormat);
   const [highlighter, themeCss] = await Promise.all([
     highlighterPromise,
     readFile(themeCssUrl, 'utf8'),

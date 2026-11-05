@@ -189,12 +189,22 @@ function resolveNestedBase(reference, basePath) {
   return resolve(dirname(basePath), stripUrlSuffix(reference));
 }
 
-function inlineCssReferences(css, context, basePath, embedRemote = true) {
+function inlineCssReferences(css, context, basePath, embedRemote = true, imports = new Set()) {
   return String(css ?? '').replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/giu, (match, _quote, reference) => {
     const trimmed = reference.trim();
     if (!embedRemote && isRemoteReference(trimmed)) return match;
     const asset = loadAsset(trimmed, context, basePath);
-    return asset ? `url("${toDataUrl(trimmed, asset)}")` : match;
+    if (!asset) return match;
+    if (detectMimeType(trimmed, asset.mimeType) === 'text/css') {
+      const nestedBase = resolveNestedBase(trimmed, basePath);
+      if (imports.has(nestedBase)) {
+        throw new Error(`[tmu-cs] standalone mode found a circular CSS import: "${trimmed}".`);
+      }
+      const nestedCss = inlineCssReferences(asset.buffer.toString('utf8'), context, nestedBase,
+        embedRemote, new Set([...imports, nestedBase]));
+      return `url("${toDataUrl(trimmed, { ...asset, buffer: Buffer.from(nestedCss) })}")`;
+    }
+    return `url("${toDataUrl(trimmed, asset)}")`;
   });
 }
 

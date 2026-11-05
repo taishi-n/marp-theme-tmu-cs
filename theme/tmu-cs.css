@@ -596,6 +596,7 @@ pre,
 
 .marp-code > code {
   display: block;
+  padding: 0;
   line-height: 0;
 }
 
