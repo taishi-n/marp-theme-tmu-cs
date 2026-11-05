@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
-import { applyTmuCsDefaults, detectOutputFormat, findOutputPath } from './marp-cli-options.mjs';
+import { applyTmuCsDefaults, detectOutputFormat } from './marp-cli-options.mjs';
 import { parseThemeOptions } from './theme-options.mjs';
 
 const require = createRequire(import.meta.url);
@@ -29,10 +29,6 @@ if (standalone && outputFormat !== 'html') {
   process.exit(1);
 }
 
-const outputArgument = findOutputPath(forwardedArgs);
-const standaloneOutputPath = standalone && outputArgument
-  ? resolve(process.cwd(), outputArgument)
-  : undefined;
 const allowLocalFiles = forwardedArgs.includes('--allow-local-files');
 
 function findMarkdownInputs(args) {
@@ -69,7 +65,6 @@ const result = spawnSync(process.execPath, [marpCliPath, ...forwardedArgs], {
     ...process.env,
     ...(standalone ? {
       TMU_CS_STANDALONE: '1',
-      ...(standaloneOutputPath ? { TMU_CS_STANDALONE_OUTPUT: standaloneOutputPath } : {}),
     } : {}),
     ...(allowLocalFiles ? { TMU_CS_ALLOW_LOCAL_FILES: '1' } : {}),
     ...(markdownInputs.length > 0 ? { TMU_CS_MARKDOWN_PATHS: JSON.stringify(markdownInputs) } : {}),

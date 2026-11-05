@@ -8,7 +8,7 @@ export function initializeMarp(options, outputFormat) {
   const lazyMarp = Object.getOwnPropertyDescriptor(options, 'marp')?.get;
   let marp = lazyMarp ? undefined : options.marp;
   const constructorOptions = marp?.options ?? Object.fromEntries(
-    Object.keys(options).filter((key) => key !== 'marp').map((key) => [key, options[key]]),
+    Object.keys(options).filter((key) => !['marp', 'outputFormat'].includes(key)).map((key) => [key, options[key]]),
   );
   const emoji = outputFormat === 'html'
     ? { ...constructorOptions.emoji, shortcode: true, unicode: false }

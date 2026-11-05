@@ -120,13 +120,16 @@ Use `--allow-local-files` only for trusted decks. Without it, external code, spe
 If you prefer to use plain `marp`, create `marp.config.mjs` in the slide project:
 
 ```js
-import { enginePath, themePath } from "marp-theme-tmu-cs";
+import { defineTmuCsConfig } from "marp-theme-tmu-cs";
 
-export default {
-  engine: enginePath,
-  themeSet: [themePath],
-};
+export default defineTmuCsConfig({});
 ```
+
+Use `defineTmuCsConfig({ pdf: true })` or the corresponding Marp settings when the
+configuration file selects the output format. The helper supplies the bundled
+engine and theme, preserves other settings, and passes the selected format to the
+engine. Plain path-based engine configurations still work with format flags or
+output extensions. A programmatic engine call can pass `outputFormat` explicitly.
 
 Then build from the slide project:
 
@@ -151,7 +154,7 @@ The canonical package entry points are:
 - theme CSS path: `marp-theme-tmu-cs/theme.css`
 - bundled IEEE CSL: `marp-theme-tmu-cs/csl/ieee.csl`
 
-The package also retains `engine.mjs`, `theme`, and `theme/tmu-cs.css` as compatibility aliases. The root exports `themeName`, `enginePath`, `themePath`, `defaultCslPath`, and `marpEngine`.
+The package also retains `engine.mjs`, `theme`, and `theme/tmu-cs.css` as compatibility aliases. The root exports `themeName`, `enginePath`, `themePath`, `defaultCslPath`, `marpEngine`, and `defineTmuCsConfig`.
 
 Internal implementation files under `src/` are not part of the supported public API.
 

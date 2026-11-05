@@ -13,6 +13,7 @@ const entrypoints = ['engine', 'engine.mjs', 'theme', 'theme.css', 'theme/tmu-cs
 test('the package root provides the engine and bundled asset paths', () => {
   assert.equal(pkg.themeName, 'tmu-cs');
   assert.equal(typeof pkg.marpEngine, 'function');
+  assert.equal(typeof pkg.defineTmuCsConfig, 'function');
   for (const path of [pkg.enginePath, pkg.themePath, pkg.defaultCslPath]) assert.equal(typeof path, 'string');
 });
 
@@ -37,9 +38,9 @@ test('the npm package includes public entrypoints, documentation, assets and wor
   const tempDir = await mkdtemp(join(tmpdir(), 'tmu-cs-package-'));
   try {
     const pack = spawnSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', [
-      'pack', '--json', '--ignore-scripts', '--pack-destination', tempDir, '--cache', join(tempDir, 'cache'),
+      'pack', '--offline', '--json', '--ignore-scripts', '--pack-destination', tempDir, '--cache', join(tempDir, 'cache'),
     ], { cwd: packageRoot, encoding: 'utf8', timeout: 30000 });
-    assert.equal(pack.status, 0, pack.stderr);
+    assert.equal(pack.status, 0, pack.error?.message || pack.stderr);
     const [manifest] = JSON.parse(pack.stdout);
     const files = new Set(manifest.files.map(file => file.path));
     const publicPaths = ['', ...entrypoints.map(entrypoint => `/${entrypoint}`)]

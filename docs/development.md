@@ -80,14 +80,35 @@ TOC preprocessing assigns temporary target references, which travel with heading
 Core 5.0.2 is an explicit dependency, including all optional peers used by its
 full build. CLI and programmatic initialization share
 `src/pipeline/marp-instance.mjs`. `await engine()` creates a full instance.
-When CLI resolves its bundled Core 4 outside the theme checkout, initialization
-replaces it with this package's explicit Core 5 full build, retaining the CLI
-constructor options.
+Functional CLI engines construct this package's explicit Core 5 full build
+directly from the CLI options, without initializing the CLI's bundled Core.
 Calls with `{ marp: instance }` accept a fresh lightweight Core or `/full`
 instance; lightweight instances receive Core's public math, Shiki, and Mermaid
 plugins, while full instances retain their existing registrations.
 
-For HTML, the engine configures Core with `emoji: { shortcode: true, unicode: false }` before initialization. Other output formats retain Core’s emoji settings. The CLI’s lazy `marp` getter is initialized once. Programmatic calls with `{ marp: instance }` should supply a fresh instance: HTML rendering constructs a new instance of the same class with its constructor options. Install additional plugins on the returned engine, after this initialization.
+For HTML, the engine configures Core with `emoji: { shortcode: true, unicode: false }` before initialization. Other output formats retain Core’s emoji settings. Programmatic calls with `{ marp: instance }` should supply a fresh instance: HTML rendering constructs a new instance of the same class with its constructor options. Install additional plugins on the returned engine, after this initialization.
+
+Marp CLI owns configuration discovery and loading. Use the public
+`defineTmuCsConfig(config)` helper when configuration fields select PDF, PPTX,
+images, or notes: it preserves the configuration and passes the selected format
+through `options.outputFormat`. The engine also accepts `outputFormat` directly.
+Raw path-based engine configurations can infer the format from CLI flags and
+output extensions, but cannot see other fields of the loaded CLI configuration.
+The wrapper and configuration helper share `src/core/output-format.mjs`.
+
+Slide boundaries, headings, standalone authoring comments, and front matter use
+Core's block grammar through `src/core/markdown-blocks.mjs`. This parser does not
+run the stateful render pipeline. Custom front-matter fields are decoded with
+YAML's failsafe schema. Source markers stay on independent lines so generated
+TOCs, chapter pages, and code states can retain the authored slide identity.
+
+Code layout and overflow diagnostics run in one core rule. Core owns grammar
+loading, language aliases, and metadata-based line highlighting; Shiki's public
+`pre` hook applies the theme's class and removes inline theme colors. The fence
+adapter controls auto-scaling attributes after Core adds them. `fit-height`
+retains the theme's remaining-height allocation and CSS transform: Core's
+content scaling does not preserve the same padding, border, and wrapped-line
+geometry.
 
 Shared helpers that are reused across preprocessors and renderers should prefer `src/core/*` instead of being duplicated in feature-specific files.
 
@@ -100,6 +121,21 @@ The intended boundary is:
 
 - `src/features/citations/core.mjs`: citation orchestration and slide-footnote integration
 - `src/features/citations/backends/js.mjs`: Citation.js + citeproc backend
+
+Citation.js parses bibliography data and formats the complete bibliography,
+including uncited entries. A deck-local citeproc processor formats citation
+clusters in one pass and applies updates to earlier citations. CSL registry keys
+use the style contents so same-named files and watch-mode edits remain distinct.
+
+Standalone embedding and static resource checks share
+`src/core/html-resources.mjs`. Resource loading uses a cache scoped to one render,
+shared with spectrogram audio embedding; later renders read updated files.
+Protocol-relative URLs use HTTPS for local inputs. Both CSS import syntaxes are
+embedded recursively, and nonportable URLs such as `blob:` fail standalone checks.
+Media runtime output includes only the GIF, spectrogram, and sequential-playback
+features used by the deck. Math annotations measure server-rendered math
+synchronously on scheduled animation frames; detailed diagnostics are built only
+when math debugging is enabled.
 
 `index.mjs` and `package.json` together define the supported package surface. If public paths or exports change, keep them aligned and update the user-facing docs.
 

@@ -13,54 +13,17 @@ import inlineStandaloneAssets from './src/pipeline/standalone-assets.mjs';
 import { loadThemeOverrides } from './src/pipeline/theme-overrides.mjs';
 import { getMarkdownPathFromEnv, prepareMarkdownForRender } from './src/pipeline/markdown-pipeline.mjs';
 import { initializeMarp } from './src/pipeline/marp-instance.mjs';
+import { detectOutputFormat, validateOutputFormat } from './src/core/output-format.mjs';
 
 const themeName = 'tmu-cs';
 const logPrefix = `[${themeName}]`;
 const themeCssUrl = new URL(`./theme/${themeName}.css`, import.meta.url);
 const defaultCitationStylePath = fileURLToPath(new URL('./vendor/csl/ieee.csl', import.meta.url));
 
-function findOutputArgument(args = []) {
-  for (let index = 0; index < args.length; index += 1) {
-    const argument = args[index];
-    if (argument === '--') break;
-
-    if (argument === '-o' || argument === '--output') {
-      const next = args[index + 1];
-      return typeof next === 'string' && next !== '' ? next : undefined;
-    }
-
-    if (argument.startsWith('--output=')) {
-      return argument.slice('--output='.length);
-    }
-  }
-
-  return undefined;
-}
-
-function detectOutputFormat(args = process.argv.slice(2)) {
-  const explicitFormat = process.env.TMU_CS_OUTPUT_FORMAT;
-  if (['html', 'image', 'images', 'notes', 'pdf', 'pptx'].includes(explicitFormat)) return explicitFormat;
-  const normalizedArgs = args.map((arg) => String(arg));
-  const terminatorIndex = normalizedArgs.indexOf('--');
-  const optionArgs = terminatorIndex === -1 ? normalizedArgs : normalizedArgs.slice(0, terminatorIndex);
-
-  if (optionArgs.some((arg) => arg === '--pdf')) return 'pdf';
-  if (optionArgs.some((arg) => arg === '--pptx')) return 'pptx';
-  if (optionArgs.some((arg) => arg === '--image' || arg.startsWith('--image='))) return 'image';
-  if (optionArgs.some((arg) => arg === '--images' || arg.startsWith('--images='))) return 'images';
-  if (optionArgs.some((arg) => arg === '--notes')) return 'notes';
-
-  const outputPath = findOutputArgument(optionArgs)?.toLowerCase();
-  if (outputPath?.endsWith('.pdf')) return 'pdf';
-  if (outputPath?.endsWith('.pptx')) return 'pptx';
-  if (outputPath?.endsWith('.png') || outputPath?.endsWith('.jpg') || outputPath?.endsWith('.jpeg')) return 'image';
-  if (outputPath?.endsWith('.txt')) return 'notes';
-
-  return 'html';
-}
-
 export default async (options = {}) => {
-  const outputFormat = detectOutputFormat();
+  const outputFormat = validateOutputFormat(options.outputFormat ?? process.env.TMU_CS_OUTPUT_FORMAT ?? detectOutputFormat(process.argv.slice(2)));
+  const standaloneEnabled = process.env.TMU_CS_STANDALONE === '1';
+  if (standaloneEnabled && outputFormat !== 'html') throw new Error('[tmu-cs] --standalone is supported only for HTML output.');
   const marp = initializeMarp(options, outputFormat);
   const themeCss = await readFile(themeCssUrl, 'utf8');
 
@@ -81,7 +44,6 @@ export default async (options = {}) => {
   installMediaPlayback(marp, {
     onWarning: (message) => console.warn(`${logPrefix} ${message}`),
   });
-  const standaloneEnabled = process.env.TMU_CS_STANDALONE === '1';
   const allowLocalFiles = process.env.TMU_CS_ALLOW_LOCAL_FILES === '1'
     || process.argv.slice(2).includes('--allow-local-files');
   let configuredMarkdownPaths = [];
