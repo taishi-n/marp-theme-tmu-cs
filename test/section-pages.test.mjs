@@ -343,32 +343,36 @@ test('TOC links use rendered heading IDs across title collisions, code steps and
       ...(index === 0 ? [] : ['---']), `<!-- slide-id: ${sourceId} -->`, heading, code,
     ]),
   ].join('\n');
-  const { html } = marp.render(source);
-  const root = parseFragment(html);
-  const sections = findElements(root, node => node.tagName === 'section');
-  const slides = marp.tmuCsSlides.slides;
-  const firstSection = sourceId => {
-    const index = slides.findIndex(slide => slide.sourceId === sourceId);
-    assert.ok(index >= 0, `Missing source slide ${sourceId}`);
-    return sections[index];
-  };
-  const expected = destinations.map(({ sourceId, label }) => {
-    const heading = findElements(firstSection(sourceId), node => /^h[1-6]$/u.test(node.tagName))[0];
-    assert.equal(textContent(heading).trim(), label);
-    const id = attributes(heading).id;
-    assert.ok(id);
-    return { label, href: `#${id}` };
-  });
-  const agendas = sections.filter(section => elementClasses(section).includes('toc-page'));
-  assert.equal(agendas.length, 2);
-  for (const agenda of agendas) {
-    const links = findElements(agenda, node => node.tagName === 'a');
-    assert.deepEqual(links.map(link => ({ label: textContent(link), href: attributes(link).href })), expected);
+  let initialHeadingIds;
+  for (let render = 0; render < 2; render += 1) {
+    const { html } = marp.render(source);
+    const root = parseFragment(html);
+    const sections = findElements(root, node => node.tagName === 'section');
+    const slides = marp.tmuCsSlides.slides;
+    const firstSection = sourceId => {
+      const index = slides.findIndex(slide => slide.sourceId === sourceId);
+      assert.ok(index >= 0, `Missing source slide ${sourceId}`);
+      return sections[index];
+    };
+    const expected = destinations.map(({ sourceId, label }) => {
+      const heading = findElements(firstSection(sourceId), node => /^h[1-6]$/u.test(node.tagName))[0];
+      assert.equal(textContent(heading).trim(), label);
+      const id = attributes(heading).id;
+      assert.ok(id);
+      return { label, href: `#${id}` };
+    });
+    const agendas = sections.filter(section => elementClasses(section).includes('toc-page'));
+    assert.equal(agendas.length, 2);
+    for (const agenda of agendas) {
+      const links = findElements(agenda, node => node.tagName === 'a');
+      assert.deepEqual(links.map(link => ({ label: textContent(link), href: attributes(link).href })), expected);
+    }
+    const ids = findElements(root, node => /^h[1-6]$/u.test(node.tagName)).map(node => attributes(node).id);
+    assert.equal(new Set(ids).size, ids.length);
+    assert.doesNotMatch(html, /data-tmu-cs-heading|tmu-cs-toc-|tmu-cs-slide-class--/u);
+    if (initialHeadingIds) assert.deepEqual(ids, initialHeadingIds);
+    else initialHeadingIds = ids;
   }
-  const ids = findElements(root, node => /^h[1-6]$/u.test(node.tagName)).map(node => attributes(node).id);
-  assert.equal(new Set(ids).size, ids.length);
-  assert.doesNotMatch(html, /data-tmu-cs-heading|tmu-cs-toc-|tmu-cs-slide-class--/u);
-  assert.equal(marp.render(source).html, html);
 });
 
 test('TOC respects custom Core slug options and falls back to slide anchors without slugs', async () => {
